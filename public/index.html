@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Automation Control Panel</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      --glass-bg: rgba(30, 41, 59, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --accent-color: #10b981;
+      --accent-hover: #059669;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --error-color: #f43f5e;
+      --warning-color: #f59e0b;
+      --info-color: #3b82f6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1rem;
+      animation: fadeInDown 0.6s ease-out;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, #34d399, #059669);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .main-grid {
+        grid-template-columns: 380px 1fr;
+      }
+    }
+
+    .card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      animation: fadeInUp 0.6s ease-out;
+    }
+
+    .card:hover {
+      box-shadow: 0 15px 35px rgba(16, 185, 129, 0.05);
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 0.75rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    input, textarea, select {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    }
+
+    button {
+      background: var(--accent-color);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    button:hover {
+      background: var(--accent-hover);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--glass-border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-danger {
+      background: var(--error-color);
+    }
+
+    .btn-danger:hover {
+      background: #e11d48;
+    }
+
+    /* Session QR Card and Details */
+    .qr-container {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px dashed var(--glass-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 250px;
+      margin-top: 1rem;
+      position: relative;
+    }
+
+    .qr-image {
+      max-width: 200px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      animation: zoomIn 0.3s ease-out;
+    }
+
+    /* Status Badge styling */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-disconnected { background: rgba(244, 63, 94, 0.15); color: var(--error-color); }
+    .status-connecting { background: rgba(245, 158, 11, 0.15); color: var(--warning-color); }
+    .status-qr { background: rgba(59, 130, 246, 0.15); color: var(--info-color); }
+    .status-connected { background: rgba(16, 185, 129, 0.15); color: var(--accent-color); }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: currentColor;
+      animation: pulse 1.5s infinite;
+    }
+
+    .profile-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1rem;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 0.75rem;
+      border-radius: 8px;
+    }
+
+    .profile-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #334155;
+      object-fit: cover;
+    }
+
+    .console-card {
+      background: #090d16;
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 1rem;
+      font-family: monospace;
+      font-size: 0.85rem;
+      max-height: 200px;
+      overflow-y: auto;
+      color: #34d399;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .console-line {
+      line-height: 1.4;
+      word-break: break-all;
+    }
+
+    .console-line.error { color: var(--error-color); }
+    .console-line.system { color: var(--text-muted); }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .tab {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.5rem 1rem;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      width: auto;
+      border-radius: 0;
+    }
+
+    .tab.active {
+      color: var(--accent-color);
+      border-bottom-color: var(--accent-color);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 900px) {
+      .actions-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* Animations */
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes zoomIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>WhatsApp Automation Studio</h1>
+      <p>Configure multiple user sessions, check real-time status, and trigger WhatsApp events dynamically</p>
+    </header>
+
+    <div class="main-grid">
+      <!-- Left Column: Session controller -->
+      <div class="card">
+        <div class="card-title">
+          <span>Session Control</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="userId">Enter Unique User ID / Session ID</label>
+          <input type="text" id="userId" value="8798797979797987" placeholder="e.g. user_1001">
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+          <button id="loginBtn" onclick="triggerLogin()">Login / Connect</button>
+          <button id="logoutBtn" class="btn-danger" onclick="triggerLogout()" disabled>Logout</button>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+          <span style="font-size: 0.85rem; color: var(--text-muted)">Connection Status</span>
+          <div id="statusBadge" class="status-badge status-disconnected">
+            <div class="pulse"></div>
+            <span id="statusText">Disconnected</span>
+          </div>
+        </div>
+
+        <div id="qrContainer" class="qr-container">
+          <span style="color: var(--text-muted); font-size: 0.9rem; text-align: center;">Session inactive.<br>Provide a User ID and click "Login / Connect" to generate a QR code.</span>
+        </div>
+
+        <div id="profileContainer" class="profile-card" style="display: none;">
+          <img id="profileAvatar" class="profile-avatar" src="" alt="Avatar">
+          <div>
+            <div style="font-weight: 600; font-size: 0.95rem;" id="profileName">Loading...</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);" id="profileNumber">Phone: </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: API Actions Console -->
+      <div class="card">
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('sendTab')">Send Message</button>
+          <button class="tab" onclick="switchTab('sendMediaTab')" id="sendMediaTabBtn" disabled>Send Media</button>
+          <button class="tab" onclick="switchTab('groupsTab')" id="groupsTabBtn" disabled>Groups</button>
+          <button class="tab" onclick="switchTab('profileTab')" id="profileTabBtn" disabled>Check Profile</button>
+        </div>
+
+        <!-- Tab: Send Message -->
+        <div id="sendTab" class="tab-content active">
+          <div class="actions-grid">
+            <div>
+              <div class="card-title">Send Text Message</div>
+              <div class="form-group">
+                <label for="msgTo">Recipient Phone Number (with Country Code) or Group JID</label>
+                <input type="text" id="msgTo" placeholder="e.g. 919876543210 or 12036302213@g.us">
+              </div>
+              <div class="form-group">
+                <label for="msgBody">Message Text</label>
+                <textarea id="msgBody" rows="4" placeholder="Type your message here..."></textarea>
+              </div>
+              <button id="sendMsgBtn" onclick="sendMessage()" disabled>Send Message</button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <label>Console & API Response Log</label>
+              <div id="apiConsole" class="console-card">
+                <div class="console-line system">[System] Expose logs here...</div>
+              </div>
+              <button class="btn-secondary" onclick="clearConsole()">Clear Logs</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Send Media -->
+        <div id="sendMediaTab" class="tab-content">
+          <div class="actions-grid">
+            <div>
+              <div class="card-title">Send Media Attachment</div>
+              <div class="form-group">
+                <label for="mediaTo">Recipient Phone Number (with Country Code) or Group JID</label>
+                <input type="text" id="mediaTo" placeholder="e.g. 919876543210 or 12036302213@g.us">
+              </div>
+              <div class="form-group">
+                <label for="mediaTypeSelect">Media Type</label>
+                <select id="mediaTypeSelect" onchange="onMediaTypeChange()">
+                  <option value="image">Image (JPEG/PNG)</option>
+                  <option value="document">Document (PDF/DOCX/Spreadsheet/etc.)</option>
+                  <option value="audio">Audio (MP3/OGG)</option>
+                  <option value="video">Video (MP4)</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Media Source</label>
+                <div style="display: flex; gap: 1.5rem; margin-top: 0.25rem;">
+                  <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.9rem;">
+                    <input type="radio" name="mediaSource" value="url" checked onchange="toggleMediaSource('url')" style="width: auto;"> External URL
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; font-size: 0.9rem;">
+                    <input type="radio" name="mediaSource" value="file" onchange="toggleMediaSource('file')" style="width: auto;"> Upload Local File
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group" id="mediaUrlGroup">
+                <label for="mediaUrl">File URL</label>
+                <input type="text" id="mediaUrl" placeholder="e.g. https://images.unsplash.com/photo-1579202673506-ca3ce28943ef">
+              </div>
+              
+              <div class="form-group" id="mediaFileGroup" style="display: none;">
+                <label for="mediaFile">Choose Local File</label>
+                <input type="file" id="mediaFile" style="background: none; border: none; padding: 0.25rem 0;">
+              </div>
+
+              <div class="form-group" id="mediaFileNameGroup" style="display: none;">
+                <label for="mediaFileName">Filename Override (e.g. invoice.pdf)</label>
+                <input type="text" id="mediaFileName" placeholder="Leave empty for original name">
+              </div>
+
+              <div class="form-group" id="mediaCaptionGroup">
+                <label for="mediaCaption">Caption (optional)</label>
+                <input type="text" id="mediaCaption" placeholder="Add a caption...">
+              </div>
+
+              <button id="sendMediaBtn" onclick="sendMedia()" disabled>Send Media</button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <label>Console & API Response Log</label>
+              <div id="mediaConsole" class="console-card">
+                <div class="console-line system">[System] Media transmission logs appear here...</div>
+              </div>
+              <button class="btn-secondary" onclick="clearMediaConsole()">Clear Logs</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Groups -->
+        <div id="groupsTab" class="tab-content">
+          <div class="card-title">Manage Groups</div>
+          <button id="loadGroupsBtn" class="btn-secondary" onclick="loadGroups()" style="margin-bottom: 1rem; width: auto;">Load Participating Groups</button>
+          
+          <div class="form-group">
+            <label for="groupSelect">Choose Group</label>
+            <select id="groupSelect" onchange="onGroupSelectChange()">
+              <option value="">-- Click "Load" to fetch groups --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="groupMsgBody">Group Message</label>
+            <textarea id="groupMsgBody" rows="3" placeholder="Type message to send to the group..."></textarea>
+          </div>
+
+          <button id="sendGroupMsgBtn" onclick="sendGroupMessage()" disabled>Send Message to Selected Group</button>
+        </div>
+
+        <!-- Tab: Profile Picture lookup -->
+        <div id="profileTab" class="tab-content">
+          <div class="card-title">Fetch Profile Info</div>
+          <div class="form-group">
+            <label for="lookupPhone">Enter Contact Phone Number (with Country Code)</label>
+            <input type="text" id="lookupPhone" placeholder="e.g. 919876543210 (leave empty for own profile)">
+          </div>
+          <button id="lookupProfileBtn" onclick="lookupProfile()">Query Profile Information</button>
+          
+          <div id="lookupResult" class="profile-card" style="display: none; margin-top: 1.5rem; background: rgba(255,255,255,0.05); padding: 1rem;">
+            <img id="lookupAvatar" class="profile-avatar" style="width: 64px; height: 64px;" src="" alt="No Picture">
+            <div>
+              <div style="font-weight: 600; font-size: 1.05rem;" id="lookupResultPhone">Phone: </div>
+              <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;" id="lookupResultPic">No image URL found</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let pollInterval = null;
+    let isCurrentlyConnected = false;
+
+    // Log printer
+    function logToConsole(message, type = 'success') {
+      const consoleEl = document.getElementById('apiConsole');
+      const line = document.createElement('div');
+      line.className = `console-line ${type}`;
+      const time = new Date().toLocaleTimeString();
+      line.textContent = `[${time}] ${message}`;
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function clearConsole() {
+      const consoleEl = document.getElementById('apiConsole');
+      consoleEl.innerHTML = '<div class="console-line system">[System] Console cleared.</div>';
+    }
+
+    // Tab switcher
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+      
+      document.getElementById(tabId).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // Set interactive state of controls
+    function setInteractiveState(connected) {
+      isCurrentlyConnected = connected;
+      document.getElementById('logoutBtn').disabled = !connected && document.getElementById('statusText').textContent === 'Disconnected';
+      document.getElementById('sendMsgBtn').disabled = !connected;
+      document.getElementById('sendMediaTabBtn').disabled = !connected;
+      document.getElementById('sendMediaBtn').disabled = !connected;
+      document.getElementById('groupsTabBtn').disabled = !connected;
+      document.getElementById('profileTabBtn').disabled = !connected;
+      document.getElementById('sendGroupMsgBtn').disabled = !connected;
+    }
+
+    // Update Status Badge UI
+    function updateStatusBadge(status) {
+      const badge = document.getElementById('statusBadge');
+      const text = document.getElementById('statusText');
+      badge.className = 'status-badge';
+      
+      if (status === 'CONNECTED') {
+        badge.classList.add('status-connected');
+        text.textContent = 'Connected';
+        setInteractiveState(true);
+        document.getElementById('logoutBtn').disabled = false;
+      } else if (status === 'QR') {
+        badge.classList.add('status-qr');
+        text.textContent = 'Scan QR';
+        setInteractiveState(false);
+        document.getElementById('logoutBtn').disabled = false;
+      } else if (status === 'CONNECTING') {
+        badge.classList.add('status-connecting');
+        text.textContent = 'Connecting';
+        setInteractiveState(false);
+      } else {
+        badge.classList.add('status-disconnected');
+        text.textContent = 'Disconnected';
+        setInteractiveState(false);
+        document.getElementById('logoutBtn').disabled = true;
+      }
+    }
+
+    // Poll Status
+    async function startPollingStatus(userId) {
+      if (pollInterval) clearInterval(pollInterval);
+      
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/session/status?userId=${userId}`);
+          const data = await res.json();
+          handleSessionStateChange(data);
+        } catch (err) {
+          console.error('Polling error:', err);
+        }
+      }, 2000);
+    }
+
+    function stopPollingStatus() {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    }
+
+    // Handle Session State response
+    function handleSessionStateChange(data) {
+      updateStatusBadge(data.status);
+      
+      const qrContainer = document.getElementById('qrContainer');
+      const profileContainer = document.getElementById('profileContainer');
+
+      if (data.status === 'QR' && data.qr) {
+        qrContainer.innerHTML = `<img class="qr-image" src="${data.qr}" alt="WhatsApp QR Code"><span style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--warning-color); font-weight: 500;">Please scan using Link Device on WhatsApp</span>`;
+        profileContainer.style.display = 'none';
+      } else if (data.status === 'CONNECTED') {
+        qrContainer.innerHTML = `<span style="color: var(--accent-color); font-weight: 600; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;"><div class="pulse" style="background-color: var(--accent-color)"></div> Session Active</span><span style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem;">Running in the background. Ready to automate!</span>`;
+        
+        // Show own profile
+        if (data.user) {
+          profileContainer.style.display = 'flex';
+          document.getElementById('profileName').textContent = data.user.name || 'WhatsApp Account';
+          document.getElementById('profileNumber').textContent = `Phone: +${data.user.phone}`;
+          // Set own avatar if possible
+          fetchOwnAvatar(data.userId);
+        }
+        stopPollingStatus(); // Stop polling when connected
+      } else if (data.status === 'CONNECTING') {
+        qrContainer.innerHTML = `<div class="pulse" style="background-color: var(--warning-color); width: 16px; height: 16px;"></div><span style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-muted);">Waiting for response from WhatsApp Web...</span>`;
+        profileContainer.style.display = 'none';
+      } else {
+        // Disconnected
+        qrContainer.innerHTML = `<span style="color: var(--text-muted); font-size: 0.9rem; text-align: center;">Session disconnected.<br>Provide a User ID and click Connect.</span>`;
+        profileContainer.style.display = 'none';
+        stopPollingStatus();
+      }
+    }
+
+    async function fetchOwnAvatar(userId) {
+      try {
+        const res = await fetch(`/api/profile?userId=${userId}`);
+        const profile = await res.json();
+        const avatar = document.getElementById('profileAvatar');
+        if (profile.profilePictureUrl) {
+          avatar.src = profile.profilePictureUrl;
+        } else {
+          avatar.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+        }
+      } catch (e) {
+        console.error('Error fetching profile avatar', e);
+      }
+    }
+
+    // Trigger Login POST
+    async function triggerLogin() {
+      const userId = document.getElementById('userId').value.trim();
+      if (!userId) {
+        alert('Please enter a User ID');
+        return;
+      }
+
+      logToConsole(`Triggering connection initialization for user "${userId}"...`, 'system');
+      updateStatusBadge('CONNECTING');
+      document.getElementById('qrContainer').innerHTML = `<div class="pulse" style="background-color: var(--warning-color); width: 16px; height: 16px;"></div><span style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-muted);">Starting background websocket connection...</span>`;
+
+      try {
+        const res = await fetch('/api/session/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        const data = await res.json();
+        
+        logToConsole(`API Response: ${data.message} (Status: ${data.status})`);
+        handleSessionStateChange(data);
+        
+        // Always start status polling to capture state changes
+        startPollingStatus(userId);
+      } catch (err) {
+        logToConsole(`Connection failed: ${err.message}`, 'error');
+        updateStatusBadge('DISCONNECTED');
+      }
+    }
+
+    // Trigger Logout POST
+    async function triggerLogout() {
+      const userId = document.getElementById('userId').value.trim();
+      if (!userId) return;
+
+      logToConsole(`Logging out and deleting auth state folder for user "${userId}"...`, 'system');
+      try {
+        const res = await fetch('/api/session/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        const data = await res.json();
+        
+        logToConsole(`Logout status: ${data.message} (Status: ${data.status})`);
+        handleSessionStateChange(data);
+        stopPollingStatus();
+      } catch (err) {
+        logToConsole(`Logout request failed: ${err.message}`, 'error');
+      }
+    }
+
+    // Send text message POST
+    async function sendMessage() {
+      const userId = document.getElementById('userId').value.trim();
+      const to = document.getElementById('msgTo').value.trim();
+      const message = document.getElementById('msgBody').value.trim();
+
+      if (!to || !message) {
+        alert('Please specify the recipient and type a message');
+        return;
+      }
+
+      logToConsole(`Sending message to "${to}"...`, 'system');
+      try {
+        const res = await fetch('/api/message/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, to, message })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          logToConsole(`Message sent successfully! ID: ${data.messageId}`);
+          document.getElementById('msgBody').value = ''; // clear message
+        } else {
+          logToConsole(`Failed to send: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        logToConsole(`Send request failed: ${err.message}`, 'error');
+      }
+    }
+
+    // Fetch Groups GET
+    async function loadGroups() {
+      const userId = document.getElementById('userId').value.trim();
+      logToConsole('Loading participating groups from WhatsApp...', 'system');
+      
+      try {
+        const res = await fetch(`/api/groups?userId=${userId}`);
+        const data = await res.json();
+        
+        if (data.groups) {
+          logToConsole(`Loaded ${data.groups.length} groups.`);
+          const select = document.getElementById('groupSelect');
+          select.innerHTML = '<option value="">-- Select a group --</option>';
+          
+          data.groups.forEach(group => {
+            const opt = document.createElement('option');
+            opt.value = group.id;
+            opt.textContent = `${group.name} (${group.participantsCount} members)`;
+            select.appendChild(opt);
+          });
+        } else {
+          logToConsole(`Error loading groups: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        logToConsole(`Load groups failed: ${err.message}`, 'error');
+      }
+    }
+
+    function onGroupSelectChange() {
+      const groupId = document.getElementById('groupSelect').value;
+      document.getElementById('sendGroupMsgBtn').disabled = !groupId || !isCurrentlyConnected;
+    }
+
+    // Send Group Message POST
+    async function sendGroupMessage() {
+      const userId = document.getElementById('userId').value.trim();
+      const groupId = document.getElementById('groupSelect').value;
+      const message = document.getElementById('groupMsgBody').value.trim();
+
+      if (!groupId || !message) {
+        alert('Please select a group and enter a message');
+        return;
+      }
+
+      logToConsole(`Sending group message to JID "${groupId}"...`, 'system');
+      try {
+        const res = await fetch('/api/groups/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, groupId, message })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          logToConsole(`Group message sent successfully! ID: ${data.messageId}`);
+          document.getElementById('groupMsgBody').value = '';
+        } else {
+          logToConsole(`Failed: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        logToConsole(`Request failed: ${err.message}`, 'error');
+      }
+    }
+
+    // Query Profile GET
+    async function lookupProfile() {
+      const userId = document.getElementById('userId').value.trim();
+      const phone = document.getElementById('lookupPhone').value.trim();
+
+      logToConsole(`Looking up profile info for: ${phone || 'Own Account'}`, 'system');
+      try {
+        const res = await fetch(`/api/profile?userId=${userId}&phone=${phone}`);
+        const data = await res.json();
+        
+        const resultDiv = document.getElementById('lookupResult');
+        const resultAvatar = document.getElementById('lookupAvatar');
+        const resultPhone = document.getElementById('lookupResultPhone');
+        const resultPicText = document.getElementById('lookupResultPic');
+
+        resultDiv.style.display = 'flex';
+        resultPhone.textContent = `Phone: +${data.phone}`;
+
+        if (data.profilePictureUrl) {
+          resultAvatar.src = data.profilePictureUrl;
+          resultPicText.innerHTML = `<a href="${data.profilePictureUrl}" target="_blank" style="color: var(--accent-color); word-break: break-all;">Click to open high-res image</a>`;
+          logToConsole(`Profile found. Image URL fetched successfully.`);
+        } else {
+          resultAvatar.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+          resultPicText.textContent = 'No profile picture set (or restricted by privacy)';
+          logToConsole(`Profile lookup completed. No profile picture available.`);
+        }
+      } catch (err) {
+        logToConsole(`Lookup failed: ${err.message}`, 'error');
+      }
+    }
+    // Media helpers
+    function logToMediaConsole(message, type = 'success') {
+      const consoleEl = document.getElementById('mediaConsole');
+      const line = document.createElement('div');
+      line.className = `console-line ${type}`;
+      const time = new Date().toLocaleTimeString();
+      line.textContent = `[${time}] ${message}`;
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function clearMediaConsole() {
+      const consoleEl = document.getElementById('mediaConsole');
+      consoleEl.innerHTML = '<div class="console-line system">[System] Console cleared.</div>';
+    }
+
+    function onMediaTypeChange() {
+      const type = document.getElementById('mediaTypeSelect').value;
+      // Show filename override only for document
+      document.getElementById('mediaFileNameGroup').style.display = type === 'document' ? 'block' : 'none';
+      // Show caption for image/video/document
+      document.getElementById('mediaCaptionGroup').style.display = type === 'audio' ? 'none' : 'block';
+    }
+
+    function toggleMediaSource(source) {
+      document.getElementById('mediaUrlGroup').style.display = source === 'url' ? 'block' : 'none';
+      document.getElementById('mediaFileGroup').style.display = source === 'file' ? 'block' : 'none';
+    }
+
+    async function sendMedia() {
+      const userId = document.getElementById('userId').value.trim();
+      const to = document.getElementById('mediaTo').value.trim();
+      const mediaType = document.getElementById('mediaTypeSelect').value;
+      const caption = document.getElementById('mediaCaption').value.trim();
+      const fileName = document.getElementById('mediaFileName').value.trim();
+      
+      const source = document.querySelector('input[name="mediaSource"]:checked').value;
+      
+      if (!to) {
+        alert('Please specify the recipient JID/Phone number');
+        return;
+      }
+
+      let mediaUrl = '';
+
+      if (source === 'file') {
+        const fileInput = document.getElementById('mediaFile');
+        if (!fileInput.files || fileInput.files.length === 0) {
+          alert('Please select a local file to upload');
+          return;
+        }
+        
+        const file = fileInput.files[0];
+        logToMediaConsole(`Reading local file: ${file.name} (${Math.round(file.size/1024)} KB)...`, 'system');
+        
+        try {
+          mediaUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (e) => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+          });
+        } catch (err) {
+          logToMediaConsole(`File reading error: ${err.message}`, 'error');
+          return;
+        }
+      } else {
+        mediaUrl = document.getElementById('mediaUrl').value.trim();
+        if (!mediaUrl) {
+          alert('Please enter the URL of the file to send');
+          return;
+        }
+      }
+
+      logToConsole(`Sending ${mediaType} to "${to}"...`, 'system');
+      logToMediaConsole(`Sending ${mediaType} to "${to}"...`, 'system');
+      
+      document.getElementById('sendMediaBtn').disabled = true;
+      
+      try {
+        const res = await fetch('/api/message/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            to,
+            mediaUrl,
+            mediaType,
+            caption,
+            fileName
+          })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          logToConsole(`Media sent successfully! ID: ${data.messageId}`);
+          logToMediaConsole(`Media sent successfully! ID: ${data.messageId}`);
+          
+          // Clear file input or URL input
+          if (source === 'file') {
+            document.getElementById('mediaFile').value = '';
+          } else {
+            document.getElementById('mediaUrl').value = '';
+          }
+          document.getElementById('mediaCaption').value = '';
+          document.getElementById('mediaFileName').value = '';
+        } else {
+          logToConsole(`Failed to send media: ${data.error}`, 'error');
+          logToMediaConsole(`Failed to send media: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        logToConsole(`Media request failed: ${err.message}`, 'error');
+        logToMediaConsole(`Media request failed: ${err.message}`, 'error');
+      } finally {
+        document.getElementById('sendMediaBtn').disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
