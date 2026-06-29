@@ -10,8 +10,8 @@ services:
       - key: NODE_ENV
         value: production
       - key: SESSION_DIR
-        value: /var/data/sessions
+        value: /opt/render/project/.data/sessions
     disk:
       name: whatsapp-sessions
-      mountPath: /var/data
+      mountPath: /opt/render/project/.data
       sizeGB: 1

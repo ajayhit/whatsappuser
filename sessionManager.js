@@ -11,6 +11,28 @@ export const qrCodes = new Map();
 const reconnectCount = new Map();
 const sessionsDir = process.env.SESSION_DIR || './sessions';
 
+function normalizeTargetJid(to) {
+  let jid = to.trim();
+  if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@g.us')) {
+    const cleanNumber = jid.replace(/\D/g, '');
+    jid = `${cleanNumber}@s.whatsapp.net`;
+  }
+  return jid;
+}
+
+async function prepareDirectMessageSession(sock, jid) {
+  if (jid.endsWith('@g.us')) return;
+
+  const lookup = await sock.onWhatsApp(jid);
+  const matched = lookup?.find(item => item.exists);
+  if (!matched) {
+    throw new Error(`Recipient is not available on WhatsApp: ${jid.split('@')[0]}`);
+  }
+
+  await sock.presenceSubscribe(jid).catch(() => {});
+  await sock.assertSessions([jid], true);
+}
+
 /**
  * Initializes a new WhatsApp Web session or returns the state of an existing one.
  * @param {string} userId - Unique identifier for the user
@@ -213,15 +235,10 @@ export async function sendMessageToJid(userId, to, message) {
     throw new Error('WhatsApp session is not connected or initialized.');
   }
 
-  // Determine JID format
-  let jid = to.trim();
-  if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@g.us')) {
-    // Treat as phone number: strip non-digits
-    const cleanNumber = jid.replace(/\D/g, '');
-    jid = `${cleanNumber}@s.whatsapp.net`;
-  }
+  const jid = normalizeTargetJid(to);
+  await prepareDirectMessageSession(sock, jid);
 
-  const result = await sock.sendMessage(jid, { text: message });
+  const result = await sock.sendMessage(jid, { text: message }, { useUserDevicesCache: false });
   return result;
 }
 
@@ -260,11 +277,8 @@ export async function sendMediaToJid(userId, to, mediaUrl, mediaType, caption, f
     throw new Error('WhatsApp session is not connected or initialized.');
   }
 
-  let jid = to.trim();
-  if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@g.us')) {
-    const cleanNumber = jid.replace(/\D/g, '');
-    jid = `${cleanNumber}@s.whatsapp.net`;
-  }
+  const jid = normalizeTargetJid(to);
+  await prepareDirectMessageSession(sock, jid);
 
   const resolvedMimeType = mimetype || getMimeType(mediaUrl, mediaType);
   
@@ -306,7 +320,7 @@ export async function sendMediaToJid(userId, to, mediaUrl, mediaType, caption, f
     throw new Error(`Unsupported mediaType: ${mediaType}`);
   }
 
-  const result = await sock.sendMessage(jid, messageContent);
+  const result = await sock.sendMessage(jid, messageContent, { useUserDevicesCache: false });
   return result;
 }
 
