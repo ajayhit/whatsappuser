@@ -13,7 +13,12 @@ async function runIntegrationTest() {
   const finalPassword = 'final789Password';
 
   // 1. Register User
-  console.log(`\n[1] Registering user: ${testEmail}...`);
+  console.log(`\n[1] Fetching captcha and registering user: ${testEmail}...`);
+  const captchaRes = await fetch(`${BASE_URL}/auth/captcha`);
+  const captchaData = await captchaRes.json();
+  const expression = captchaData.question.split(' =')[0]; // e.g. "3 + 5"
+  const captchaAnswer = String(eval(expression));
+
   const regRes = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -21,7 +26,9 @@ async function runIntegrationTest() {
       name: 'Integration Test User',
       email: testEmail,
       phone: '919999999999',
-      password: initialPassword
+      password: initialPassword,
+      captchaId: captchaData.id,
+      captchaAnswer
     })
   });
   const regData = await regRes.json();

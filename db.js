@@ -150,6 +150,23 @@ export function initDb() {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS paytm_account (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      paytm_userid TEXT,
+      paytm_password TEXT,
+      number TEXT,
+      session_name TEXT,
+      token_name TEXT,
+      qr_details TEXT,
+      login_status TEXT NOT NULL DEFAULT 'NOT_CONFIGURED',
+      otp_requested_at TEXT,
+      last_login_at TEXT,
+      last_refresh_at TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
   console.log('[DB] All tables initialized.');
 }
 
@@ -399,6 +416,102 @@ export function deleteBank(id) {
   const db = getDb();
   db.prepare('DELETE FROM banks WHERE id = ?').run(id);
   return { id, deleted: true };
+}
+
+function ensurePaytmAccount() {
+  const db = getDb();
+  db.prepare(`
+    INSERT OR IGNORE INTO paytm_account (id, login_status)
+    VALUES (1, 'NOT_CONFIGURED')
+  `).run();
+}
+
+export function getPaytmAccount() {
+  const db = getDb();
+  ensurePaytmAccount();
+  return db.prepare('SELECT * FROM paytm_account WHERE id = 1').get();
+}
+
+export function startPaytmLogin({ paytm_userid, paytm_password }) {
+  const db = getDb();
+  ensurePaytmAccount();
+  const current = getPaytmAccount();
+  if (current.login_status === 'LOGGED_IN') {
+    return { alreadyLoggedIn: true, account: current };
+  }
+
+  const now = new Date().toISOString();
+  const sessionName = current.session_name || `paytm_session_${Date.now()}`;
+  const tokenName = current.token_name || `paytm_token_${Date.now()}`;
+
+  db.prepare(`
+    UPDATE paytm_account
+    SET paytm_userid = ?,
+        paytm_password = ?,
+        session_name = ?,
+        token_name = ?,
+        login_status = 'OTP_REQUIRED',
+        otp_requested_at = ?,
+        updated_at = datetime('now')
+    WHERE id = 1
+  `).run(paytm_userid, paytm_password, sessionName, tokenName, now);
+
+  return { alreadyLoggedIn: false, account: getPaytmAccount() };
+}
+
+export function completePaytmOtpLogin({ otp, number, session_name, token_name, qr_details }) {
+  const db = getDb();
+  ensurePaytmAccount();
+  if (!otp) throw new Error('OTP is required');
+
+  const current = getPaytmAccount();
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    UPDATE paytm_account
+    SET number = ?,
+        session_name = ?,
+        token_name = ?,
+        qr_details = ?,
+        login_status = 'LOGGED_IN',
+        last_login_at = ?,
+        last_refresh_at = ?,
+        updated_at = datetime('now')
+    WHERE id = 1
+  `).run(
+    number || current.number || current.paytm_userid || '',
+    session_name || current.session_name || `paytm_session_${Date.now()}`,
+    token_name || current.token_name || `paytm_token_${Date.now()}`,
+    qr_details || current.qr_details || '',
+    now,
+    now
+  );
+
+  return getPaytmAccount();
+}
+
+export function refreshPaytmAccount() {
+  const db = getDb();
+  ensurePaytmAccount();
+  db.prepare(`
+    UPDATE paytm_account
+    SET last_refresh_at = ?,
+        updated_at = datetime('now')
+    WHERE id = 1
+  `).run(new Date().toISOString());
+  return getPaytmAccount();
+}
+
+export function logoutPaytmAccount() {
+  const db = getDb();
+  ensurePaytmAccount();
+  db.prepare(`
+    UPDATE paytm_account
+    SET login_status = 'LOGGED_OUT',
+        updated_at = datetime('now')
+    WHERE id = 1
+  `).run();
+  return getPaytmAccount();
 }
 
 // ─── Password Management Helpers ──────────────────────────────────────────────

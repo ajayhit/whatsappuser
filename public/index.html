@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
     :root {
       --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
@@ -577,6 +578,226 @@
       }
     }
 
+    .site-shell {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    .site-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1rem;
+      background: rgba(15, 23, 42, 0.58);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .site-logo {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .site-logo span {
+      font-size: 0.75rem;
+      color: var(--accent-color);
+      font-weight: 600;
+    }
+
+    .site-links,
+    .site-actions,
+    .site-hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .site-links {
+      justify-content: center;
+    }
+
+    .site-link {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 0.5rem 0.7rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.86rem;
+      transition: all 0.2s;
+    }
+
+    .site-link:hover,
+    .site-link.active {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--glass-border);
+    }
+
+    .site-hero {
+      min-height: 520px;
+      display: grid;
+      align-items: center;
+      gap: 2rem;
+      padding: 3.5rem 2rem;
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.86), rgba(6, 78, 59, 0.72)),
+        radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.2), transparent 30%);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .site-hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -8% -28% auto;
+      width: 520px;
+      height: 520px;
+      background:
+        linear-gradient(145deg, rgba(16, 185, 129, 0.18), rgba(59, 130, 246, 0.14)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 18px);
+      border: 1px solid rgba(255,255,255,0.08);
+      transform: rotate(-10deg);
+      border-radius: 24px;
+      opacity: 0.8;
+    }
+
+    .site-hero-content {
+      max-width: 720px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .site-kicker {
+      color: var(--accent-color);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+    }
+
+    .site-hero h1 {
+      font-size: clamp(2.2rem, 6vw, 4.8rem);
+      line-height: 1;
+      letter-spacing: 0;
+      max-width: 780px;
+    }
+
+    .site-hero p {
+      color: #cbd5e1;
+      font-size: 1.05rem;
+      line-height: 1.7;
+      max-width: 650px;
+    }
+
+    .site-band {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .site-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1rem;
+    }
+
+    .site-panel {
+      background: rgba(30, 41, 59, 0.62);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .site-panel i {
+      color: var(--accent-color);
+      font-size: 1.2rem;
+    }
+
+    .site-panel h3 {
+      font-size: 1.02rem;
+    }
+
+    .site-panel p,
+    .policy-page p,
+    .policy-page li {
+      color: var(--text-muted);
+      line-height: 1.65;
+      font-size: 0.95rem;
+    }
+
+    .policy-page {
+      background: rgba(30, 41, 59, 0.62);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .policy-page h1 {
+      font-size: 2rem;
+    }
+
+    .policy-page h2 {
+      font-size: 1.15rem;
+      margin-top: 0.5rem;
+    }
+
+    .policy-page ul {
+      padding-left: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .site-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      padding: 0.5rem 0 1rem;
+    }
+
+    @media (max-width: 760px) {
+      .site-nav {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .site-links,
+      .site-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .site-hero {
+        min-height: 560px;
+        padding: 2rem 1.2rem;
+      }
+    }
+
     /* Animations */
     @keyframes pulse {
       0% { transform: scale(0.9); opacity: 0.6; }
@@ -616,6 +837,7 @@
       groups: [],
       currentTab: 'whatsappTab',
       whatsappSubTab: 'textTab',
+      publicPage: 'home',
       authTab: 'login',
       loading: false,
       
@@ -633,6 +855,7 @@
       forgotOtp: '',
       captchaId: null,
       captchaQuestion: 'Loading...',
+      captchaImage: '',
       
       // Bulk campaign state
       bulkTasks: [],
@@ -647,8 +870,12 @@
     function renderApp() {
       const root = document.getElementById('appRoot');
       if (!state.token) {
-        root.innerHTML = renderAuthScreen();
-        bindAuthEvents();
+        if (state.publicPage === 'auth') {
+          root.innerHTML = renderAuthScreen();
+          bindAuthEvents();
+        } else {
+          root.innerHTML = renderPublicSite();
+        }
       } else {
         root.innerHTML = renderMainDashboard();
         bindDashboardEvents();
@@ -656,27 +883,228 @@
       }
     }
 
+    // PUBLIC WEBSITE TEMPLATES
+    function switchPublicPage(page) {
+      state.publicPage = page;
+      renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function showAuth(tab = 'login') {
+      state.publicPage = 'auth';
+      state.authTab = tab;
+      renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderPublicSite() {
+      return `
+        <div class="site-shell">
+          ${renderSiteNav()}
+          ${renderPublicPage()}
+          ${renderSiteFooter()}
+        </div>
+      `;
+    }
+
+    function renderSiteNav() {
+      const links = [
+        ['home', 'Home'],
+        ['about', 'About Us'],
+        ['contact', 'Contact'],
+        ['refund', 'Refund Policy'],
+        ['privacy', 'Privacy'],
+        ['terms', 'Terms']
+      ];
+      return `
+        <nav class="site-nav">
+          <button class="site-logo" onclick="switchPublicPage('home')" style="background:none; border:none; cursor:pointer; text-align:left;">
+            WhatsApp Automation
+            <span>Studio & SaaS Panel</span>
+          </button>
+          <div class="site-links">
+            ${links.map(([page, label]) => `<button class="site-link ${state.publicPage === page ? 'active' : ''}" onclick="switchPublicPage('${page}')">${label}</button>`).join('')}
+          </div>
+          <div class="site-actions">
+            <button type="button" class="btn-secondary" onclick="showAuth('login')" style="width:auto;">Login</button>
+            <button type="button" onclick="showAuth('register')" style="width:auto;">Sign Up</button>
+          </div>
+        </nav>
+      `;
+    }
+
+    function renderPublicPage() {
+      if (state.publicPage === 'about') return renderAboutPage();
+      if (state.publicPage === 'contact') return renderContactPage();
+      if (state.publicPage === 'refund') return renderRefundPolicyPage();
+      if (state.publicPage === 'privacy') return renderPrivacyPolicyPage();
+      if (state.publicPage === 'terms') return renderTermsPage();
+      return renderHomePage();
+    }
+
+    function renderHomePage() {
+      return `
+        <section class="site-hero">
+          <div class="site-hero-content">
+            <div class="site-kicker">WhatsApp automation for business teams</div>
+            <h1>Manage messaging, campaigns, contacts, and subscriptions from one secure dashboard.</h1>
+            <p>Run WhatsApp sessions, send bulk messages, parse Excel contact lists, track plan access, and manage payments from a clean SaaS panel built for daily operations.</p>
+            <div class="site-hero-actions">
+              <button type="button" onclick="showAuth('register')" style="width:auto; padding:0.8rem 1.2rem;">Create Account</button>
+              <button type="button" class="btn-secondary" onclick="showAuth('login')" style="width:auto; padding:0.8rem 1.2rem;">Login</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="site-band">
+          <div class="site-grid">
+            <div class="site-panel">
+              <i class="fa-solid fa-message"></i>
+              <h3>WhatsApp Studio</h3>
+              <p>Connect a session, view live status, and manage text, media, group, and campaign workflows from the user dashboard.</p>
+            </div>
+            <div class="site-panel">
+              <i class="fa-solid fa-file-excel"></i>
+              <h3>Excel Campaigns</h3>
+              <p>Upload recipient spreadsheets, personalize messages with columns, and prepare bulk delivery without manually copying numbers.</p>
+            </div>
+            <div class="site-panel">
+              <i class="fa-solid fa-shield-halved"></i>
+              <h3>Secure Signup</h3>
+              <p>New users pass a visual security challenge before registration, with server-side verification and expiring one-time captcha codes.</p>
+            </div>
+            <div class="site-panel">
+              <i class="fa-solid fa-user-gear"></i>
+              <h3>Admin Controls</h3>
+              <p>Admins can manage users, deposits, wallets, pricing, subscription expiry, and bank details from a dedicated admin portal.</p>
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderAboutPage() {
+      return `
+        <section class="policy-page">
+          <div class="site-kicker">About Us</div>
+          <h1>Built for practical WhatsApp operations</h1>
+          <p>WhatsApp Automation Studio helps businesses organize customer messaging, campaign preparation, subscription access, and payment operations in one dashboard.</p>
+          <p>Our focus is simple: make repeated messaging tasks easier to manage while keeping user access, plan expiry, and admin controls clear for the team.</p>
+          <div class="site-grid">
+            <div class="site-panel"><i class="fa-solid fa-bolt"></i><h3>Fast workflows</h3><p>Designed for users who need to send, monitor, and repeat communication tasks every day.</p></div>
+            <div class="site-panel"><i class="fa-solid fa-lock"></i><h3>Controlled access</h3><p>Subscription checks and admin controls help protect paid features and active plans.</p></div>
+            <div class="site-panel"><i class="fa-solid fa-headset"></i><h3>Support ready</h3><p>Contact the admin team for account, subscription, payment, and technical support.</p></div>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderContactPage() {
+      return `
+        <section class="policy-page">
+          <div class="site-kicker">Contact</div>
+          <h1>Contact Us</h1>
+          <p>For account help, subscription questions, payment support, or technical issues, contact the service administrator.</p>
+          <ul>
+            <li>Email: support@example.com</li>
+            <li>Support hours: Monday to Saturday, 10:00 AM to 6:00 PM IST</li>
+            <li>Response time: Usually within 24 to 48 business hours</li>
+          </ul>
+          <p>Replace this contact email with your official business support address before publishing the website.</p>
+        </section>
+      `;
+    }
+
+    function renderRefundPolicyPage() {
+      return `
+        <section class="policy-page">
+          <div class="site-kicker">Refund Policy</div>
+          <h1>Refund and Cancellation Policy</h1>
+          <p>Payments made for subscription access are used to activate time-bound software access. Refund requests are reviewed based on account usage and payment status.</p>
+          <h2>Refund eligibility</h2>
+          <ul>
+            <li>A refund may be considered if payment was deducted but the plan was not activated.</li>
+            <li>A refund may be considered for duplicate payments made for the same account and same plan period.</li>
+            <li>Refunds are generally not available after the service has been activated and used.</li>
+          </ul>
+          <h2>Cancellation</h2>
+          <p>You may stop using the service at any time. Active subscription periods continue until their expiry date unless otherwise approved by the administrator.</p>
+          <h2>Processing time</h2>
+          <p>Approved refunds may take 5 to 7 business days to process, depending on the payment method and banking provider.</p>
+        </section>
+      `;
+    }
+
+    function renderPrivacyPolicyPage() {
+      return `
+        <section class="policy-page">
+          <div class="site-kicker">Privacy Policy</div>
+          <h1>Privacy Policy</h1>
+          <p>This service collects only the information needed to create accounts, manage subscriptions, process deposits, and operate WhatsApp automation features.</p>
+          <h2>Information we collect</h2>
+          <ul>
+            <li>Name, email, phone number, password hash, wallet and subscription details.</li>
+            <li>Uploaded files or screenshots used for deposits and campaign workflows.</li>
+            <li>Session and usage information needed to operate the dashboard.</li>
+          </ul>
+          <h2>How information is used</h2>
+          <p>Information is used for account access, service delivery, support, fraud prevention, and admin management. We do not sell user data.</p>
+        </section>
+      `;
+    }
+
+    function renderTermsPage() {
+      return `
+        <section class="policy-page">
+          <div class="site-kicker">Terms</div>
+          <h1>Terms and Conditions</h1>
+          <p>By using this website, you agree to use the automation tools responsibly and only for lawful communication with recipients who may receive your messages.</p>
+          <h2>User responsibilities</h2>
+          <ul>
+            <li>Do not use the service for spam, fraud, harassment, illegal content, or unauthorized messaging.</li>
+            <li>You are responsible for the accuracy of uploaded contact lists and message content.</li>
+            <li>Account access may be blocked if misuse, abuse, or policy violations are detected.</li>
+          </ul>
+          <h2>Service availability</h2>
+          <p>Automation features may depend on third-party platforms, device sessions, internet connectivity, and WhatsApp availability. Service behavior can change when third-party rules or systems change.</p>
+        </section>
+      `;
+    }
+
+    function renderSiteFooter() {
+      return `
+        <footer class="site-footer">
+          <span>© ${new Date().getFullYear()} WhatsApp Automation Studio. All rights reserved.</span>
+          <span>Home | About Us | Privacy Policy | Terms | Refund Policy | Contact</span>
+        </footer>
+      `;
+    }
+
     // AUTH TEMPLATES
     function renderAuthScreen() {
       const isReset = state.authTab === 'forgot';
       return `
-        <div class="auth-container">
-          <div class="auth-tabs">
-            <button class="auth-tab ${state.authTab === 'login' ? 'active' : ''}" id="loginTabBtn">Sign In</button>
-            <button class="auth-tab ${state.authTab === 'register' ? 'active' : ''}" id="registerTabBtn">Sign Up</button>
-            <button class="auth-tab ${state.authTab === 'forgot' ? 'active' : ''}" id="forgotTabBtn">Reset</button>
-          </div>
-          <div class="auth-card">
-            <div class="auth-header">
-              <h2>WhatsApp Automation Studio</h2>
-              <p>${state.authTab === 'login' ? 'Sign in to access your dashboard' : state.authTab === 'register' ? 'Create an account to start automating' : 'Reset your account password'}</p>
+        <div class="site-shell">
+          ${renderSiteNav()}
+          <div class="auth-container" style="margin-top: 1rem;">
+            <div class="auth-tabs">
+              <button class="auth-tab ${state.authTab === 'login' ? 'active' : ''}" id="loginTabBtn">Sign In</button>
+              <button class="auth-tab ${state.authTab === 'register' ? 'active' : ''}" id="registerTabBtn">Sign Up</button>
+              <button class="auth-tab ${state.authTab === 'forgot' ? 'active' : ''}" id="forgotTabBtn">Reset</button>
             </div>
-            
-            <div id="authAlert" style="display: none; background: rgba(244, 63, 94, 0.15); border: 1px solid var(--error-color); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: var(--error-color); margin-bottom: 1rem; text-align: center;"></div>
-            <div id="authSuccess" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--accent-color); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: var(--accent-color); margin-bottom: 1rem; text-align: center;"></div>
-            
-            ${state.authTab === 'login' ? renderLoginForm() : state.authTab === 'register' ? renderRegisterForm() : renderForgotPasswordForm()}
+            <div class="auth-card">
+              <div class="auth-header">
+                <h2>WhatsApp Automation Studio</h2>
+                <p>${state.authTab === 'login' ? 'Sign in to access your dashboard' : state.authTab === 'register' ? 'Create an account to start automating' : 'Reset your account password'}</p>
+              </div>
+              
+              <div id="authAlert" style="display: none; background: rgba(244, 63, 94, 0.15); border: 1px solid var(--error-color); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: var(--error-color); margin-bottom: 1rem; text-align: center;"></div>
+              <div id="authSuccess" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--accent-color); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: var(--accent-color); margin-bottom: 1rem; text-align: center;"></div>
+              
+              ${state.authTab === 'login' ? renderLoginForm() : state.authTab === 'register' ? renderRegisterForm() : renderForgotPasswordForm()}
+            </div>
           </div>
+          ${renderSiteFooter()}
         </div>
       `;
     }
@@ -720,14 +1148,18 @@
             <input type="password" id="regPassword" required placeholder="Minimum 6 characters">
           </div>
           <div class="form-group">
-            <label>Captcha</label>
-            <div style="display: flex; gap: 0.5rem; align-items: stretch;">
-              <div id="captchaQuestion" style="flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.65rem 0.85rem; color: var(--accent-color); font-weight: 700;">
-                ${state.captchaQuestion}
+            <label>Security Challenge</label>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.6rem; align-items: stretch;">
+              <div id="captchaVisualBox" style="background: rgba(15, 23, 42, 0.72); border: 1px solid var(--glass-border); border-radius: 10px; padding: 0.5rem; min-height: 82px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                ${state.captchaImage
+                  ? `<img id="captchaImage" src="${state.captchaImage}" alt="Signup security code" style="width: 100%; max-width: 260px; height: 92px; object-fit: contain; display: block;">`
+                  : `<div id="captchaQuestion" style="color: var(--accent-color); font-weight: 700;">${state.captchaQuestion}</div>`}
               </div>
-              <button type="button" onclick="loadCaptcha()" class="btn-secondary" style="width: auto; padding: 0.65rem 0.85rem;">Refresh</button>
+              <button type="button" onclick="loadCaptcha()" class="btn-secondary" title="Refresh captcha" aria-label="Refresh captcha" style="width: 46px; padding: 0.65rem; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+              </button>
             </div>
-            <input type="text" id="regCaptchaAnswer" required inputmode="numeric" autocomplete="off" placeholder="Enter captcha answer">
+            <input type="text" id="regCaptchaAnswer" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="10" placeholder="Type the code shown above" style="text-transform: uppercase; letter-spacing: 0.18em; font-weight: 700;">
           </div>
           <button type="submit" style="margin-top: 1rem;">Sign Up</button>
         </form>
@@ -1626,6 +2058,7 @@
 
     // AUTH ACTIONS
     function switchAuthTab(tab) {
+      state.publicPage = 'auth';
       state.authTab = tab;
       renderApp();
     }
@@ -1648,14 +2081,26 @@
         if (!res.ok) throw new Error(data.error || 'Failed to load captcha');
         state.captchaId = data.id;
         state.captchaQuestion = data.question;
+        state.captchaImage = data.image || '';
+        const visualBox = document.getElementById('captchaVisualBox');
         const questionEl = document.getElementById('captchaQuestion');
+        const imageEl = document.getElementById('captchaImage');
         const answerEl = document.getElementById('regCaptchaAnswer');
+        if (visualBox && data.image) {
+          visualBox.innerHTML = `<img id="captchaImage" src="${data.image}" alt="Signup security code" style="width: 100%; max-width: 260px; height: 92px; object-fit: contain; display: block;">`;
+        }
         if (questionEl) questionEl.textContent = data.question;
+        if (imageEl && data.image) imageEl.src = data.image;
         if (answerEl) answerEl.value = '';
       } catch (err) {
         state.captchaId = null;
         state.captchaQuestion = 'Captcha unavailable';
+        state.captchaImage = '';
+        const visualBox = document.getElementById('captchaVisualBox');
         const questionEl = document.getElementById('captchaQuestion');
+        if (visualBox) {
+          visualBox.innerHTML = `<div id="captchaQuestion" style="color: var(--accent-color); font-weight: 700;">${state.captchaQuestion}</div>`;
+        }
         if (questionEl) questionEl.textContent = state.captchaQuestion;
       }
     }
@@ -1902,6 +2347,7 @@
       state.transactions = [];
       state.currentTab = 'whatsappTab';
       state.whatsappSubTab = 'textTab';
+      state.publicPage = 'home';
       state.authTab = 'login';
       renderApp();
     }
@@ -3692,7 +4138,7 @@
           Use this token in API requests as:<br>
           <code style="color:#a5b4fc; font-size:0.75rem;">Authorization: Bearer &lt;token&gt;</code><br><br>
           Example:<br>
-          <code style="color:#a5b4fc; font-size:0.72rem;">GET /api/session/status?userId=&lt;id&gt;</code>
+          <code style="color:#a5b4fc; font-size:0.72rem;">GET /api/session/status</code>
         </div>
       </div>
 
