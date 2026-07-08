@@ -82,15 +82,21 @@ export function initDb() {
     console.error('Error seeding banks:', e);
   }
 
-  // Seed default settings if empty
-  try {
-    const settingsCount = db.prepare('SELECT COUNT(*) as cnt FROM settings').get().cnt;
-    if (settingsCount === 0) {
-      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('plan_price', process.env.PLAN_PRICE || '149');
-      console.log('[DB Seed] Seeded default plan price setting.');
+  // Seed default settings
+  const defaultPrices = {
+    plan_price: '199',
+    plan_price_demo: '0',
+    plan_price_28: '199',
+    plan_price_quarter: '549',
+    plan_price_half_year: '999',
+    plan_price_year: '1899'
+  };
+  for (const [key, val] of Object.entries(defaultPrices)) {
+    try {
+      db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').run(key, val);
+    } catch (e) {
+      console.error(`Error seeding setting ${key}:`, e);
     }
-  } catch (e) {
-    console.error('Error seeding settings:', e);
   }
 
   // Plans table
@@ -166,6 +172,20 @@ export function initDb() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
+
+  // Ensure table columns exist for plans and orders
+  try {
+    db.exec("ALTER TABLE plans ADD COLUMN plan_type TEXT NOT NULL DEFAULT 'plan_28'");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE plans ADD COLUMN duration_days INTEGER NOT NULL DEFAULT 28");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE plans ADD COLUMN price REAL NOT NULL DEFAULT 199");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE orders ADD COLUMN plan_type TEXT");
+  } catch (e) {}
 
   console.log('[DB] All tables initialized.');
 }
@@ -253,30 +273,87 @@ export function getPlansByUser(userId) {
   `).all(userId);
 }
 
-export function activatePlan(userId) {
+export function activatePlan(userId, planType = 'plan_28', durationDays = 28, price = 199) {
   const db = getDb();
 
   const activePlan = getActivePlan(userId);
   const startedAt = new Date().toISOString();
   let expiresAt;
 
+  const additionalTime = durationDays * 24 * 60 * 60 * 1000;
+
   if (activePlan && new Date(activePlan.expires_at) > new Date()) {
-    // Add 28 days to the existing expiration date
-    expiresAt = new Date(new Date(activePlan.expires_at).getTime() + 28 * 24 * 60 * 60 * 1000).toISOString();
+    // Add durationDays to the existing expiration date
+    expiresAt = new Date(new Date(activePlan.expires_at).getTime() + additionalTime).toISOString();
   } else {
-    // Set to 28 days from now
-    expiresAt = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString();
+    // Set to durationDays from now
+    expiresAt = new Date(Date.now() + additionalTime).toISOString();
   }
 
   // Expire any previous active plans
   db.prepare(`UPDATE plans SET status = 'expired' WHERE user_id = ? AND status = 'active'`).run(userId);
 
   const result = db.prepare(`
-    INSERT INTO plans (user_id, status, started_at, expires_at)
-    VALUES (?, 'active', ?, ?)
-  `).run(userId, startedAt, expiresAt);
+    INSERT INTO plans (user_id, status, started_at, expires_at, plan_type, duration_days, price)
+    VALUES (?, 'active', ?, ?, ?, ?, ?)
+  `).run(userId, startedAt, expiresAt, planType, durationDays, price);
 
   return db.prepare('SELECT * FROM plans WHERE id = ?').get(result.lastInsertRowid);
+}
+
+export function getPlanDetails(planType) {
+  const prices = {
+    demo: { name: 'Demo Plan', durationDays: 10, settingKey: 'plan_price_demo', defaultPrice: 0 },
+    plan_28: { name: 'Monthly Plan', durationDays: 28, settingKey: 'plan_price_28', defaultPrice: 199 },
+    quarter: { name: 'Quarter Plan', durationDays: 90, settingKey: 'plan_price_quarter', defaultPrice: 549 },
+    half_year: { name: 'Half-Year Plan', durationDays: 180, settingKey: 'plan_price_half_year', defaultPrice: 999 },
+    year: { name: 'Year Plan', durationDays: 365, settingKey: 'plan_price_year', defaultPrice: 1899 }
+  };
+
+  const plan = prices[planType];
+  if (!plan) return null;
+
+  const priceStr = getSetting(plan.settingKey, String(plan.defaultPrice));
+  const price = parseFloat(priceStr);
+
+  return {
+    type: planType,
+    name: plan.name,
+    durationDays: plan.durationDays,
+    price: price
+  };
+}
+
+export function subscribeToPlan(userId, planType) {
+  const db = getDb();
+  
+  const planDetails = getPlanDetails(planType);
+  if (!planDetails) throw new Error('Invalid plan type');
+
+  // Enforce Demo Plan only once per user
+  if (planType === 'demo') {
+    const hasDemo = db.prepare(`
+      SELECT COUNT(*) as count FROM plans 
+      WHERE user_id = ? AND plan_type = 'demo'
+    `).get(userId).count;
+    if (hasDemo > 0) {
+      throw new Error('You have already claimed the Demo Plan. It can only be claimed once.');
+    }
+  }
+
+  // Debit wallet (if price is > 0)
+  if (planDetails.price > 0) {
+    const user = getUserById(userId);
+    if (user.wallet_balance < planDetails.price) {
+      throw new Error(`Insufficient wallet balance. You need ₹${planDetails.price} but only have ₹${user.wallet_balance.toFixed(2)}.`);
+    }
+    debitWallet(userId, planDetails.price, `Subscribed to ${planDetails.name} (${planDetails.durationDays} Days)`);
+  }
+
+  // Activate plan
+  const plan = activatePlan(userId, planType, planDetails.durationDays, planDetails.price);
+
+  return plan;
 }
 
 export function expireOldPlans() {
@@ -293,12 +370,12 @@ export function expireOldPlans() {
 
 // ─── Order Helpers ────────────────────────────────────────────────────────────
 
-export function createOrder({ userId, amount, utr, bank_name, account_name, screenshot_path }) {
+export function createOrder({ userId, amount, utr, bank_name, account_name, screenshot_path, plan_type }) {
   const db = getDb();
   const result = db.prepare(`
-    INSERT INTO orders (user_id, amount, utr, bank_name, account_name, screenshot_path)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(userId, amount, utr, bank_name, account_name, screenshot_path || null);
+    INSERT INTO orders (user_id, amount, utr, bank_name, account_name, screenshot_path, plan_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(userId, amount, utr, bank_name, account_name, screenshot_path || null, plan_type || null);
   return db.prepare('SELECT * FROM orders WHERE id = ?').get(result.lastInsertRowid);
 }
 
@@ -331,10 +408,6 @@ export function confirmOrder(orderId) {
 
   const confirmedAt = new Date().toISOString();
 
-  // Get dynamic plan price
-  const priceSetting = getSetting('plan_price', '149');
-  const planPrice = parseFloat(priceSetting);
-
   // Update order status
   db.prepare(`
     UPDATE orders SET status = 'confirmed', confirmed_at = ? WHERE id = ?
@@ -343,11 +416,21 @@ export function confirmOrder(orderId) {
   // Credit wallet with the order amount (what user paid)
   creditWallet(order.user_id, order.amount, `Plan deposit confirmed - Order #${orderId}`);
 
-  // Debit wallet for the plan (at current dynamic price)
-  debitWallet(order.user_id, planPrice, `₹${planPrice} / 28-day Plan activated - Order #${orderId}`);
-
-  // Activate plan
-  const plan = activatePlan(order.user_id);
+  let plan = null;
+  // If order is tied to a subscription plan, purchase it automatically
+  if (order.plan_type && order.plan_type !== 'wallet') {
+    const details = getPlanDetails(order.plan_type);
+    if (details) {
+      try {
+        // Debit wallet for the plan fee
+        debitWallet(order.user_id, details.price, `₹${details.price} / ${details.name} activated - Order #${orderId}`);
+        // Activate plan
+        plan = activatePlan(order.user_id, order.plan_type, details.durationDays, details.price);
+      } catch (err) {
+        console.error(`Auto-activation failed on confirmOrder: ${err.message}`);
+      }
+    }
+  }
 
   return { order: db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId), plan };
 }

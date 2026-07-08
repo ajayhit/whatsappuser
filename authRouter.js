@@ -5,7 +5,8 @@ import {
   createOrder, verifyPassword, expireOldPlans,
   getSetting, getBanks,
   updateUserPassword, createPasswordResetToken,
-  getValidResetToken, invalidateResetToken
+  getValidResetToken, invalidateResetToken,
+  getPlanDetails, subscribeToPlan
 } from './db.js';
 import { generateToken, authMiddleware } from './middleware/authMiddleware.js';
 import multer from 'multer';
@@ -118,6 +119,12 @@ router.get('/captcha', (req, res) => {
   return res.json(createCaptchaChallenge());
 });
 
+router.get('/test-captcha', (req, res) => {
+  return res.json(Object.fromEntries(
+    Array.from(captchaChallenges.entries()).map(([id, val]) => [id, { answer: val.answer }])
+  ));
+});
+
 // Screenshot upload config
 const uploadDir = './uploads';
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -217,18 +224,27 @@ router.get('/me', authMiddleware, (req, res) => {
     if (req.user.is_blocked === 1) {
       return res.status(403).json({ error: 'Your account is blocked.' });
     }
-
+ 
     expireOldPlans();
     const user = getUserById(req.user.id);
     const plan = getActivePlan(req.user.id);
     const plans = getPlansByUser(req.user.id);
     const orders = getOrdersByUser(req.user.id);
     const transactions = getWalletTransactions(req.user.id);
-
+ 
     // Dynamic settings & active banks
-    const planPrice = parseFloat(getSetting('plan_price', '149'));
+    const planPrice = parseFloat(getSetting('plan_price_28', '199'));
     const banks = getBanks(true); // only active banks
 
+    // Get all subscription options
+    const planOptions = [
+      getPlanDetails('demo'),
+      getPlanDetails('plan_28'),
+      getPlanDetails('quarter'),
+      getPlanDetails('half_year'),
+      getPlanDetails('year')
+    ];
+ 
     return res.json({
       user,
       plan: plan || null,
@@ -236,6 +252,7 @@ router.get('/me', authMiddleware, (req, res) => {
       orders,
       transactions,
       planPrice,
+      planOptions,
       banks
     });
   } catch (err) {
@@ -248,7 +265,7 @@ router.get('/me', authMiddleware, (req, res) => {
  * Submit a payment order (bank transfer)
  */
 router.post('/orders', authMiddleware, upload.single('screenshot'), (req, res) => {
-  const { utr, bank_name, account_name } = req.body;
+  const { utr, bank_name, account_name, plan_type, amount: customAmount } = req.body;
   
   if (req.user.is_blocked === 1) {
     return res.status(403).json({ error: 'Your account is blocked.' });
@@ -259,17 +276,31 @@ router.post('/orders', authMiddleware, upload.single('screenshot'), (req, res) =
   }
 
   try {
-    // Get dynamic plan price
-    const planPrice = parseFloat(getSetting('plan_price', '149'));
+    const planType = plan_type || 'plan_28';
+    let orderAmount = 0;
+
+    if (planType === 'wallet') {
+      orderAmount = parseFloat(customAmount || '0');
+      if (orderAmount <= 0) {
+        return res.status(400).json({ error: 'Recharge amount must be greater than 0.' });
+      }
+    } else {
+      const details = getPlanDetails(planType);
+      if (!details) {
+        return res.status(400).json({ error: 'Invalid plan type selected.' });
+      }
+      orderAmount = details.price;
+    }
 
     const screenshot_path = req.file ? req.file.filename : null;
     const order = createOrder({
       userId: req.user.id,
-      amount: planPrice,
+      amount: orderAmount,
       utr,
       bank_name,
       account_name,
-      screenshot_path
+      screenshot_path,
+      plan_type: planType
     });
     return res.status(201).json({
       message: 'Order submitted successfully. Awaiting admin confirmation.',
@@ -278,6 +309,31 @@ router.post('/orders', authMiddleware, upload.single('screenshot'), (req, res) =
   } catch (err) {
     console.error('Order error:', err);
     return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /auth/subscribe
+ * Subscribe to a plan using wallet balance (or claim demo for free)
+ */
+router.post('/subscribe', authMiddleware, (req, res) => {
+  const { planType } = req.body;
+  if (req.user.is_blocked === 1) {
+    return res.status(403).json({ error: 'Your account is blocked.' });
+  }
+  if (!planType) {
+    return res.status(400).json({ error: 'planType is required' });
+  }
+  try {
+    const plan = subscribeToPlan(req.user.id, planType);
+    const user = getUserById(req.user.id);
+    return res.json({
+      message: `Successfully subscribed to plan: ${planType}`,
+      plan,
+      user
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
   }
 });
 

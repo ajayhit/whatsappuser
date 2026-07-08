@@ -166,8 +166,12 @@ router.post('/wallet/credit', (req, res) => {
  */
 router.get('/settings', (req, res) => {
   try {
-    const planPrice = getSetting('plan_price', '149');
-    return res.json({ plan_price: planPrice });
+    return res.json({
+      plan_price_28: getSetting('plan_price_28', '199'),
+      plan_price_quarter: getSetting('plan_price_quarter', '549'),
+      plan_price_half_year: getSetting('plan_price_half_year', '999'),
+      plan_price_year: getSetting('plan_price_year', '1899')
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
