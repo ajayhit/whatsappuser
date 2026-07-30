@@ -1968,6 +1968,24 @@
           </div>
         ` : ''}
 
+        <!-- ─── Category Navigation Bar ──────────────────────────── -->
+        <div style="background:rgba(15,23,42,0.7); border:1px solid var(--glass-border); border-radius:14px; padding:0.75rem 1rem; backdrop-filter:blur(12px); display:flex; flex-direction:column; gap:0.6rem; margin-bottom:0.5rem;">
+          <!-- Main Category Row -->
+          <div style="display:flex; gap:0.35rem; flex-wrap:wrap; align-items:center;">
+            <button class="top-cat-btn ${activeCategory === 'account' ? 'active' : ''}" onclick="selectCategory('account','plansTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-crown" style="font-size:0.75rem;"></i> Account</button>
+            <button class="top-cat-btn ${activeCategory === 'whatsapp' ? 'active' : ''}" onclick="selectCategory('whatsapp','whatsappTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-brands fa-whatsapp" style="font-size:0.75rem;"></i> WhatsApp</button>
+            <button class="top-cat-btn ${activeCategory === 'contacts' ? 'active' : ''}" onclick="selectCategory('contacts','contactsTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-address-book" style="font-size:0.75rem;"></i> Contacts</button>
+            <button class="top-cat-btn ${activeCategory === 'campaigns' ? 'active' : ''}" onclick="selectCategory('campaigns','campaignsTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-bullhorn" style="font-size:0.75rem;"></i> Campaigns</button>
+            <button class="top-cat-btn ${activeCategory === 'automation' ? 'active' : ''}" onclick="selectCategory('automation','autoRespondersTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-robot" style="font-size:0.75rem;"></i> Automation</button>
+            <button class="top-cat-btn ${activeCategory === 'api' ? 'active' : ''}" onclick="selectCategory('api','apiDocsTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-code" style="font-size:0.75rem;"></i> REST API</button>
+            <button class="top-cat-btn ${activeCategory === 'reports' ? 'active' : ''}" onclick="selectCategory('reports','reportsTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-chart-bar" style="font-size:0.75rem;"></i> Reports</button>
+            <button class="top-cat-btn ${activeCategory === 'more' ? 'active' : ''}" onclick="selectCategory('more','catalogTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-ellipsis" style="font-size:0.75rem;"></i> More</button>
+          </div>
+          <!-- Sub-pill Row -->
+          <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:0.5rem;">
+            ${renderSubPills(activeCategory)}
+          </div>
+        </div>
 
             <!-- TAB: Subscription Plans -->
             <div id="plansTab" class="tab-content ${state.currentTab === 'plansTab' ? 'active' : ''}">
