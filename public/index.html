@@ -799,6 +799,210 @@
       }
     }
 
+    /* ─── Top Header Navigation ──────────────────────────── */
+    .top-cat-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      padding: 0.5rem 0.85rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .top-cat-btn:hover {
+      color: #fff;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .top-cat-btn.active {
+      color: #a5b4fc;
+      background: rgba(99,102,241,0.2);
+      border-color: rgba(99,102,241,0.4);
+    }
+
+    .top-sub-pill {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--glass-border);
+      color: #cbd5e1;
+      padding: 0.35rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .top-sub-pill:hover {
+      color: #fff;
+      background: rgba(255,255,255,0.06);
+    }
+
+    .top-sub-pill.active {
+      color: #34d399;
+      background: rgba(16,185,129,0.15);
+      border-color: rgba(16,185,129,0.35);
+      font-weight: 600;
+    }
+
+    .dash-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: rgba(10,16,30,0.7);
+      border-right: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 1rem 0;
+    }
+
+    .dash-sidebar-group {
+      padding: 0.5rem 0 0.25rem;
+    }
+
+    .dash-sidebar-group-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 0.45rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.2s, background 0.2s;
+      border-radius: 6px;
+      margin: 0 0.5rem;
+    }
+
+    .dash-sidebar-group-label:hover {
+      color: #e2e8f0;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .dash-sidebar-group-label .group-arrow {
+      font-size: 0.7rem;
+      transition: transform 0.2s ease;
+      color: #818cf8;
+    }
+
+    .dash-sidebar-group-items {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: max-height 0.25s ease, opacity 0.2s ease;
+    }
+
+    .dash-sidebar-group-items.collapsed {
+      max-height: 0 !important;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .dash-sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: #94a3b8;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+      user-select: none;
+      background: transparent;
+      border-top: none;
+      border-right: none;
+      border-bottom: none;
+      width: 100%;
+      text-align: left;
+      border-radius: 0;
+    }
+
+    .dash-sidebar-item:hover {
+      color: #e2e8f0;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .dash-sidebar-item.active {
+      color: #a5b4fc;
+      background: rgba(99,102,241,0.1);
+      border-left-color: #6366f1;
+      font-weight: 600;
+    }
+
+    .dash-sidebar-item .item-icon {
+      font-size: 0.9rem;
+      width: 1.2rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .dash-sidebar-item .item-label {
+      flex: 1;
+    }
+
+    .dash-sidebar-item .item-badge {
+      font-size: 0.6rem;
+      background: rgba(99,102,241,0.25);
+      color: #a5b4fc;
+      border-radius: 6px;
+      padding: 0.1rem 0.35rem;
+      font-weight: 700;
+    }
+
+    .dash-sidebar-divider {
+      height: 1px;
+      background: var(--glass-border);
+      margin: 0.5rem 1rem;
+      opacity: 0.5;
+    }
+
+    .dash-content {
+      flex: 1;
+      min-width: 0;
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard-shell {
+        flex-direction: column;
+      }
+      .dash-sidebar {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 0.5rem;
+        border-right: none;
+        border-bottom: 1px solid var(--glass-border);
+        overflow-x: auto;
+        gap: 0.25rem;
+      }
+      .dash-sidebar-group { padding: 0; display:contents; }
+      .dash-sidebar-group-label { display: none; }
+      .dash-sidebar-divider { display: none; }
+      .dash-sidebar-item {
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        border-radius: 8px;
+        padding: 0.4rem 0.6rem;
+        white-space: nowrap;
+        font-size: 0.75rem;
+      }
+      .dash-sidebar-item.active {
+        border-left-color: transparent;
+        border-bottom-color: #6366f1;
+      }
+    }
+
     /* Animations */
     @keyframes pulse {
       0% { transform: scale(0.9); opacity: 0.6; }
@@ -844,6 +1048,17 @@
       
       // Dynamic lists fetched on profile sync
       banks: [],
+      contacts: [],
+      autoReplies: [], // removed feature placeholder
+      reminders: [],
+      templates: [],
+      campaigns: [],
+      campaignRecipientsCache: {},
+      editingTemplateId: null,
+      selectedContactIds: [],
+      automationSettings: null,
+      catalog: null,
+      services: [],
       planPrice: 149,
       
       // Admin-only caches
@@ -1654,7 +1869,7 @@
       `;
     }
 
-    // MAIN DASHBOARD TEMPLATE (Swaps based on User/Admin Role)
+     // MAIN DASHBOARD TEMPLATE (Swaps based on User/Admin Role)
     function renderMainDashboard() {
       if (!state.user) {
         fetchUserProfile();
@@ -1703,21 +1918,43 @@
 
     function renderUserDashboard() {
       const hasActivePlan = state.plan && state.plan.status === 'active' && new Date(state.plan.expires_at) > new Date();
+      const activeBadge = hasActivePlan 
+        ? `<span class="badge badge-active">Active Plan</span>` 
+        : `<span class="badge badge-expired">No Active Plan</span>`;
       const planCardsHtml = renderPlanCards();
-      const activeBadge = hasActivePlan ? '<span style="font-size:0.75rem;font-weight:normal;color:var(--accent-color);background:rgba(16,185,129,0.1);border:1px solid var(--accent-color);padding:0.2rem 0.6rem;border-radius:9999px;letter-spacing:0.05em;">SUBSCRIPTION ACTIVE</span>' : '';
+      const activeCategory = getActiveCategory(state.currentTab);
 
       return `
-        <header>
+        <header style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; padding:1rem 1.5rem; background:rgba(15,23,42,0.8); border:1px solid var(--glass-border); border-radius:16px; margin-bottom:1rem; backdrop-filter:blur(16px);">
           <div class="brand">
-            <h1>WhatsApp Messaging User Studio</h1>
-            <p>Control Panel & Subscription Portal</p>
+            <h1 style="font-size:1.3rem; font-weight:800; color:#fff; margin:0;">WhatsApp Automation Studio</h1>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin:0.2rem 0 0;">Control Panel & Subscription Portal</p>
           </div>
-          <div class="user-profile">
-            <div class="user-details">
-              <div class="user-name">${state.user.name}</div>
-              <div class="user-role">SUBSCRIBER</div>
+          
+          <!-- Top Account Info Strip -->
+          <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.03); padding:0.35rem 0.75rem; border-radius:10px; border:1px solid var(--glass-border);">
+              <span style="font-size:0.75rem; color:#94a3b8;">Wallet:</span>
+              <span style="font-size:0.9rem; font-weight:800; color:#34d399;">₹${(state.user.wallet_balance || 0).toFixed(2)}</span>
             </div>
-            <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
+            <div style="display:flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.03); padding:0.35rem 0.75rem; border-radius:10px; border:1px solid var(--glass-border);">
+              <span style="font-size:0.75rem; color:#94a3b8;">Plan:</span>
+              ${hasActivePlan 
+                ? `<span style="font-size:0.7rem; font-weight:700; color:#34d399; background:rgba(16,185,129,0.15); padding:0.15rem 0.5rem; border-radius:6px;">ACTIVE</span>` 
+                : `<span style="font-size:0.7rem; font-weight:700; color:#f87171; background:rgba(239,68,68,0.15); padding:0.15rem 0.5rem; border-radius:6px;">INACTIVE</span>`
+              }
+            </div>
+            ${hasActivePlan ? `
+              <div style="font-size:0.75rem; color:#fbbf24; background:rgba(245,158,11,0.1); padding:0.35rem 0.75rem; border-radius:10px; border:1px solid rgba(245,158,11,0.25);">
+                Expires: <strong>${new Date(state.plan.expires_at).toLocaleDateString()}</strong> (${Math.ceil((new Date(state.plan.expires_at) - new Date()) / (1000*60*60*24))}d left)
+              </div>` : ''}
+            <div class="user-profile" style="display:flex; align-items:center; gap:0.75rem;">
+              <div class="user-details" style="text-align:right;">
+                <div class="user-name" style="font-weight:600; font-size:0.85rem;">${state.user.name}</div>
+                <div class="user-role" style="font-size:0.7rem; color:#a5b4fc;">SUBSCRIBER</div>
+              </div>
+              <button class="btn-logout" onclick="handleLogout()" style="padding:0.4rem 0.8rem; font-size:0.8rem;">Sign Out</button>
+            </div>
           </div>
         </header>
 
@@ -1731,129 +1968,9 @@
           </div>
         ` : ''}
 
-        <div class="app-layout">
-          <!-- Sidebar: Billing, Wallet & Plan -->
-          <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-            <!-- Plan & Wallet Card -->
-            <div class="card">
-              <div class="card-title">
-                <span>Account & Plan</span>
-              </div>
-              <div class="wallet-box">
-                <label>Wallet Balance</label>
-                <div class="wallet-amount">₹${state.user.wallet_balance.toFixed(2)}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted);">Used for plan auto-activation</div>
-              </div>
-              
-              <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--glass-border);">
-                <span style="font-size: 0.85rem; color: var(--text-muted);">Plan Status</span>
-                ${hasActivePlan 
-                  ? `<span class="badge badge-active">Active</span>` 
-                  : (state.orders.some(o => o.status === 'pending') 
-                      ? `<span class="badge badge-pending">Review Pending</span>` 
-                      : `<span class="badge badge-expired">Inactive</span>`
-                    )
-                }
-              </div>
 
-              ${hasActivePlan ? `
-                <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center;">
-                  Expires on: <strong style="color: var(--warning-color);">${new Date(state.plan.expires_at).toLocaleDateString()}</strong><br>
-                  (${Math.ceil((new Date(state.plan.expires_at) - new Date()) / (1000 * 60 * 60 * 24))} days remaining)
-                </div>
-              ` : ''}
-            </div>
-
-            <!-- Dynamic Bank Accounts List -->
-            <div class="card">
-              <div class="card-title">
-                <span>Payment Bank Options</span>
-              </div>
-              <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
-                Transfer <strong>₹${state.planPrice}</strong> to any of the verified bank accounts listed below to recharge:
-              </p>
-              
-              <div class="bank-card-list">
-                ${state.banks.length === 0 ? '<div style="font-size:0.85rem; text-align:center; color:var(--error-color);">No bank accounts available. Contact Admin.</div>' : 
-                  state.banks.map(bank => `
-                    <div class="bank-item">
-                      <div class="bank-details-row">
-                        <span>Bank Name</span>
-                        <span>${bank.bank_name}</span>
-                      </div>
-                      <div class="bank-details-row">
-                        <span>Account Number</span>
-                        <span><code>${bank.account_number}</code></span>
-                      </div>
-                      <div class="bank-details-row">
-                        <span>IFSC Code</span>
-                        <span><code>${bank.ifsc}</code></span>
-                      </div>
-                      <div class="bank-details-row">
-                        <span>Holder Name</span>
-                        <span>${bank.account_holder}</span>
-                      </div>
-                    </div>
-                  `).join('')
-                }
-              </div>
-            </div>
-
-            <!-- Submit Deposit form -->
-            <div class="card">
-              <div class="card-title">Submit Deposit Reference</div>
-              <form id="orderForm" onsubmit="handleOrderSubmit(event)" style="display: flex; flex-direction: column; gap: 0.85rem;">
-                <div class="form-group">
-                  <label>Select Bank Sent To</label>
-                  <select id="orderBankSelect" required>
-                    <option value="">-- Choose destination bank --</option>
-                    ${state.banks.map(b => `<option value="${b.id}">${b.bank_name} - ${b.account_holder}</option>`).join('')}
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Purpose / Plan to Buy</label>
-                  <select id="orderPlanTypeSelect" onchange="handleOrderPlanSelectChange(this)" required>
-                    <option value="wallet">Just recharge wallet (Add funds)</option>
-                    ${state.planOptions ? state.planOptions.filter(p => p.type !== 'demo').map(p => `
-                      <option value="${p.type}">${p.name} - ₹${p.price} (${p.durationDays} Days)</option>
-                    `).join('') : ''}
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Deposit Amount (₹)</label>
-                  <input type="number" id="orderAmountInput" required min="1" placeholder="Enter amount sent" value="199">
-                </div>
-                <div class="form-group">
-                  <label>Sender Account Name</label>
-                  <input type="text" id="orderAccountName" required placeholder="Name on bank statement">
-                </div>
-                <div class="form-group">
-                  <label>Transaction UTR / Reference No.</label>
-                  <input type="text" id="orderUtr" required placeholder="12-digit UTR Code">
-                </div>
-                <div class="form-group">
-                  <label>Upload Screenshot (Optional)</label>
-                  <input type="file" id="orderScreenshot" accept="image/*,application/pdf" style="background:none; border:none; padding: 0.25rem 0;">
-                </div>
-                <button type="submit">Submit Deposit Request</button>
-              </form>
-            </div>
-          </div>
-
-          <!-- Main Panel Content -->
-          <div class="card">
-            <div class="tabs-nav">
-              <button class="tab-btn ${state.currentTab === 'whatsappTab' ? 'active' : ''}" onclick="switchTab('whatsappTab')">WhatsApp Studio</button>
-              <button class="tab-btn ${state.currentTab === 'ordersTab' ? 'active' : ''}" onclick="switchTab('ordersTab')">Order History</button>
-              <button class="tab-btn ${state.currentTab === 'userExpiryReportTab' ? 'active' : ''}" onclick="switchTab('userExpiryReportTab')">Expiry Report</button>
-              <button class="tab-btn ${state.currentTab === 'apiDocsTab' ? 'active' : ''}" onclick="switchTab('apiDocsTab')">API Docs</button>
-              <button class="tab-btn ${state.currentTab === 'changePasswordTab' ? 'active' : ''}" onclick="switchTab('changePasswordTab')">Account Settings</button>
-            </div>
-
-            <!-- TAB: WhatsApp Studio -->
-            <div id="whatsappTab" class="tab-content ${state.currentTab === 'whatsappTab' ? 'active' : ''}">
-              
-              <!-- Plan Pricing Cards Grid -->
+            <!-- TAB: Subscription Plans -->
+            <div id="plansTab" class="tab-content ${state.currentTab === 'plansTab' ? 'active' : ''}">
               <div style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); padding: 1.25rem; border-radius: 12px;">
                 <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 1rem; color: #a5b4fc; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
                   <span style="display: flex; align-items: center; gap: 0.5rem;">💎 Choose a Subscription Plan</span>
@@ -1863,12 +1980,90 @@
                   ${planCardsHtml}
                 </div>
               </div>
+            </div>
 
+            <!-- TAB: Bank Accounts -->
+            <div id="banksTab" class="tab-content ${state.currentTab === 'banksTab' ? 'active' : ''}">
+              <div class="card-title">Payment Bank Options</div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1rem;">
+                Transfer <strong>₹${state.planPrice}</strong> to any of the verified bank accounts listed below to recharge:
+              </p>
+              <div class="bank-card-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+                ${state.banks.length === 0 ? '<div style="font-size:0.85rem; text-align:center; color:var(--error-color);">No bank accounts available. Contact Admin.</div>' : 
+                  state.banks.map(bank => `
+                    <div class="bank-item" style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem;">
+                      <div class="bank-details-row" style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.85rem;">
+                        <span style="color:var(--text-muted);">Bank Name</span>
+                        <span style="font-weight:600; color:#fff;">${bank.bank_name}</span>
+                      </div>
+                      <div class="bank-details-row" style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.85rem;">
+                        <span style="color:var(--text-muted);">Account Number</span>
+                        <span><code style="color:#a5b4fc;">${bank.account_number}</code></span>
+                      </div>
+                      <div class="bank-details-row" style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.85rem;">
+                        <span style="color:var(--text-muted);">IFSC Code</span>
+                        <span><code style="color:#a5b4fc;">${bank.ifsc}</code></span>
+                      </div>
+                      <div class="bank-details-row" style="display:flex; justify-content:space-between; font-size:0.85rem;">
+                        <span style="color:var(--text-muted);">Holder Name</span>
+                        <span style="font-weight:600; color:#fff;">${bank.account_holder}</span>
+                      </div>
+                    </div>
+                  `).join('')
+                }
+              </div>
+            </div>
+
+            <!-- TAB: Submit Deposit -->
+            <div id="depositTab" class="tab-content ${state.currentTab === 'depositTab' ? 'active' : ''}">
+              <div class="card-title">Submit Deposit Reference</div>
+              <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 1.5rem; border-radius: 12px; max-width: 550px;">
+                <form id="orderForm" onsubmit="handleOrderSubmit(event)" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                  <div class="form-group">
+                    <label>Select Bank Sent To</label>
+                    <select id="orderBankSelect" required>
+                      <option value="">-- Choose destination bank --</option>
+                      ${state.banks.map(b => `<option value="${b.id}">${b.bank_name} - ${b.account_holder}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Purpose / Plan to Buy</label>
+                    <select id="orderPlanTypeSelect" onchange="handleOrderPlanSelectChange(this)" required>
+                      <option value="wallet">Just recharge wallet (Add funds)</option>
+                      ${state.planOptions ? state.planOptions.filter(p => p.type !== 'demo').map(p => `
+                        <option value="${p.type}">${p.name} - ₹${p.price} (${p.durationDays} Days)</option>
+                      `).join('') : ''}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Deposit Amount (₹)</label>
+                    <input type="number" id="orderAmountInput" required min="1" placeholder="Enter amount sent" value="199">
+                  </div>
+                  <div class="form-group">
+                    <label>Sender Account Name</label>
+                    <input type="text" id="orderAccountName" required placeholder="Name on bank statement">
+                  </div>
+                  <div class="form-group">
+                    <label>Transaction UTR / Reference No.</label>
+                    <input type="text" id="orderUtr" required placeholder="12-digit UTR Code">
+                  </div>
+                  <div class="form-group">
+                    <label>Upload Screenshot (Optional)</label>
+                    <input type="file" id="orderScreenshot" accept="image/*,application/pdf" style="background:none; border:none; padding: 0.25rem 0;">
+                  </div>
+                  <button type="submit" style="margin-top:0.5rem; background:linear-gradient(135deg,#6366f1,#8b5cf6);">Submit Deposit Request</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- TAB: WhatsApp Studio -->
+            <div id="whatsappTab" class="tab-content ${state.currentTab === 'whatsappTab' ? 'active' : ''}">
+              
               ${!hasActivePlan ? `
                 <div style="text-align: center; padding: 3rem 2rem; color: var(--text-muted); background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); border-radius: 12px;">
                   <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🔒</div>
                   <h3>WhatsApp Automation Features are Locked</h3>
-                  <p style="margin-top: 0.5rem; max-width: 450px; margin-inline: auto; font-size: 0.85rem; line-height: 1.5;">Please claim the Free Demo Plan above, or transfer funds and submit a deposit reference request to unlock full WhatsApp session access and automated APIs.</p>
+                  <p style="margin-top: 0.5rem; max-width: 450px; margin-inline: auto; font-size: 0.85rem; line-height: 1.5;">Please claim a Plan under <a href="javascript:void(0)" onclick="switchTab('plansTab')" style="color:#a5b4fc;">Subscription Plans</a> or submit payment under <a href="javascript:void(0)" onclick="switchTab('depositTab')" style="color:#a5b4fc;">Submit Deposit</a> to unlock WhatsApp session features.</p>
                 </div>
               ` : `
                 <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
@@ -1917,12 +2112,25 @@
                       <div class="actions-grid">
                         <div style="display: flex; flex-direction: column; gap: 1rem;">
                           <div class="form-group">
+                            <label>Select Saved Contact (Optional)</label>
+                            <select id="singleContactSelect" onchange="onSingleContactSelect(this.value)" style="padding:0.4rem 0.6rem; font-size:0.85rem; background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); color:var(--text-main); border-radius:8px;">
+                              <option value="">-- Choose Contact from Directory --</option>
+                              ${(state.contacts || []).map(c => `<option value="${c.mobile}">${c.name} (${c.mobile}) ${c.shop_name ? `- ${c.shop_name}` : ''}</option>`).join('')}
+                            </select>
+                          </div>
+                          <div class="form-group">
                             <label>Recipient JID or Phone Number</label>
                             <input type="text" id="msgTo" placeholder="e.g. 919876543210 (include country code)">
                           </div>
                           <div class="form-group">
-                            <label>Message Content</label>
-                            <textarea id="msgBody" rows="4" placeholder="Type message body here..."></textarea>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                              <label style="margin-bottom:0;">Message Content</label>
+                              <select onchange="applyTemplateToField(this.value, 'msgBody')" style="max-width:180px; padding:0.25rem 0.5rem; font-size:0.75rem; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#a5b4fc; border-radius:6px;">
+                                <option value="">-- Apply Template --</option>
+                                ${(state.templates || []).map(t => `<option value="${t.id}">${t.title}</option>`).join('')}
+                              </select>
+                            </div>
+                            <textarea id="msgBody" rows="4" placeholder="Type message body here... Use {Name} or [Name] for placeholders"></textarea>
                           </div>
                           <button onclick="sendMessage()" id="sendMsgBtn" disabled>Send Message</button>
                         </div>
@@ -2050,8 +2258,14 @@
                           </div>
                           
                           <div class="form-group">
-                            <label>Message Template</label>
-                            <textarea id="bulkMsgBody" rows="4" placeholder="Hello {name}, your code is {code}..."></textarea>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                              <label style="margin-bottom:0;">Message Template</label>
+                              <select onchange="applyTemplateToField(this.value, 'bulkMsgBody')" style="max-width:180px; padding:0.25rem 0.5rem; font-size:0.75rem; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#a5b4fc; border-radius:6px;">
+                                <option value="">-- Apply Template --</option>
+                                ${(state.templates || []).map(t => `<option value="${t.id}">${t.title}</option>`).join('')}
+                              </select>
+                            </div>
+                            <textarea id="bulkMsgBody" rows="4" placeholder="Hello {name}, your order from {shopname} is ready..."></textarea>
                           </div>
                           
                           <div class="form-group">
@@ -2235,6 +2449,362 @@
               
               <div class="docs-container" style="background: rgba(0,0,0,0.25); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border); max-height: 550px; overflow-y: auto; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.05);">
                 <pre style="white-space: pre-wrap; font-size: 0.85rem; margin: 0; font-family: 'Consolas', 'Courier New', monospace; line-height: 1.6;" id="apiDocsContent">Loading documentation...</pre>
+              </div>
+            </div>
+
+            <!-- TAB: Contacts Directory -->
+            <div id="contactsTab" class="tab-content ${state.currentTab === 'contactsTab' ? 'active' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+                <div class="card-title" style="margin-bottom:0;">CRM Contacts Directory</div>
+                <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                  <button onclick="openBroadcastTemplateModal()" style="background:linear-gradient(135deg, #6366f1, #8b5cf6);">📢 Send Template Broadcast</button>
+                  <button onclick="document.getElementById('excelContactInput').click()" style="background:var(--accent-color);">📥 Import Excel</button>
+                  <input type="file" id="excelContactInput" accept=".xlsx,.xls" style="display:none;" onchange="importContactsExcel(event)">
+                  <button onclick="showAddContactModal()" class="btn-secondary">➕ Add Contact</button>
+                </div>
+              </div>
+
+              <div style="margin-bottom:1rem; width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                <input type="text" id="contactSearchInput" placeholder="Search contacts by name, phone or shop..." oninput="filterContactsList(this.value)" style="padding:0.6rem;font-size:0.85rem; max-width:350px;">
+                <div id="selectedContactsCount" style="font-size:0.85rem; color:#a5b4fc; font-weight:600;">
+                  Selected: <span id="contactCheckCount">0</span> contact(s)
+                </div>
+              </div>
+
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width:40px; text-align:center;"><input type="checkbox" id="selectAllContactsCheck" onchange="toggleSelectAllContacts(this.checked)" style="width:auto;"></th>
+                      <th>Name</th>
+                      <th>Mobile Phone</th>
+                      <th>Shop Name</th>
+                      <th>Date Added</th>
+                      <th>Block List (Exclude)</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="contactsTableBody">
+                    ${renderContactsRows()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- TAB: Personalized Message Templates -->
+            <div id="templatesTab" class="tab-content ${state.currentTab === 'templatesTab' ? 'active' : ''}">
+              <div class="card-title">Personalized Message Templates</div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 id="templateFormHeading" style="margin-bottom:1rem;color:#a5b4fc;">Create New Template</h4>
+                  <form id="templateForm" onsubmit="saveTemplate(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    
+                    <div class="form-group">
+                      <label>Template Title</label>
+                      <input type="text" id="templateTitle" required placeholder="e.g. Welcome Message, Payment Due">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Category</label>
+                      <select id="templateCategory">
+                        <option value="General">General</option>
+                        <option value="Marketing">Marketing & Offers</option>
+                        <option value="Transactional">Transactional</option>
+                        <option value="Reminders">Reminders & Dues</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Message Content</label>
+                      <textarea id="templateContent" rows="5" required placeholder="Type your template text here... Use placeholders below for customer personalization."></textarea>
+                      
+                      <div style="margin-top:0.5rem;">
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:</div>
+                        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                          <button type="button" onclick="insertPlaceholder('{Name}', 'templateContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Name}</button>
+                          <button type="button" onclick="insertPlaceholder('{ShopName}', 'templateContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {ShopName}</button>
+                          <button type="button" onclick="insertPlaceholder('{Mobile}', 'templateContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Mobile}</button>
+                          <button type="button" onclick="insertPlaceholder('{Email}', 'templateContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Email}</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;gap:0.5rem;">
+                      <button type="submit" id="saveTemplateBtn" style="flex:1;">Save Template</button>
+                      <button type="button" onclick="resetTemplateForm()" class="btn-secondary" style="width:auto;display:none;" id="cancelEditTemplateBtn">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Saved Templates List</h4>
+                  <div style="display:flex;flex-direction:column;gap:1rem;">
+                    ${renderTemplateCards()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Auto Responders (Welcome & Away Messages) -->
+            <div id="autoRespondersTab" class="tab-content ${state.currentTab === 'autoRespondersTab' ? 'active' : ''}">
+              <div class="card-title">Automated Responders (Welcome & Away Messages)</div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;">
+                
+                <!-- Welcome Message Card -->
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h4 style="color:#a5b4fc;margin:0;">👋 Welcome Message</h4>
+                    <span style="background:${(state.automationSettings?.welcome_active === 1) ? '#10b981' : '#94a3b8'};color:#fff;padding:0.25rem 0.6rem;border-radius:12px;font-size:0.75rem;font-weight:700;">
+                      ${(state.automationSettings?.welcome_active === 1) ? 'ENABLED' : 'DISABLED'}
+                    </span>
+                  </div>
+                  
+                  <form id="welcomeMessageForm" onsubmit="saveWelcomeSettings(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:600;color:#f8fafc;">
+                        <input type="checkbox" id="welcomeActiveCheck" ${state.automationSettings?.welcome_active === 1 ? 'checked' : ''} style="width:auto;">
+                        Enable Automatic Welcome Message
+                      </label>
+                      <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;">Sends an automated greeting message when a customer sends a message on WhatsApp.</div>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Welcome Message Text</label>
+                      <textarea id="welcomeText" rows="5" required placeholder="Type welcome greeting message...">${state.automationSettings?.welcome_text || 'Hello {Name}! Welcome to {ShopName}. How can we assist you today?'}</textarea>
+                      
+                      <div style="margin-top:0.5rem;">
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:</div>
+                        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                          <button type="button" onclick="insertPlaceholder('{Name}', 'welcomeText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Name}</button>
+                          <button type="button" onclick="insertPlaceholder('{ShopName}', 'welcomeText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {ShopName}</button>
+                          <button type="button" onclick="insertPlaceholder('{Mobile}', 'welcomeText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Mobile}</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Attach Greeting Media (Optional Image/PDF)</label>
+                      <input type="file" id="welcomeMediaFile" accept="image/*,application/pdf">
+                      ${state.automationSettings?.welcome_media_path ? `<div style="font-size:0.75rem;color:#10b981;margin-top:0.25rem;">✅ Media attached: <a href="/${state.automationSettings.welcome_media_path}" target="_blank" style="color:#60a5fa;text-decoration:none;">View Media</a></div>` : ''}
+                    </div>
+
+                    <button type="submit" style="background:var(--accent-color);">Save Welcome Settings</button>
+                  </form>
+                </div>
+
+                <!-- Away Message Card -->
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h4 style="color:#a5b4fc;margin:0;">🌙 Away Message</h4>
+                    <span style="background:${(state.automationSettings?.away_active === 1) ? '#10b981' : '#94a3b8'};color:#fff;padding:0.25rem 0.6rem;border-radius:12px;font-size:0.75rem;font-weight:700;">
+                      ${(state.automationSettings?.away_active === 1) ? 'ENABLED' : 'DISABLED'}
+                    </span>
+                  </div>
+
+                  <form id="awayMessageForm" onsubmit="saveAwaySettings(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:600;color:#f8fafc;">
+                        <input type="checkbox" id="awayActiveCheck" ${state.automationSettings?.away_active === 1 ? 'checked' : ''} style="width:auto;">
+                        Enable Automatic Away Reply
+                      </label>
+                      <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;">Automatically sends an away response when you are unavailable or outside business hours.</div>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Away Message Text</label>
+                      <textarea id="awayText" rows="5" required placeholder="Type away message...">${state.automationSettings?.away_text || 'Thank you for contacting us! We are currently away and will reply to your message as soon as possible.'}</textarea>
+                      
+                      <div style="margin-top:0.5rem;">
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:</div>
+                        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                          <button type="button" onclick="insertPlaceholder('{Name}', 'awayText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Name}</button>
+                          <button type="button" onclick="insertPlaceholder('{ShopName}', 'awayText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {ShopName}</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Away Trigger Mode</label>
+                      <select id="awayScheduleType" onchange="toggleAwayScheduleMode(this.value)">
+                        <option value="always" ${state.automationSettings?.away_schedule_type === 'always' ? 'selected' : ''}>Always Send (24/7)</option>
+                        <option value="schedule" ${state.automationSettings?.away_schedule_type === 'schedule' ? 'selected' : ''}>Outside Business Hours (Custom Schedule)</option>
+                      </select>
+                    </div>
+
+                    <div id="awayTimeInputs" style="display:${state.automationSettings?.away_schedule_type === 'schedule' ? 'flex' : 'none'};gap:1rem;">
+                      <div class="form-group" style="flex:1;">
+                        <label>Business Start Time (Available from)</label>
+                        <input type="time" id="awayStartTime" value="${state.automationSettings?.away_start_time || '09:00'}">
+                      </div>
+                      <div class="form-group" style="flex:1;">
+                        <label>Business End Time (Available until)</label>
+                        <input type="time" id="awayEndTime" value="${state.automationSettings?.away_end_time || '19:00'}">
+                      </div>
+                    </div>
+
+                    <button type="submit" style="background:var(--accent-color);">Save Away Settings</button>
+                  </form>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- TAB: Campaigns Dashboard -->
+            <div id="campaignsTab" class="tab-content ${state.currentTab === 'campaignsTab' ? 'active' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                <div class="card-title" style="margin:0;">Broadcast Campaigns & Analytics</div>
+                <button onclick="openCreateCampaignModal()" style="background:var(--accent-color);padding:0.5rem 1rem;">+ New Campaign</button>
+              </div>
+              
+              <div style="display:flex;flex-direction:column;gap:1.5rem;" id="campaignsListContainer">
+                ${renderCampaignsList()}
+              </div>
+            </div>
+
+            <!-- TAB: Customer Reminders -->
+            <div id="remindersTab" class="tab-content ${state.currentTab === 'remindersTab' ? 'active' : ''}">
+              <div class="card-title">Scheduled Customer Reminders</div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Schedule New Reminder</h4>
+                  <form id="reminderForm" onsubmit="saveReminder(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    
+                    <div class="form-group">
+                      <label>Choose Customer / Contact</label>
+                      <select id="reminderContactSelect" onchange="handleReminderContactSelect(this.value)">
+                        <option value="">-- Select Contact (Optional) --</option>
+                        ${(state.contacts || []).map(c => `
+                          <option value="${c.id}" data-phone="${c.mobile}" data-name="${c.name}" data-shop="${c.shop_name || ''}">
+                            ${c.name} (${c.mobile}) ${c.shop_name ? `- ${c.shop_name}` : ''}
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Recipient Mobile Number</label>
+                      <input type="text" id="reminderPhone" required placeholder="e.g. 919876543210">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Recipient Name</label>
+                      <input type="text" id="reminderName" placeholder="e.g. John Doe">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Shop Name</label>
+                      <input type="text" id="reminderShop" placeholder="e.g. Star Enterprises">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Message Template</label>
+                      <textarea id="reminderTemplate" rows="4" required placeholder="Type your reminder message here...&#10;&#10;Use {Name} or [Name] for customer name&#10;Use {ShopName} or [ShopName] for shop name&#10;Use {Mobile} or [Mobile] for phone number"></textarea>
+                      <div style="font-size:0.72rem;color:#a5b4fc;margin-top:0.4rem;">💡 Placeholders: <b>{Name}</b> or <b>[Name]</b> &nbsp;|&nbsp; <b>{ShopName}</b> or <b>[ShopName]</b> &nbsp;|&nbsp; <b>{Mobile}</b> or <b>[Mobile]</b></div>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Scheduling Method</label>
+                      <select id="reminderScheduleType" onchange="handleReminderScheduleTypeChange(this.value)" required>
+                        <option value="days">Send After X Days</option>
+                        <option value="datetime">Custom Date & Time</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group" id="reminderDaysGroup">
+                      <label>Send After (Days)</label>
+                      <input type="number" id="reminderDays" min="0" placeholder="e.g. 3" value="3">
+                    </div>
+
+                    <div class="form-group" id="reminderDatetimeGroup" style="display:none;">
+                      <label>Custom Date & Time</label>
+                      <input type="datetime-local" id="reminderDatetime">
+                    </div>
+
+                    <button type="submit">Schedule Message</button>
+                  </form>
+                </div>
+
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Upcoming & Historical Reminders</h4>
+                  <div class="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Recipient</th>
+                          <th>Scheduled For</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${renderReminderRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Digital Catalog Builder -->
+            <div id="catalogTab" class="tab-content ${state.currentTab === 'catalogTab' ? 'active' : ''}">
+              <div class="card-title">Digital Catalog Configurator</div>
+
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Catalog Settings</h4>
+                  <form id="catalogSettingsForm" onsubmit="saveCatalogSettings(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    
+                    <div class="form-group">
+                      <label>Brand / Shop Name</label>
+                      <input type="text" id="catalogBrandName" required placeholder="e.g. Star Garments" value="${state.catalog ? state.catalog.brand_name : ''}">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Description / Intro</label>
+                      <textarea id="catalogDescription" rows="3" placeholder="Welcome to our store...">${state.catalog ? state.catalog.description || '' : ''}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Upload Brand Logo Image</label>
+                      <input type="file" id="catalogLogo" accept="image/*">
+                      ${state.catalog?.logo_path ? `<div style="font-size:0.75rem;color:#10b981;margin-top:0.25rem;">✅ Logo uploaded: <a href="/${state.catalog.logo_path}" target="_blank" style="color:#60a5fa;text-decoration:none;">View Logo</a></div>` : ''}
+                    </div>
+
+                    <div class="form-group">
+                      <label>Upload Catalog Greeting Audio (Intro)</label>
+                      <input type="file" id="catalogAudio" accept="audio/*">
+                      ${state.catalog?.catalog_audio_path ? `<div style="font-size:0.75rem;color:#10b981;margin-top:0.25rem;">✅ Greeting audio uploaded: <a href="/${state.catalog.catalog_audio_path}" target="_blank" style="color:#60a5fa;text-decoration:none;">Listen</a></div>` : ''}
+                    </div>
+
+                    <button type="submit">Update Catalog Profile</button>
+                  </form>
+
+                  ${state.catalog ? `
+                    <div style="margin-top:1.5rem;background:rgba(99, 102, 241, 0.08);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.75rem;">
+                      <div style="font-size:0.75rem;color:#a5b4fc;font-weight:600;margin-bottom:0.25rem;">🌐 Public Catalog Link</div>
+                      <a href="/catalog/view/${state.user.id}" target="_blank" style="font-size:0.8rem;color:#60a5fa;word-break:break-all;text-decoration:underline;display:block;margin-bottom:0.5rem;">
+                        ` + window.location.origin + `/catalog/view/` + state.user.id + `
+                      </a>
+                      <button type="button" onclick="window.open('/catalog/view/${state.user.id}', '_blank')" style="font-size:0.75rem;padding:0.3rem 0.6rem;margin:0;width:100%;">🔗 Open Catalog Page</button>
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h4 style="color:#a5b4fc;margin:0;">Listed Services & Products</h4>
+                    <button type="button" onclick="showAddServiceModal()" style="font-size:0.8rem;padding:0.4rem 0.8rem;margin:0;background:var(--accent-color);">➕ Add Item</button>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:1rem;">
+                    ${renderServiceCards()}
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -2531,9 +3101,6 @@
               </div>
               
               <div class="table-container">
-                <table id="adminExpiryReportTable">
-                  <thead>
-                    <tr>
                       <th>User ID</th>
                       <th>User Name</th>
                       <th>Email / Phone</th>
@@ -2549,6 +3116,76 @@
                 </table>
               </div>
             </div>
+
+            <!-- TAB: Import Contacts -->
+            <div id="importContactsTab" class="tab-content ${state.currentTab === 'importContactsTab' ? 'active' : ''}">
+              <div class="card-title">📊 Import Contacts (Excel / CSV)</div>
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;max-width:520px;">
+                <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">Upload an Excel or CSV file to bulk-import contacts. The file must have columns: <strong>Name</strong>, <strong>Mobile</strong>, and optionally <strong>ShopName</strong>.</p>
+                <div class="form-group">
+                  <label>Choose File (.xlsx, .xls)</label>
+                  <input type="file" id="importContactsFileAlt" accept=".xlsx,.xls" onchange="importContactsExcel(event)">
+                </div>
+                <button onclick="document.getElementById('importContactsFileAlt').click()" style="background:var(--accent-color);margin-top:0.5rem;">📥 Import Now</button>
+                <div id="importContactsResultAlt" style="margin-top:1rem;font-size:0.85rem;"></div>
+              </div>
+            </div>
+
+            <!-- TAB: Export Contacts -->
+            <div id="exportContactsTab" class="tab-content ${state.currentTab === 'exportContactsTab' ? 'active' : ''}">
+              <div class="card-title">📤 Export Contacts</div>
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;max-width:520px;">
+                <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1.5rem;">Download all your contacts as an Excel spreadsheet. The file will include Name, Mobile, Shop Name and other stored details.</p>
+                <button onclick="exportContactsExcel()" style="background:linear-gradient(135deg,#10b981,#059669);">📥 Download Contacts as Excel</button>
+              </div>
+            </div>
+
+            <!-- TAB: Campaign Analytics -->
+            <div id="campaignAnalyticsTab" class="tab-content ${state.currentTab === 'campaignAnalyticsTab' ? 'active' : ''}">
+              <div class="card-title">📈 Campaign Analytics</div>
+              <div id="campaignAnalyticsContent" style="display:flex;flex-direction:column;gap:1.5rem;">
+                ${renderCampaignAnalytics()}
+              </div>
+            </div>
+
+            <!-- TAB: Campaign Scheduler -->
+            <div id="campaignSchedulerTab" class="tab-content ${state.currentTab === 'campaignSchedulerTab' ? 'active' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                <div class="card-title" style="margin:0;">📅 Campaign Scheduler</div>
+                <button onclick="openCreateCampaignModal()" style="background:var(--accent-color);">+ Schedule New Campaign</button>
+              </div>
+              <div id="schedulerCampaignsList" style="display:flex;flex-direction:column;gap:1rem;">
+                ${renderScheduledCampaigns()}
+              </div>
+            </div>
+
+            <!-- TAB: Messages Report -->
+            <div id="reportsTab" class="tab-content ${state.currentTab === 'reportsTab' ? 'active' : ''}">
+              <div class="card-title">📊 Messages Report</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;">
+                <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#34d399;" id="reportTotalSent">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">✅ Messages Sent</div>
+                </div>
+                <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#818cf8;" id="reportTotalCampaigns">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📢 Total Campaigns</div>
+                </div>
+                <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#f87171;" id="reportTotalFailed">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">❌ Failed Deliveries</div>
+                </div>
+                <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#fbbf24;" id="reportSuccessRate">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📈 Success Rate</div>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;padding:1.25rem;">
+                <div style="font-size:0.9rem;font-weight:600;margin-bottom:1rem;">Recent Campaign Performance</div>
+                <div id="reportsTableContainer">${renderReportsTable()}</div>
+              </div>
+            </div>
+
           </div>
         </div>
       `;
@@ -2628,7 +3265,7 @@
         state.transactions = [];
         state.currentTab = 'whatsappTab';
         
-        renderApp();
+        await fetchUserProfile();
       } catch (err) {
         showAuthAlert(err.message);
       }
@@ -2662,7 +3299,7 @@
         state.transactions = [];
         state.currentTab = 'whatsappTab';
 
-        renderApp();
+        await fetchUserProfile();
       } catch (err) {
         showAuthAlert(err.message);
         loadCaptcha();
@@ -2823,10 +3460,152 @@
       }
     }
 
-    // GENERAL DASHBOARD CONTROLS
+    // GENERAL DASHBOARD CONTROLS & SIDEBAR ACCORDION
+    state.openGroups = state.openGroups || {};
+
+    function isGroupOpen(groupKey, memberTabs = []) {
+      if (memberTabs.includes(state.currentTab)) return true;
+      if (state.openGroups[groupKey] !== undefined) return state.openGroups[groupKey];
+      return false; // Default closed unless active
+    }
+
+    function toggleSidebarGroup(groupKey) {
+      const itemsEl = document.getElementById(`group_${groupKey}`);
+      const arrowEl = document.getElementById(`arrow_${groupKey}`);
+      if (!itemsEl) return;
+      const isCollapsed = itemsEl.classList.contains('collapsed');
+      if (isCollapsed) {
+        itemsEl.classList.remove('collapsed');
+        if (arrowEl) arrowEl.innerText = '▾';
+        state.openGroups[groupKey] = true;
+      } else {
+        itemsEl.classList.add('collapsed');
+        if (arrowEl) arrowEl.innerText = '▸';
+        state.openGroups[groupKey] = false;
+      }
+    }
+
+    function toggleAllSidebarGroups() {
+      const groups = ['account', 'whatsapp', 'contacts', 'campaigns', 'automation', 'api', 'reports', 'more'];
+      const anyClosed = groups.some(g => {
+        const el = document.getElementById(`group_${g}`);
+        return el && el.classList.contains('collapsed');
+      });
+      groups.forEach(g => {
+        const el = document.getElementById(`group_${g}`);
+        const arrow = document.getElementById(`arrow_${g}`);
+        if (el) {
+          if (anyClosed) {
+            el.classList.remove('collapsed');
+            if (arrow) arrow.innerText = '▾';
+            state.openGroups[g] = true;
+          } else {
+            el.classList.add('collapsed');
+            if (arrow) arrow.innerText = '▸';
+            state.openGroups[g] = false;
+          }
+        }
+      });
+    }
+
+    function filterSidebarMenu(query) {
+      const q = query.trim().toLowerCase();
+      const items = document.querySelectorAll('.dash-sidebar-item');
+      items.forEach(item => {
+        const text = item.innerText.toLowerCase();
+        if (!q || text.includes(q)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+      if (q) {
+        // Automatically expand all groups when searching
+        const groups = document.querySelectorAll('.dash-sidebar-group-items');
+        groups.forEach(g => g.classList.remove('collapsed'));
+      }
+    }
+
+    // ─── Top Navigation Helper Functions ──────────────────────────────
+
+    function getActiveCategory(currentTab) {
+      const categoryMap = {
+        plansTab: 'account', banksTab: 'account', depositTab: 'account',
+        whatsappTab: 'whatsapp', templatesTab: 'whatsapp',
+        contactsTab: 'contacts', contactGroupsTab: 'contacts', tagsTab: 'contacts', importContactsTab: 'contacts', exportContactsTab: 'contacts',
+        campaignsTab: 'campaigns', campaignAnalyticsTab: 'campaigns', campaignSchedulerTab: 'campaigns',
+        autoRespondersTab: 'automation', remindersTab: 'automation', birthdayTab: 'automation', paymentReminderTab: 'automation', orderNotifyTab: 'automation', followUpTab: 'automation',
+        apiDocsTab: 'api', apiKeysTab: 'api', webhooksTab: 'api',
+        reportsTab: 'reports', userExpiryReportTab: 'reports', ordersTab: 'reports',
+        catalogTab: 'more', changePasswordTab: 'more'
+      };
+      return categoryMap[currentTab] || 'whatsapp';
+    }
+
+    function selectCategory(catKey, defaultTab) {
+      state.activeCategory = catKey;
+      switchTab(defaultTab);
+    }
+
+    function renderSubPills(catKey) {
+      const pillsMap = {
+        account: [
+          { tab: 'plansTab', label: '💎 Subscription Plans' },
+          { tab: 'banksTab', label: '🏦 Bank Accounts' },
+          { tab: 'depositTab', label: '📥 Submit Deposit' }
+        ],
+        whatsapp: [
+          { tab: 'whatsappTab', label: '📱 Studio' },
+          { tab: 'templatesTab', label: '📝 Templates' }
+        ],
+        contacts: [
+          { tab: 'contactsTab', label: '👥 Contact Management' },
+          { tab: 'contactGroupsTab', label: '📋 Contact Groups (Soon)' },
+          { tab: 'tagsTab', label: '🏷️ Tags (Soon)' },
+          { tab: 'importContactsTab', label: '📊 Import Contacts' },
+          { tab: 'exportContactsTab', label: '📤 Export Contacts' }
+        ],
+        campaigns: [
+          { tab: 'campaignsTab', label: '📢 Broadcast Campaigns' },
+          { tab: 'campaignAnalyticsTab', label: '📈 Campaign Analytics' },
+          { tab: 'campaignSchedulerTab', label: '📅 Campaign Scheduler' }
+        ],
+        automation: [
+          { tab: 'autoRespondersTab', label: '🤖 Welcome & Away' },
+          { tab: 'remindersTab', label: '⏰ Reminder Messages' },
+          { tab: 'birthdayTab', label: '🎂 Birthday Wishes (Soon)' },
+          { tab: 'paymentReminderTab', label: '💳 Payment Reminder (Soon)' },
+          { tab: 'orderNotifyTab', label: '📦 Order Notifications (Soon)' },
+          { tab: 'followUpTab', label: '🔔 Follow-up Automation (Soon)' }
+        ],
+        api: [
+          { tab: 'apiDocsTab', label: '📚 API Documentation' },
+          { tab: 'apiKeysTab', label: '🔑 API Keys (Soon)' },
+          { tab: 'webhooksTab', label: '📄 Webhooks (Soon)' }
+        ],
+        reports: [
+          { tab: 'reportsTab', label: '📊 Messages Report' },
+          { tab: 'userExpiryReportTab', label: '📈 Expiry Report' },
+          { tab: 'ordersTab', label: '🧾 Order History' }
+        ],
+        more: [
+          { tab: 'catalogTab', label: '🛍️ Digital Catalog' },
+          { tab: 'changePasswordTab', label: '⚙️ Account Settings' }
+        ]
+      };
+
+      const pills = pillsMap[catKey] || [];
+      return pills.map(p => `
+        <button class="top-sub-pill ${state.currentTab === p.tab ? 'active' : ''}" onclick="switchTab('${p.tab}')">${p.label}</button>
+      `).join('');
+    }
+
     function switchTab(tabId) {
       state.currentTab = tabId;
       renderApp();
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 50);
     }
 
     function switchSubTab(subTabId) {
@@ -2843,6 +3622,11 @@
       state.plans = [];
       state.orders = [];
       state.transactions = [];
+      state.contacts = [];
+      state.autoReplies = [];
+      state.reminders = [];
+      state.catalog = null;
+      state.services = [];
       state.currentTab = 'whatsappTab';
       state.whatsappSubTab = 'textTab';
       state.publicPage = 'home';
@@ -2851,6 +3635,7 @@
     }
 
     async function fetchUserProfile() {
+     
       if (!state.token) return;
       try {
         const res = await fetch('/auth/me', {
@@ -2881,6 +3666,14 @@
         const hasActivePlan = state.plan && state.plan.status === 'active' && new Date(state.plan.expires_at) > new Date();
         if (hasActivePlan && state.user.role !== 'admin') {
           startPollingWhatsappStatus();
+        }
+        if (state.user.role !== 'admin') {
+          fetchContacts();
+          fetchTemplates();
+          fetchAutomationSettings();
+          fetchCampaigns();
+          fetchReminders();
+          fetchCatalog();
         }
         bindDashboardEvents();
       } catch (err) {
@@ -3239,7 +4032,7 @@
               <strong>${o.user_name}</strong><br>
               <span style="color: var(--text-muted); font-size: 0.75rem;">${o.user_email}</span>
             </td>
-            <td>₹${o.amount.toFixed(2)}</td>
+            <td>₹${(o.amount || 0).toFixed(2)}</td>
             <td><code>${o.utr}</code></td>
             <td>${o.bank_name} - ${o.account_name}</td>
             <td>
@@ -3324,7 +4117,7 @@
             <strong>${o.user_name || state.user?.name || 'Current User'}</strong><br>
             <span style="color: var(--text-muted); font-size: 0.75rem;">${o.user_email || state.user?.email || ''}</span>
           </td>
-          <td>â‚¹${amount.toFixed(2)}</td>
+          <td>₹${(amount || 0).toFixed(2)}</td>
           <td><code>${o.utr}</code></td>
           <td>${o.bank_name} - ${o.account_name}</td>
           <td>
@@ -3643,7 +4436,7 @@
               <span style="color: var(--text-muted); font-size: 0.75rem;">${u.phone || 'No phone'}</span>
             </td>
             <td><span class="badge ${u.role === 'admin' ? 'badge-active' : 'badge-none'}">${u.role}</span></td>
-            <td><strong>₹${u.wallet_balance.toFixed(2)}</strong></td>
+            <td><strong>₹${(u.wallet_balance || 0).toFixed(2)}</strong></td>
             <td>
               ${u.plan_status === 'active' ? `<span class="badge badge-active">Active</span>` : `<span class="badge badge-expired">Expired / None</span>`}
             </td>
@@ -4706,9 +5499,1209 @@
       if (el) el.innerHTML = '<div class="console-line system">[System] Console logs cleared.</div>';
     }
 
+    // ─── CRM rendering lists & items functions ───────────────────────────────
+    function renderContactsRows() {
+      const list = state.contacts || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No contacts found. Click Import or Add Contact to get started.</td></tr>`;
+      }
+      return list.map(c => {
+        const isExcluded = c.is_excluded === 1;
+        const btnText = isExcluded ? 'Excluded (Blocked)' : 'Active (Exclude)';
+        const btnColor = isExcluded ? 'var(--error-color)' : 'var(--accent-color)';
+        const isChecked = state.selectedContactIds.includes(c.id);
+        return `
+          <tr>
+            <td style="text-align:center;"><input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''} onchange="toggleContactCheck(${c.id}, this.checked)" style="width:auto;"></td>
+            <td>${c.name}</td>
+            <td>${c.mobile}</td>
+            <td>${c.shop_name || '-'}</td>
+            <td>${new Date(c.created_at).toLocaleDateString()}</td>
+            <td>
+              <button onclick="toggleExcludeContact(${c.id}, ${!isExcluded})" style="background:${btnColor};padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;min-width:120px;">
+                ${btnText}
+              </button>
+            </td>
+            <td>
+              <div style="display:flex; gap:0.3rem;">
+                <button onclick="openBroadcastTemplateModal(${c.id})" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;background:#6366f1;">✉️ Send Msg</button>
+                <button onclick="deleteContactEntry(${c.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderReminderRows() {
+      const list = state.reminders || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No reminders scheduled yet.</td></tr>`;
+      }
+      return list.map(r => {
+        let badgeColor = '#eab308'; // pending
+        if (r.status === 'sent') badgeColor = '#10b981';
+        if (r.status === 'failed') badgeColor = '#ef4444';
+
+        const recipientLabel = r.contact_name 
+          ? `${r.contact_name} (${r.recipient_mobile})`
+          : r.recipient_mobile;
+
+        const actionHtml = r.status === 'pending'
+          ? `<button onclick="deleteReminderEntry(${r.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">Cancel</button>`
+          : `-`;
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600;">${recipientLabel}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);white-space:pre-wrap;margin-top:0.25rem;">${r.message_template}</div>
+              ${r.error_message ? `<div style="font-size:0.7rem;color:#f87171;margin-top:0.25rem;">❌ Error: ${r.error_message}</div>` : ''}
+            </td>
+            <td>${new Date(r.scheduled_at).toLocaleString()}</td>
+            <td>
+              <span style="background:${badgeColor};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+                ${r.status.toUpperCase()}
+              </span>
+            </td>
+            <td>${actionHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderServiceCards() {
+      const list = state.services || [];
+      if (list.length === 0) {
+        return `<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:3rem;background:rgba(255,255,255,0.01);border:1px solid var(--glass-border);border-radius:12px;">No products or services listed. Click "Add Item" to add your first product.</div>`;
+      }
+      return list.map(s => {
+        const imageSrc = s.image_path ? `/${s.image_path}` : '';
+        const imgStyle = s.image_path 
+          ? `background-image:url('${imageSrc}');background-size:cover;background-position:center;height:120px;border-radius:8px 8px 0 0;`
+          : `background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;height:120px;border-radius:8px 8px 0 0;font-size:0.8rem;color:var(--text-muted);`;
+
+        const audioPlayer = s.audio_path
+          ? `<audio controls src="/${s.audio_path}" style="width:100%;margin-top:0.5rem;"></audio>`
+          : '';
+
+        return `
+          <div class="card" style="margin:0;background:rgba(15, 23, 42, 0.4);border:1px solid var(--glass-border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;height:100%;">
+            <div>
+              <div style="${imgStyle}">
+                ${s.image_path ? '' : 'No Image'}
+              </div>
+              <div style="padding:0.75rem;">
+                <div style="font-weight:700;font-size:0.9rem;color:#cbd5e1;">${s.name}</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.3;">${s.description || ''}</div>
+                ${audioPlayer}
+              </div>
+            </div>
+            <div style="padding:0.75rem;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);">
+              <span style="font-weight:800;color:#60a5fa;font-size:1.1rem;">₹${s.price}</span>
+              <button onclick="deleteCatalogService(${s.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ─── CRM fetch APIs functions ─────────────────────────────────────────────
+    async function fetchContacts() {
+      try {
+        const res = await fetch('/api/crm/contacts', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.contacts = data.contacts || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching contacts:', err);
+      }
+    }
+
+    async function fetchTemplates() {
+      try {
+        const res = await fetch('/api/crm/templates', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.templates = data.templates || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching templates:', err);
+      }
+    }
+
+    async function fetchAutomationSettings() {
+      try {
+        const res = await fetch('/api/crm/automation-settings', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.automationSettings = data.settings || null;
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching automation settings:', err);
+      }
+    }
+
+    async function fetchReminders() {
+      try {
+        const res = await fetch('/api/crm/reminders', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.reminders = data.reminders || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching reminders:', err);
+      }
+    }
+
+    async function fetchCatalog() {
+      try {
+        const res = await fetch('/api/crm/catalog', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.catalog = data.catalog || null;
+          state.services = data.services || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching catalog:', err);
+      }
+    }
+
+    // ─── CRM Contacts handlers ───────────────────────────────────────────────
+    function showAddContactModal() {
+      document.getElementById('addContactModal').style.display = 'flex';
+    }
+    function hideAddContactModal() {
+      document.getElementById('addContactModal').style.display = 'none';
+      document.getElementById('addContactModalForm').reset();
+    }
+    async function handleAddContactModalSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('modalContactName').value.trim();
+      const mobile = document.getElementById('modalContactPhone').value.trim();
+      const shop_name = document.getElementById('modalContactShop').value.trim();
+
+      try {
+        const res = await fetch('/api/crm/contacts', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, mobile, shop_name })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Contact added successfully');
+        hideAddContactModal();
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function toggleExcludeContact(contactId, isExcluded) {
+      try {
+        const res = await fetch('/api/crm/contacts/toggle-exclude', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ contactId, isExcluded })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteContactEntry(contactId) {
+      if (!confirm('Are you sure you want to delete this contact?')) return;
+      try {
+        const res = await fetch(`/api/crm/contacts/${contactId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function importContactsExcel(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/crm/contacts/import', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        alert(data.message || 'Contacts imported successfully');
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        e.target.value = '';
+      }
+    }
+
+    function filterContactsList(query) {
+      const q = query.trim().toLowerCase();
+      const rows = document.querySelectorAll('#contactsTableBody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        if (text.includes(q) || row.innerHTML.includes('No contacts found')) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    // ─── CRM Reminders handlers ──────────────────────────────────────────────
+    function handleReminderContactSelect(val) {
+      if (!val) return;
+      const select = document.getElementById('reminderContactSelect');
+      const opt = select.options[select.selectedIndex];
+      document.getElementById('reminderPhone').value = opt.getAttribute('data-phone') || '';
+      document.getElementById('reminderName').value = opt.getAttribute('data-name') || '';
+      document.getElementById('reminderShop').value = opt.getAttribute('data-shop') || '';
+    }
+
+    function handleReminderScheduleTypeChange(val) {
+      const daysGrp = document.getElementById('reminderDaysGroup');
+      const dtGrp = document.getElementById('reminderDatetimeGroup');
+      if (val === 'days') {
+        daysGrp.style.display = 'block';
+        dtGrp.style.display = 'none';
+      } else {
+        daysGrp.style.display = 'none';
+        dtGrp.style.display = 'flex';
+      }
+    }
+
+    async function saveReminder(e) {
+      e.preventDefault();
+      const contactSelect = document.getElementById('reminderContactSelect');
+      const contact_id = contactSelect.value || null;
+      const recipient_mobile = document.getElementById('reminderPhone').value.trim();
+      const recipient_name = document.getElementById('reminderName').value.trim();
+      const shop_name = document.getElementById('reminderShop').value.trim();
+      const message_template = document.getElementById('reminderTemplate').value;
+      
+      const schedType = document.getElementById('reminderScheduleType').value;
+      const send_after_days = document.getElementById('reminderDays').value;
+      const scheduled_at = document.getElementById('reminderDatetime').value;
+
+      const body = {
+        contact_id,
+        recipient_mobile,
+        recipient_name,
+        shop_name,
+        message_template
+      };
+
+      if (schedType === 'days') {
+        body.send_after_days = send_after_days;
+      } else {
+        if (!scheduled_at) {
+          alert('Please choose custom date and time');
+          return;
+        }
+        body.scheduled_at = (() => {
+          // datetime-local gives local time string without timezone offset.
+          // We must convert it to UTC correctly using the browser's offset.
+          const localVal = scheduled_at; // e.g. "2026-07-20T23:30"
+          const localDate = new Date(localVal); // JS interprets as LOCAL time
+          return localDate.toISOString(); // converts to UTC correctly
+        })();
+      }
+
+      try {
+        const res = await fetch('/api/crm/reminders', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Reminder scheduled successfully');
+        document.getElementById('reminderForm').reset();
+        handleReminderScheduleTypeChange('days');
+        fetchReminders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteReminderEntry(remId) {
+      if (!confirm('Are you sure you want to cancel this reminder?')) return;
+      try {
+        const res = await fetch(`/api/crm/reminders/${remId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchReminders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ─── CRM Digital Catalog handlers ────────────────────────────────────────
+    async function saveCatalogSettings(e) {
+      e.preventDefault();
+      const brand_name = document.getElementById('catalogBrandName').value.trim();
+      const description = document.getElementById('catalogDescription').value;
+      const logoFile = document.getElementById('catalogLogo').files[0];
+      const audioFile = document.getElementById('catalogAudio').files[0];
+
+      const formData = new FormData();
+      formData.append('brand_name', brand_name);
+      formData.append('description', description);
+      if (logoFile) formData.append('logo', logoFile);
+      if (audioFile) formData.append('catalog_audio', audioFile);
+
+      try {
+        const res = await fetch('/api/crm/catalog', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Catalog updated successfully');
+        fetchCatalog();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function showAddServiceModal() {
+      document.getElementById('addServiceModal').style.display = 'flex';
+    }
+    function hideAddServiceModal() {
+      document.getElementById('addServiceModal').style.display = 'none';
+      document.getElementById('addServiceModalForm').reset();
+    }
+    async function handleAddServiceModalSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('modalServiceName').value.trim();
+      const price = document.getElementById('modalServicePrice').value.trim();
+      const description = document.getElementById('modalServiceDescription').value.trim();
+      const imageFile = document.getElementById('modalServiceImage').files[0];
+      const audioFile = document.getElementById('modalServiceAudio').files[0];
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('price', price);
+      formData.append('description', description);
+      if (imageFile) formData.append('image', imageFile);
+      if (audioFile) formData.append('audio', audioFile);
+
+      try {
+        const res = await fetch('/api/crm/catalog/services', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Service added successfully');
+        hideAddServiceModal();
+        fetchCatalog();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteCatalogService(serviceId) {
+      if (!confirm('Are you sure you want to delete this service?')) return;
+      try {
+        const res = await fetch(`/api/crm/catalog/services/${serviceId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchCatalog();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ─── CRM Message Templates Handlers ─────────────────────────────────────
+    function renderTemplateCards() {
+      const list = state.templates || [];
+      if (list.length === 0) {
+        return `<div style="text-align:center;color:var(--text-muted);padding:2.5rem;background:rgba(255,255,255,0.01);border:1px solid var(--glass-border);border-radius:12px;">No message templates created yet. Fill out the form on the left to save your first template.</div>`;
+      }
+      return list.map(t => {
+        // Highlight placeholders for clear visual appeal
+        const formattedContent = t.content
+          .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/(\{name\}|\[name\])/gi, '<span style="color:#60a5fa;font-weight:700;">$1</span>')
+          .replace(/(\{shopname\}|\[shopname\]|\{shop\}|\[shop\])/gi, '<span style="color:#34d399;font-weight:700;">$1</span>')
+          .replace(/(\{mobile\}|\[mobile\])/gi, '<span style="color:#f59e0b;font-weight:700;">$1</span>')
+          .replace(/(\{email\}|\[email\])/gi, '<span style="color:#ec4899;font-weight:700;">$1</span>');
+
+        return `
+          <div class="card" style="margin:0;background:rgba(15, 23, 42, 0.5);border:1px solid var(--glass-border);padding:1.25rem;border-radius:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:0.5rem;">
+              <div>
+                <span style="background:rgba(99,102,241,0.2);color:#a5b4fc;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:700;text-transform:uppercase;margin-right:0.5rem;">${t.category || 'General'}</span>
+                <strong style="font-size:1rem;color:#f8fafc;">${t.title}</strong>
+              </div>
+              <div style="display:flex;gap:0.3rem;">
+                <button onclick="editTemplate(${t.id})" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;background:rgba(255,255,255,0.1);color:#fff;">✏️ Edit</button>
+                <button onclick="deleteTemplateEntry(${t.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️</button>
+              </div>
+            </div>
+            
+            <div style="font-size:0.85rem;color:#cbd5e1;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05);padding:0.75rem;border-radius:8px;white-space:pre-wrap;line-height:1.5;margin-bottom:0.75rem;">${formattedContent}</div>
+            
+            <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+              <button onclick="useTemplateInStudio(${t.id})" style="padding:0.3rem 0.75rem;font-size:0.75rem;margin:0;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;width:auto;">💬 Use in Studio</button>
+              <button onclick="openBroadcastTemplateModal(null, ${t.id})" style="padding:0.3rem 0.75rem;font-size:0.75rem;margin:0;background:linear-gradient(135deg, #6366f1, #8b5cf6);color:#fff;width:auto;">📢 Send to Contacts</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function onSingleContactSelect(mobileVal) {
+      if (!mobileVal) return;
+      const input = document.getElementById('msgTo');
+      if (input) input.value = mobileVal;
+    }
+
+    function insertPlaceholder(str, targetId) {
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      const start = el.selectionStart || el.value.length;
+      const end = el.selectionEnd || el.value.length;
+      const text = el.value;
+      el.value = text.substring(0, start) + str + text.substring(end);
+      el.focus();
+      el.selectionStart = el.selectionEnd = start + str.length;
+    }
+
+    function applyTemplateToField(templateId, targetId) {
+      if (!templateId) return;
+      const t = (state.templates || []).find(x => x.id === parseInt(templateId));
+      if (!t) return;
+      const el = document.getElementById(targetId);
+      if (el) el.value = t.content;
+    }
+
+    function useTemplateInStudio(templateId) {
+      const t = (state.templates || []).find(x => x.id === parseInt(templateId));
+      if (!t) return;
+      switchTab('whatsappTab');
+      const el = document.getElementById('msgBody');
+      if (el) el.value = t.content;
+    }
+
+    async function saveTemplate(e) {
+      e.preventDefault();
+      const title = document.getElementById('templateTitle').value.trim();
+      const category = document.getElementById('templateCategory').value;
+      const content = document.getElementById('templateContent').value.trim();
+
+      const body = { title, category, content };
+      const isEdit = !!state.editingTemplateId;
+      const url = isEdit ? `/api/crm/templates/${state.editingTemplateId}` : '/api/crm/templates';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Template saved successfully');
+        resetTemplateForm();
+        fetchTemplates();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function editTemplate(id) {
+      const t = (state.templates || []).find(x => x.id === parseInt(id));
+      if (!t) return;
+      state.editingTemplateId = t.id;
+      document.getElementById('templateTitle').value = t.title;
+      document.getElementById('templateCategory').value = t.category || 'General';
+      document.getElementById('templateContent').value = t.content;
+      document.getElementById('templateFormHeading').innerText = 'Edit Template';
+      document.getElementById('saveTemplateBtn').innerText = 'Update Template';
+      document.getElementById('cancelEditTemplateBtn').style.display = 'inline-block';
+    }
+
+    function resetTemplateForm() {
+      state.editingTemplateId = null;
+      document.getElementById('templateForm').reset();
+      document.getElementById('templateFormHeading').innerText = 'Create New Template';
+      document.getElementById('saveTemplateBtn').innerText = 'Save Template';
+      document.getElementById('cancelEditTemplateBtn').style.display = 'none';
+    }
+
+    async function deleteTemplateEntry(id) {
+      if (!confirm('Are you sure you want to delete this template?')) return;
+      try {
+        const res = await fetch(`/api/crm/templates/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        if (state.editingTemplateId === id) resetTemplateForm();
+        fetchTemplates();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ─── Contacts selection & broadcast handlers ─────────────────────────────
+    function toggleContactCheck(contactId, checked) {
+      const id = parseInt(contactId);
+      if (checked) {
+        if (!state.selectedContactIds.includes(id)) state.selectedContactIds.push(id);
+      } else {
+        state.selectedContactIds = state.selectedContactIds.filter(x => x !== id);
+      }
+      updateContactCheckUI();
+    }
+
+    function toggleSelectAllContacts(checked) {
+      const visibleRows = document.querySelectorAll('#contactsTableBody tr');
+      const ids = [];
+      visibleRows.forEach(row => {
+        const check = row.querySelector('input[type="checkbox"]');
+        if (check && check.value) {
+          check.checked = checked;
+          ids.push(parseInt(check.value));
+        }
+      });
+
+      if (checked) {
+        const set = new Set([...state.selectedContactIds, ...ids]);
+        state.selectedContactIds = Array.from(set);
+      } else {
+        const removeSet = new Set(ids);
+        state.selectedContactIds = state.selectedContactIds.filter(x => !removeSet.has(x));
+      }
+      updateContactCheckUI();
+    }
+
+    function updateContactCheckUI() {
+      const el = document.getElementById('contactCheckCount');
+      if (el) el.innerText = state.selectedContactIds.length;
+    }
+
+    function openBroadcastTemplateModal(singleContactId = null, preselectTemplateId = null) {
+      const modal = document.getElementById('broadcastTemplateModal');
+      if (!modal) return;
+
+      if (singleContactId) {
+        state.selectedContactIds = [parseInt(singleContactId)];
+        updateContactCheckUI();
+      }
+
+      // Populate template dropdown
+      const select = document.getElementById('broadcastTemplateSelect');
+      select.innerHTML = '<option value="">-- Choose Saved Template (Optional) --</option>' +
+        (state.templates || []).map(t => `<option value="${t.id}" ${preselectTemplateId === t.id ? 'selected' : ''}>${t.title} (${t.category})</option>`).join('');
+
+      if (preselectTemplateId) {
+        const t = (state.templates || []).find(x => x.id === parseInt(preselectTemplateId));
+        if (t) document.getElementById('broadcastMsgContent').value = t.content;
+      } else {
+        document.getElementById('broadcastMsgContent').value = '';
+      }
+
+      // Recipient count label
+      const countLabel = document.getElementById('broadcastRecipientCountLabel');
+      const activeCount = (state.contacts || []).filter(c => c.is_excluded !== 1).length;
+      if (state.selectedContactIds.length > 0) {
+        countLabel.innerText = `${state.selectedContactIds.length} Selected Contact(s)`;
+      } else {
+        countLabel.innerText = `All Active Contacts (${activeCount})`;
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function hideBroadcastTemplateModal() {
+      document.getElementById('broadcastTemplateModal').style.display = 'none';
+    }
+
+    function handleBroadcastTemplateSelect(templateId) {
+      if (!templateId) return;
+      const t = (state.templates || []).find(x => x.id === parseInt(templateId));
+      if (t) document.getElementById('broadcastMsgContent').value = t.content;
+    }
+
+    async function sendTemplateBroadcast(e) {
+      e.preventDefault();
+      const content = document.getElementById('broadcastMsgContent').value.trim();
+      const delayMs = parseInt(document.getElementById('broadcastDelay').value || 1500);
+
+      if (!content) {
+        alert('Please enter or select message content');
+        return;
+      }
+
+      const sendBtn = document.getElementById('submitBroadcastBtn');
+      sendBtn.disabled = true;
+      sendBtn.innerText = 'Broadcasting Messages...';
+
+      try {
+        const body = {
+          contactIds: state.selectedContactIds.length > 0 ? state.selectedContactIds : null,
+          content,
+          delayMs
+        };
+
+        const res = await fetch('/api/crm/templates/send-bulk', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(`Broadcast Completed!\n\nTotal Sent: ${data.successCount}/${data.totalCount}\nFailed: ${data.failCount}`);
+        hideBroadcastTemplateModal();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerText = '🚀 Launch Personalized Broadcast';
+      }
+    }
+
+    function toggleAwayScheduleMode(val) {
+      const inputs = document.getElementById('awayTimeInputs');
+      if (inputs) inputs.style.display = val === 'schedule' ? 'flex' : 'none';
+    }
+
+    async function saveWelcomeSettings(e) {
+      e.preventDefault();
+      const welcome_active = document.getElementById('welcomeActiveCheck').checked ? '1' : '0';
+      const welcome_text = document.getElementById('welcomeText').value.trim();
+      const mediaFile = document.getElementById('welcomeMediaFile').files[0];
+
+      const formData = new FormData();
+      formData.append('welcome_active', welcome_active);
+      formData.append('welcome_text', welcome_text);
+      if (mediaFile) formData.append('welcome_media', mediaFile);
+
+      try {
+        const res = await fetch('/api/crm/automation-settings', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert('Welcome Message settings saved successfully');
+        fetchAutomationSettings();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function saveAwaySettings(e) {
+      e.preventDefault();
+      const away_active = document.getElementById('awayActiveCheck').checked ? '1' : '0';
+      const away_text = document.getElementById('awayText').value.trim();
+      const away_schedule_type = document.getElementById('awayScheduleType').value;
+      const away_start_time = document.getElementById('awayStartTime').value;
+      const away_end_time = document.getElementById('awayEndTime').value;
+
+      const formData = new FormData();
+      formData.append('away_active', away_active);
+      formData.append('away_text', away_text);
+      formData.append('away_schedule_type', away_schedule_type);
+      formData.append('away_start_time', away_start_time);
+      formData.append('away_end_time', away_end_time);
+
+      try {
+        const res = await fetch('/api/crm/automation-settings', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert('Away Message settings saved successfully');
+        fetchAutomationSettings();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function clearConsole(consoleId) {
+      const el = document.getElementById(consoleId);
+      if (el) el.innerHTML = '<div class="console-line system">[System] Console logs cleared.</div>';
+    }
+
     // Bootstrap
     renderApp();
-  </script>
+  // ─── Campaigns Functions ──────────────────────────────────────────
+
+async function fetchCampaigns() {
+  try {
+    const res = await fetch('/api/crm/campaigns', {
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      state.campaigns = data.campaigns || [];
+      if (state.currentTab === 'campaignsTab') {
+        document.getElementById('campaignsListContainer').innerHTML = renderCampaignsList();
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch campaigns', err);
+  }
+}
+
+function renderCampaignsList() {
+  if (state.campaigns.length === 0) {
+    return `<div style="text-align:center;color:var(--text-muted);padding:2rem;">No campaigns found. Create your first broadcast campaign!</div>`;
+  }
+  return state.campaigns.map(c => {
+    let statusBadge = '';
+    let actionBtn = '';
+    
+    if (c.status === 'pending') {
+      statusBadge = `<span style="background:rgba(245,158,11,0.2);color:#fbbf24;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">PENDING</span>`;
+      actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'paused')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">Pause</button>`;
+    } else if (c.status === 'running') {
+      statusBadge = `<span style="background:rgba(99,102,241,0.2);color:#818cf8;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">RUNNING</span>`;
+      actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'paused')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">Pause</button>`;
+    } else if (c.status === 'paused') {
+      statusBadge = `<span style="background:rgba(245,158,11,0.2);color:#fbbf24;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">PAUSED</span>`;
+      actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">Resume</button>`;
+    } else if (c.status === 'completed') {
+      statusBadge = `<span style="background:rgba(16,185,129,0.2);color:#34d399;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">COMPLETED</span>`;
+    } else {
+      statusBadge = `<span style="background:rgba(239,68,68,0.2);color:#f87171;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">${c.status.toUpperCase()}</span>`;
+    }
+
+    const scheduledDate = c.scheduled_at ? new Date(c.scheduled_at).toLocaleString() : 'Immediate';
+    const totalProcessed = c.successful_deliveries + c.failed_deliveries;
+    const progressPercent = c.total_contacts > 0 ? Math.round((totalProcessed / c.total_contacts) * 100) : 0;
+
+    return `
+      <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border-color);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div style="font-size:1.1rem;font-weight:600;display:flex;align-items:center;gap:0.5rem;">${c.name} ${statusBadge}</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Scheduled: ${scheduledDate}</div>
+          </div>
+          <div style="display:flex;gap:0.5rem;">
+            ${actionBtn}
+            <button onclick="openCampaignRecipientsModal(${c.id})" style="background:rgba(255,255,255,0.1);padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">View Status</button>
+          </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div style="background:rgba(255,255,255,0.05);height:8px;border-radius:4px;overflow:hidden;">
+          <div style="background:var(--accent-color);height:100%;width:${progressPercent}%;transition:width 0.3s ease;"></div>
+        </div>
+        
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;">
+          <div style="color:var(--text-muted);">Total: <strong style="color:#fff;">${c.total_contacts}</strong></div>
+          <div style="color:#34d399;">Sent: <strong>${c.successful_deliveries}</strong></div>
+          <div style="color:#f87171;">Failed: <strong>${c.failed_deliveries}</strong></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openCreateCampaignModal() {
+  document.getElementById('createCampaignModal').style.display = 'flex';
+  renderCampaignContactsSelector();
+  
+  // Populate templates dropdown in campaign modal
+  const select = document.getElementById('campaignTemplateSelect');
+  select.innerHTML = '<option value="">-- Or Select a Saved Template --</option>' + 
+    state.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+
+function hideCreateCampaignModal() {
+  document.getElementById('createCampaignModal').style.display = 'none';
+  document.getElementById('createCampaignForm').reset();
+}
+
+function handleCampaignTemplateSelect(templateId) {
+  if (!templateId) return;
+  const tmpl = state.templates.find(t => t.id == templateId);
+  if (tmpl) {
+    document.getElementById('campaignMsgContent').value = tmpl.message_text;
+  }
+}
+
+function renderCampaignContactsSelector() {
+  const container = document.getElementById('campaignContactsGrid');
+  if (state.contacts.length === 0) {
+    container.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;">No contacts available.</div>`;
+    return;
+  }
+  container.innerHTML = state.contacts.map(c => `
+    <label style="display:flex;align-items:center;gap:0.5rem;background:rgba(255,255,255,0.03);padding:0.5rem;border-radius:6px;cursor:pointer;">
+      <input type="checkbox" name="campaignContact" value="${c.id}" checked style="width:auto;">
+      <div style="font-size:0.85rem;line-height:1.2;">
+        <div style="color:#fff;">${c.name}</div>
+        <div style="color:var(--text-muted);font-size:0.75rem;">${c.mobile}</div>
+      </div>
+    </label>
+  `).join('');
+}
+
+function toggleCampaignContactsSelectAll(checkbox) {
+  const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
+  checkboxes.forEach(cb => cb.checked = checkbox.checked);
+}
+
+async function handleCreateCampaignSubmit(e) {
+  e.preventDefault();
+  const checkboxes = document.querySelectorAll('input[name="campaignContact"]:checked');
+  if (checkboxes.length === 0) {
+    return alert('Please select at least one contact for the campaign.');
+  }
+
+  const selectedContacts = Array.from(checkboxes).map(cb => {
+    const contact = state.contacts.find(c => c.id == cb.value);
+    return contact;
+  }).filter(c => c);
+
+  const name = document.getElementById('campaignName').value;
+  const message_text = document.getElementById('campaignMsgContent').value;
+  let scheduled_at = document.getElementById('campaignScheduledAt').value;
+  
+  if (scheduled_at) {
+    // Format to local ISO string without Z to be consistent or just rely on datetime-local
+    scheduled_at = new Date(scheduled_at).toISOString().slice(0, 19).replace('T', ' ');
+  }
+
+  const mediaFile = document.getElementById('campaignMedia').files[0];
+  
+  const formData = new FormData();
+  formData.append('name', name);
+  formData.append('message_text', message_text);
+  if (scheduled_at) formData.append('scheduled_at', scheduled_at);
+  formData.append('contactsStr', JSON.stringify(selectedContacts));
+  if (mediaFile) formData.append('media', mediaFile);
+
+  const btn = document.getElementById('submitCampaignBtn');
+  btn.innerText = 'Creating...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/crm/campaigns', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${state.token}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('Campaign created successfully!');
+      hideCreateCampaignModal();
+      fetchCampaigns();
+    } else {
+      alert(data.error || 'Failed to create campaign');
+    }
+  } catch (err) {
+    alert('An error occurred');
+  } finally {
+    btn.innerText = 'Launch Campaign';
+    btn.disabled = false;
+  }
+}
+
+async function updateCampaignStatus(campaignId, status) {
+  if (!confirm(`Are you sure you want to change campaign status to ${status}?`)) return;
+  try {
+    const res = await fetch(`/api/crm/campaigns/${campaignId}/status`, {
+      method: 'PUT',
+      headers: { 
+        'Authorization': `Bearer ${state.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status })
+    });
+    if (res.ok) {
+      fetchCampaigns();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Failed to update status');
+    }
+  } catch (err) {
+    alert('An error occurred');
+  }
+}
+
+async function openCampaignRecipientsModal(campaignId) {
+  document.getElementById('campaignRecipientsModal').style.display = 'flex';
+  const container = document.getElementById('campaignRecipientsList');
+  container.innerHTML = '<div style="text-align:center;padding:1rem;">Loading...</div>';
+
+  try {
+    const res = await fetch(`/api/crm/campaigns/${campaignId}/recipients`, {
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.recipients.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted);text-align:center;">No recipients found.</div>';
+        return;
+      }
+
+      container.innerHTML = data.recipients.map(r => {
+        let badge = '';
+        if (r.status === 'pending') badge = `<span style="color:#fbbf24;font-size:0.8rem;">Pending</span>`;
+        else if (r.status === 'sent') badge = `<span style="color:#34d399;font-size:0.8rem;">Sent</span>`;
+        else if (r.status === 'failed') badge = `<span style="color:#f87171;font-size:0.8rem;">Failed</span>`;
+        
+        const errorHtml = r.error_message ? `<div style="color:#f87171;font-size:0.75rem;margin-top:0.25rem;">${r.error_message}</div>` : '';
+        const sentHtml = r.sent_at ? `<div style="color:var(--text-muted);font-size:0.7rem;margin-top:0.25rem;">${new Date(r.sent_at).toLocaleString()}</div>` : '';
+
+        return `
+          <div style="background:rgba(255,255,255,0.03);padding:0.75rem;border-radius:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-weight:600;font-size:0.9rem;">${r.name || 'Unknown'}</div>
+                <div style="color:var(--text-muted);font-size:0.8rem;">${r.mobile}</div>
+              </div>
+              <div>${badge}</div>
+            </div>
+            ${errorHtml}
+            ${sentHtml}
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (err) {
+    container.innerHTML = '<div style="color:#f87171;text-align:center;">Failed to load.</div>';
+  }
+}
+
+function hideCampaignRecipientsModal() {
+  document.getElementById('campaignRecipientsModal').style.display = 'none';
+}
+
+// Poll for updates if viewing campaigns tab
+setInterval(() => {
+  if ((state.currentTab === 'campaignsTab' || state.currentTab === 'campaignAnalyticsTab' || state.currentTab === 'campaignSchedulerTab' || state.currentTab === 'reportsTab') && state.user && state.user.role !== 'admin') {
+    fetchCampaigns();
+  }
+}, 5000);
+
+// ─── New Sidebar Tab Helper Functions ────────────────────────────────────────
+
+function renderCampaignAnalytics() {
+  if (!state.campaigns || state.campaigns.length === 0) {
+    return `<div style="text-align:center;color:var(--text-muted);padding:2rem;">No campaign data yet. Create your first campaign to see analytics here.</div>`;
+  }
+
+  const totalCampaigns = state.campaigns.length;
+  const totalSent = state.campaigns.reduce((s, c) => s + (c.successful_deliveries || 0), 0);
+  const totalFailed = state.campaigns.reduce((s, c) => s + (c.failed_deliveries || 0), 0);
+  const totalContacts = state.campaigns.reduce((s, c) => s + (c.total_contacts || 0), 0);
+  const successRate = totalContacts > 0 ? Math.round((totalSent / totalContacts) * 100) : 0;
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;">
+      <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#818cf8;">${totalCampaigns}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📢 Total Campaigns</div>
+      </div>
+      <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#34d399;">${totalSent}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">✅ Total Delivered</div>
+      </div>
+      <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#f87171;">${totalFailed}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">❌ Total Failed</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#fbbf24;">${successRate}%</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📈 Success Rate</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;overflow:hidden;">
+      <div style="padding:1rem;font-size:0.9rem;font-weight:600;border-bottom:1px solid var(--glass-border);">All Campaign Performance</div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+          <thead>
+            <tr style="background:rgba(255,255,255,0.03);">
+              <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;">Campaign</th>
+              <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;">Status</th>
+              <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;">Total</th>
+              <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;">✅ Sent</th>
+              <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;">❌ Failed</th>
+              <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;">Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${state.campaigns.map(c => {
+              const rate = c.total_contacts > 0 ? Math.round((c.successful_deliveries / c.total_contacts) * 100) : 0;
+              const statusColors = { pending:'#fbbf24', running:'#818cf8', paused:'#fbbf24', completed:'#34d399', cancelled:'#f87171' };
+              return `<tr style="border-top:1px solid var(--glass-border);">
+                <td style="padding:0.75rem 1rem;font-weight:500;">${c.name}</td>
+                <td style="padding:0.75rem 1rem;text-align:center;"><span style="color:${statusColors[c.status]||'#94a3b8'};font-size:0.75rem;font-weight:700;">${c.status.toUpperCase()}</span></td>
+                <td style="padding:0.75rem 1rem;text-align:center;">${c.total_contacts}</td>
+                <td style="padding:0.75rem 1rem;text-align:center;color:#34d399;">${c.successful_deliveries}</td>
+                <td style="padding:0.75rem 1rem;text-align:center;color:#f87171;">${c.failed_deliveries}</td>
+                <td style="padding:0.75rem 1rem;text-align:center;color:#fbbf24;font-weight:700;">${rate}%</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderScheduledCampaigns() {
+  if (!state.campaigns || state.campaigns.length === 0) {
+    return `<div style="text-align:center;color:var(--text-muted);padding:2rem;">No campaigns scheduled. Click "+ Schedule New Campaign" to create one.</div>`;
+  }
+  // Show pending and running campaigns (the ones relevant for scheduling)
+  const active = state.campaigns.filter(c => c.status === 'pending' || c.status === 'running' || c.status === 'paused');
+  if (active.length === 0) {
+    return `<div style="text-align:center;color:var(--text-muted);padding:2rem;">No pending or running campaigns. All campaigns completed!</div>`;
+  }
+  return active.map(c => {
+    const scheduledDate = c.scheduled_at ? new Date(c.scheduled_at).toLocaleString() : 'Immediate / Now';
+    const statusColors = { pending:'rgba(245,158,11,0.15)', running:'rgba(99,102,241,0.15)', paused:'rgba(245,158,11,0.1)' };
+    const textColors = { pending:'#fbbf24', running:'#818cf8', paused:'#fbbf24' };
+    return `
+      <div style="background:${statusColors[c.status]||'rgba(255,255,255,0.02)'};border:1px solid var(--glass-border);border-radius:12px;padding:1.25rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+        <div>
+          <div style="font-weight:600;font-size:1rem;">${c.name}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">🗓️ ${scheduledDate} &nbsp;|&nbsp; <span style="color:${textColors[c.status]};font-weight:700;">${c.status.toUpperCase()}</span></div>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">👥 ${c.total_contacts} contacts &nbsp;|&nbsp; ✅ ${c.successful_deliveries} sent &nbsp;|&nbsp; ❌ ${c.failed_deliveries} failed</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          ${c.status === 'paused' ? `<button onclick="updateCampaignStatus(${c.id},'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.35rem 0.85rem;font-size:0.8rem;width:auto;">▶ Resume</button>` : ''}
+          ${c.status === 'running' || c.status === 'pending' ? `<button onclick="updateCampaignStatus(${c.id},'paused')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;padding:0.35rem 0.85rem;font-size:0.8rem;width:auto;">⏸ Pause</button>` : ''}
+          <button onclick="openCampaignRecipientsModal(${c.id})" style="background:rgba(255,255,255,0.08);padding:0.35rem 0.85rem;font-size:0.8rem;width:auto;">📊 Status</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderReportsTable() {
+  if (!state.campaigns || state.campaigns.length === 0) {
+    return `<div style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:1rem;">No data yet.</div>`;
+  }
+  return `
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead>
+          <tr style="background:rgba(255,255,255,0.03);">
+            <th style="padding:0.6rem 0.75rem;text-align:left;color:var(--text-muted);">Campaign</th>
+            <th style="padding:0.6rem 0.75rem;text-align:center;color:var(--text-muted);">Sent</th>
+            <th style="padding:0.6rem 0.75rem;text-align:center;color:var(--text-muted);">Failed</th>
+            <th style="padding:0.6rem 0.75rem;text-align:center;color:var(--text-muted);">Rate</th>
+            <th style="padding:0.6rem 0.75rem;text-align:left;color:var(--text-muted);">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.campaigns.slice(0, 10).map(c => {
+            const rate = c.total_contacts > 0 ? Math.round((c.successful_deliveries / c.total_contacts) * 100) : 0;
+            return `<tr style="border-top:1px solid var(--glass-border);">
+              <td style="padding:0.6rem 0.75rem;font-weight:500;">${c.name}</td>
+              <td style="padding:0.6rem 0.75rem;text-align:center;color:#34d399;">${c.successful_deliveries}</td>
+              <td style="padding:0.6rem 0.75rem;text-align:center;color:#f87171;">${c.failed_deliveries}</td>
+              <td style="padding:0.6rem 0.75rem;text-align:center;font-weight:700;color:${rate>=80?'#34d399':rate>=50?'#fbbf24':'#f87171'}">${rate}%</td>
+              <td style="padding:0.6rem 0.75rem;color:var(--text-muted);font-size:0.75rem;">${new Date(c.created_at).toLocaleDateString()}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function exportContactsExcel() {
+  if (!state.contacts || state.contacts.length === 0) {
+    return alert('No contacts to export.');
+  }
+  // Build CSV
+  const headers = ['Name', 'Mobile', 'Shop Name', 'Email', 'Notes', 'Excluded'];
+  const rows = state.contacts.map(c => [
+    c.name || '', c.mobile || '', c.shop_name || '', c.email || '', c.notes || '', c.is_excluded ? 'Yes' : 'No'
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `contacts_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+</script>
 
   <!-- JWT Token Modal -->
   <div id="tokenModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
@@ -4726,7 +6719,7 @@
         <code id="tokenModalValue" style="font-size:0.72rem; color:#a5b4fc; word-break:break-all; line-height:1.6; display:block; font-family:Consolas,'Courier New',monospace;"></code>
       </div>
 
-      <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); border-radius:8px; padding:0.75rem; margin-bottom:1.25rem;">
+      <div style="background:rgba(99, 102, 241, 0.08); border:1px solid rgba(99, 102, 241, 0.25); border-radius:8px; padding:0.75rem; margin-bottom:1.25rem;">
         <div style="font-size:0.78rem; color:#94a3b8; line-height:1.6;">
           Use this token in API requests as:<br>
           <code style="color:#a5b4fc; font-size:0.75rem;">Authorization: Bearer &lt;token&gt;</code><br><br>
@@ -4741,6 +6734,204 @@
       </div>
     </div>
   </div>
-      
+
+  <!-- Add Contact Modal -->
+  <div id="addContactModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:450px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+        <div style="font-size:1.1rem; font-weight:700; color:#e2e8f0;">➕ Add New Contact</div>
+        <button onclick="hideAddContactModal()" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px; line-height:1;">✕</button>
+      </div>
+
+      <form id="addContactModalForm" onsubmit="handleAddContactModalSubmit(event)" style="display:flex; flex-direction:column; gap:1rem;">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="modalContactName" required placeholder="e.g. John Doe">
+        </div>
+        <div class="form-group">
+          <label>Mobile Number (with country code)</label>
+          <input type="text" id="modalContactPhone" required placeholder="e.g. 919876543210">
+        </div>
+        <div class="form-group">
+          <label>Shop / Business Name (Optional)</label>
+          <input type="text" id="modalContactShop" placeholder="e.g. Apex Traders">
+        </div>
+        <button type="submit">Save Contact</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Service Item Modal -->
+  <div id="addServiceModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:480px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+        <div style="font-size:1.1rem; font-weight:700; color:#e2e8f0;">➕ Add Service / Product Item</div>
+        <button onclick="hideAddServiceModal()" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px; line-height:1;">✕</button>
+      </div>
+
+      <form id="addServiceModalForm" onsubmit="handleAddServiceModalSubmit(event)" style="display:flex; flex-direction:column; gap:1rem;">
+        <div class="form-group">
+          <label>Service / Product Name</label>
+          <input type="text" id="modalServiceName" required placeholder="e.g. Professional Consulting">
+        </div>
+        <div class="form-group">
+          <label>Price (₹)</label>
+          <input type="number" id="modalServicePrice" required min="0" placeholder="e.g. 999">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="modalServiceDescription" rows="2" placeholder="Describe the service..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Upload Item Image (Optional)</label>
+          <input type="file" id="modalServiceImage" accept="image/*">
+        </div>
+        <div class="form-group">
+          <label>Upload Item Audio Description (Optional)</label>
+          <input type="file" id="modalServiceAudio" accept="audio/*">
+        </div>
+        <button type="submit">Create Service Item</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Broadcast Template Modal -->
+  <div id="broadcastTemplateModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:550px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+        <div>
+          <div style="font-size:1.1rem; font-weight:700; color:#e2e8f0;">📢 Send Template Broadcast</div>
+          <div style="font-size:0.8rem; color:#a5b4fc; margin-top:0.2rem;">Recipient Target: <span id="broadcastRecipientCountLabel" style="font-weight:700; color:#34d399;">All Active Contacts</span></div>
+        </div>
+        <button onclick="hideBroadcastTemplateModal()" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px; line-height:1;">✕</button>
+      </div>
+
+      <form id="broadcastTemplateForm" onsubmit="sendTemplateBroadcast(event)" style="display:flex; flex-direction:column; gap:1rem;">
+        <div class="form-group">
+          <label>Select Saved Template</label>
+          <select id="broadcastTemplateSelect" onchange="handleBroadcastTemplateSelect(this.value)">
+            <option value="">-- Choose Saved Template --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Message Content (Personalized)</label>
+          <textarea id="broadcastMsgContent" rows="5" required placeholder="Select a template above or type your personalized message here..."></textarea>
+          
+          <div style="margin-top:0.5rem;">
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:</div>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+              <button type="button" onclick="insertPlaceholder('{Name}', 'broadcastMsgContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Name}</button>
+              <button type="button" onclick="insertPlaceholder('{ShopName}', 'broadcastMsgContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {ShopName}</button>
+              <button type="button" onclick="insertPlaceholder('{Mobile}', 'broadcastMsgContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Mobile}</button>
+              <button type="button" onclick="insertPlaceholder('{Email}', 'broadcastMsgContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Email}</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Delay Between Messages (ms)</label>
+          <input type="number" id="broadcastDelay" value="1500" min="500" step="500" placeholder="1500 ms (1.5s)">
+          <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.2rem;">Recommended delay of 1500ms to prevent WhatsApp rate limits.</div>
+        </div>
+
+        <button type="submit" id="submitBroadcastBtn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">🚀 Launch Personalized Broadcast</button>
+      </form>
+    </div>
+  </div>
+        <!-- Create Campaign Modal -->
+  <div id="createCampaignModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem; overflow-y:auto;">
+    <div style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:650px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5); max-height:90vh; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <div>
+          <div style="font-size:1.2rem; font-weight:700; color:#e2e8f0;">📢 Create New Campaign</div>
+          <div style="font-size:0.8rem; color:#a5b4fc; margin-top:0.2rem;">Schedule a personalized broadcast to your contacts</div>
+        </div>
+        <button onclick="hideCreateCampaignModal()" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px;">✕</button>
+      </div>
+
+      <form id="createCampaignForm" onsubmit="handleCreateCampaignSubmit(event)" style="display:flex; flex-direction:column; gap:1.25rem;">
+        
+        <!-- Campaign Name -->
+        <div class="form-group">
+          <label>Campaign Name</label>
+          <input type="text" id="campaignName" required placeholder="e.g. Diwali Sale Offer 2025">
+        </div>
+
+        <!-- Template Selector -->
+        <div class="form-group">
+          <label>Select from Saved Templates (Optional)</label>
+          <select id="campaignTemplateSelect" onchange="handleCampaignTemplateSelect(this.value)">
+            <option value="">-- Or Select a Saved Template --</option>
+          </select>
+        </div>
+
+        <!-- Message Text -->
+        <div class="form-group">
+          <label>Message Content</label>
+          <textarea id="campaignMsgContent" rows="5" required placeholder="Type your personalized message here..."></textarea>
+          <div style="margin-top:0.5rem;">
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:</div>
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+              <button type="button" onclick="insertPlaceholder('{Name}', 'campaignMsgContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Name}</button>
+              <button type="button" onclick="insertPlaceholder('{ShopName}', 'campaignMsgContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {ShopName}</button>
+              <button type="button" onclick="insertPlaceholder('{Mobile}', 'campaignMsgContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Mobile}</button>
+              <button type="button" onclick="insertPlaceholder('{Email}', 'campaignMsgContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Email}</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Media Attachment -->
+        <div class="form-group">
+          <label>Attach Media (Optional)</label>
+          <input type="file" id="campaignMedia" accept="image/*,video/*,audio/*,.pdf">
+          <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.2rem;">Supports images, videos, audio, PDFs</div>
+        </div>
+
+        <!-- Schedule -->
+        <div class="form-group">
+          <label>Send Time</label>
+          <select id="campaignSendMode" onchange="document.getElementById('campaignScheduleRow').style.display = this.value === 'schedule' ? 'block' : 'none'">
+            <option value="immediate">Send Immediately</option>
+            <option value="schedule">Schedule for Later</option>
+          </select>
+        </div>
+
+        <div id="campaignScheduleRow" style="display:none;" class="form-group">
+          <label>Scheduled Date & Time (Your Local Time)</label>
+          <input type="datetime-local" id="campaignScheduledAt">
+        </div>
+
+        <!-- Contact Selection -->
+        <div class="form-group">
+          <label style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Select Recipients</span>
+            <label style="font-size:0.8rem;font-weight:normal;display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;">
+              <input type="checkbox" checked onchange="toggleCampaignContactsSelectAll(this)" style="width:auto;"> Select All
+            </label>
+          </label>
+          <div id="campaignContactsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.5rem;max-height:180px;overflow-y:auto;padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid var(--border-color);">
+            <div style="color:var(--text-muted);font-size:0.85rem;">Loading contacts...</div>
+          </div>
+        </div>
+
+        <button type="submit" id="submitCampaignBtn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6); font-size:1rem;">🚀 Launch Campaign</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Campaign Delivery Status Modal -->
+  <div id="campaignRecipientsModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:520px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5); max-height:85vh; display:flex; flex-direction:column;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-shrink:0;">
+        <div style="font-size:1.1rem; font-weight:700; color:#e2e8f0;">📊 Delivery Status</div>
+        <button onclick="hideCampaignRecipientsModal()" style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px;">✕</button>
+      </div>
+      <div id="campaignRecipientsList" style="display:flex; flex-direction:column; gap:0.6rem; overflow-y:auto; flex:1;">
+        <div style="text-align:center; padding:1rem; color:var(--text-muted);">Loading...</div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

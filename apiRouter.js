@@ -11,6 +11,7 @@ import {
 } from './sessionManager.js';
 import { authMiddleware } from './middleware/authMiddleware.js';
 import { planMiddleware } from './middleware/planMiddleware.js';
+import { getContactByMobile, getUserById } from './db.js';
 import multer from 'multer';
 import xlsx from 'xlsx';
 import path from 'path';
@@ -106,9 +107,30 @@ router.post('/message/send', async (req, res) => {
   }
 
   try {
+    let finalMessage = message || '';
+    if (finalMessage) {
+      const contact = getContactByMobile(req.user.id, recipientPhone);
+      const user = getUserById(req.user.id);
+      const nameVal = contact?.name || '';
+      const shopVal = contact?.shop_name || '';
+      const mobileVal = contact?.mobile || recipientPhone;
+      const emailVal = contact?.email || user?.email || '';
+
+      finalMessage = finalMessage.replace(/\{name\}/gi, nameVal);
+      finalMessage = finalMessage.replace(/\[name\]/gi, nameVal);
+      finalMessage = finalMessage.replace(/\{shopname\}/gi, shopVal);
+      finalMessage = finalMessage.replace(/\[shopname\]/gi, shopVal);
+      finalMessage = finalMessage.replace(/\{shop\}/gi, shopVal);
+      finalMessage = finalMessage.replace(/\[shop\]/gi, shopVal);
+      finalMessage = finalMessage.replace(/\{mobile\}/gi, mobileVal);
+      finalMessage = finalMessage.replace(/\[mobile\]/gi, mobileVal);
+      finalMessage = finalMessage.replace(/\{email\}/gi, emailVal);
+      finalMessage = finalMessage.replace(/\[email\]/gi, emailVal);
+    }
+
     const result = mediaUrl && mediaType
-      ? await sendMediaToJid(userId, recipientPhone, mediaUrl, mediaType, caption || message || '', fileName, mimetype)
-      : await sendMessageToJid(userId, recipientPhone, message);
+      ? await sendMediaToJid(userId, recipientPhone, mediaUrl, mediaType, caption || finalMessage || '', fileName, mimetype)
+      : await sendMessageToJid(userId, recipientPhone, finalMessage);
     return res.json({
       success: true,
       message: mediaUrl && mediaType ? 'Media sent successfully' : 'Message sent successfully',

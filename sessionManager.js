@@ -3,17 +3,22 @@ import pino from 'pino';
 import QRCode from 'qrcode';
 import fs from 'fs/promises';
 import path from 'path';
+import { isContactExcluded, getContactByMobile, getUserById, getAutomationSettings } from './db.js';
+
 
 // Memory stores for active connections and statuses
 export const sessions = new Map();
 export const sessionStatus = new Map();
 export const qrCodes = new Map();
 const reconnectCount = new Map();
+const lastWelcomeSentMap = new Map();
+const lastAwaySentMap = new Map();
+
 const sessionsDir = process.env.SESSION_DIR || './sessions';
 
 function normalizeTargetJid(to) {
   let jid = to.trim();
-  if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@g.us')) {
+  if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@g.us') && !jid.endsWith('@lid')) {
     const cleanNumber = jid.replace(/\D/g, '');
     jid = `${cleanNumber}@s.whatsapp.net`;
   }
@@ -23,14 +28,25 @@ function normalizeTargetJid(to) {
 async function prepareDirectMessageSession(sock, jid) {
   if (jid.endsWith('@g.us')) return;
 
-  const lookup = await sock.onWhatsApp(jid);
-  const matched = lookup?.find(item => item.exists);
-  if (!matched) {
-    throw new Error(`Recipient is not available on WhatsApp: ${jid.split('@')[0]}`);
+  try {
+    const lookup = await sock.onWhatsApp(jid);
+    const matched = lookup?.find(item => item.exists);
+    if (!matched) {
+      console.log(`[Warning] Recipient ${jid.split('@')[0]} not verified by onWhatsApp lookup. Proceeding to send anyway.`);
+    }
+  } catch (err) {
+    console.log(`[Warning] onWhatsApp check failed for ${jid.split('@')[0]}: ${err.message}. Proceeding to send anyway.`);
   }
 
-  await sock.presenceSubscribe(jid).catch(() => {});
-  await sock.assertSessions([jid], true);
+  try {
+    await sock.presenceSubscribe(jid);
+  } catch (e) {}
+
+  try {
+    await sock.assertSessions([jid], true);
+  } catch (e) {
+    console.log(`[Warning] assertSessions failed for ${jid.split('@')[0]}: ${e.message}`);
+  }
 }
 
 /**
@@ -81,6 +97,19 @@ export async function initSession(userId) {
   sessions.set(userId, sock);
 
   sock.ev.on('creds.update', saveCreds);
+
+  sock.ev.on('messages.upsert', async (m) => {
+    if (m.type !== 'notify') return;
+    for (const msg of m.messages) {
+      try {
+        console.log(`[Message Received] from: ${msg.key.remoteJid}, isFromMe: ${msg.key.fromMe}`);
+        await handleIncomingAutoResponse(userId, sock, msg);
+      } catch (err) {
+        console.error(`[AutoResponse Error] Failed for user ${userId}:`, err);
+      }
+    }
+  });
+
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
@@ -380,6 +409,127 @@ export async function getProfileInfo(userId, targetJid) {
 }
 
 /**
+ * Helper: extracts text content from Baileys message
+ */
+function getMessageText(message) {
+  if (!message) return '';
+  if (message.conversation) return message.conversation;
+  if (message.extendedTextMessage?.text) return message.extendedTextMessage.text;
+  if (message.imageMessage?.caption) return message.imageMessage.caption;
+  if (message.videoMessage?.caption) return message.videoMessage.caption;
+  if (message.ephemeralMessage?.message) return getMessageText(message.ephemeralMessage.message);
+  if (message.viewOnceMessage?.message) return getMessageText(message.viewOnceMessage.message);
+  return '';
+}
+
+/**
+ * Helper: checks if current time falls within start and end time (supports overnight HH:MM)
+ */
+function isTimeInSchedule(startTimeStr, endTimeStr) {
+  if (!startTimeStr || !endTimeStr) return true;
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const [sH, sM] = startTimeStr.split(':').map(Number);
+  const [eH, eM] = endTimeStr.split(':').map(Number);
+  const startMinutes = sH * 60 + sM;
+  const endMinutes = eH * 60 + eM;
+
+  if (startMinutes <= endMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  } else {
+    // Overnight schedule (e.g. 19:00 to 09:00)
+    return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+  }
+}
+
+/**
+ * Helper: replaces placeholders {Name}, {ShopName}, {Mobile}, {Email}
+ */
+function resolveAutoPlaceholders(text, userId, fromPhone) {
+  if (!text) return '';
+  const contact = getContactByMobile(userId, fromPhone);
+  const user = getUserById(userId);
+
+  const nameVal = contact?.name || 'Customer';
+  const shopVal = contact?.shop_name || 'Store';
+  const mobileVal = contact?.mobile || fromPhone;
+  const emailVal = contact?.email || user?.email || '';
+
+  let res = text;
+  res = res.replace(/\{name\}/gi, nameVal).replace(/\[name\]/gi, nameVal);
+  res = res.replace(/\{shopname\}/gi, shopVal).replace(/\[shopname\]/gi, shopVal);
+  res = res.replace(/\{shop\}/gi, shopVal).replace(/\[shop\]/gi, shopVal);
+  res = res.replace(/\{mobile\}/gi, mobileVal).replace(/\[mobile\]/gi, mobileVal);
+  res = res.replace(/\{email\}/gi, emailVal).replace(/\[email\]/gi, emailVal);
+  return res;
+}
+
+/**
+ * Processes incoming WhatsApp messages for Welcome & Away auto-responses
+ */
+async function handleIncomingAutoResponse(userId, sock, msg) {
+  const fromJid = msg.key.remoteJid;
+  if (!fromJid || fromJid.endsWith('@g.us') || fromJid === 'status@broadcast' || msg.key.fromMe) {
+    return;
+  }
+
+  const fromPhone = fromJid.split('@')[0];
+
+  // 1. Check if contact is excluded/blocked
+  if (isContactExcluded(userId, fromPhone)) {
+    return;
+  }
+
+  // 2. We don't block entirely here, we check rate limits specifically per feature.
+  const rateLimitKey = `${userId}_${fromPhone}`;
+
+  // 3. Fetch automation settings
+  const settings = getAutomationSettings(userId);
+  let repliedWelcome = false;
+
+  // 4. Welcome Message check (Once per 24 hours per user)
+  if (settings.welcome_active === 1 && settings.welcome_text) {
+    const lastWelcomeTime = lastWelcomeSentMap.get(rateLimitKey) || 0;
+    // 24 hours cooldown (86400000 ms)
+    if (Date.now() - lastWelcomeTime >= 86400000) {
+      const welcomeMsg = resolveAutoPlaceholders(settings.welcome_text, userId, fromPhone);
+      console.log(`[AutoResponse Welcome] User ${userId} sending Welcome Message to ${fromPhone}`);
+      
+      lastWelcomeSentMap.set(rateLimitKey, Date.now());
+
+      if (settings.welcome_media_path && settings.welcome_media_type) {
+        await sendMediaToJid(userId, fromJid, settings.welcome_media_path, settings.welcome_media_type, welcomeMsg);
+      } else {
+        await sendMessageToJid(userId, fromJid, welcomeMsg);
+      }
+      repliedWelcome = true;
+    }
+  }
+
+  // 5. Away Message check (60-second rate limit to prevent spam loops)
+  if (settings.away_active === 1 && settings.away_text) {
+    // If it's a schedule, the away time is when it's NOT in the schedule (NOT in business hours)
+    const isAwayTime = settings.away_schedule_type === 'schedule'
+      ? !isTimeInSchedule(settings.away_start_time, settings.away_end_time)
+      : true;
+
+    if (isAwayTime) {
+      const lastAwayTime = lastAwaySentMap.get(rateLimitKey) || 0;
+      // 60 seconds cooldown for away messages
+      if (Date.now() - lastAwayTime >= 60000) {
+        const awayMsg = resolveAutoPlaceholders(settings.away_text, userId, fromPhone);
+        console.log(`[AutoResponse Away] User ${userId} sending Away Message to ${fromPhone}`);
+        
+        lastAwaySentMap.set(rateLimitKey, Date.now());
+        await sendMessageToJid(userId, fromJid, awayMsg);
+      }
+    }
+  }
+}
+
+
+/**
  * Scans directories on server start and restores previous sessions in the background.
  */
 export async function restoreAllSessions() {
@@ -425,3 +575,4 @@ export async function waitForSessionState(userId, targetStates, timeoutMs = 8000
     }, 200);
   });
 }
+

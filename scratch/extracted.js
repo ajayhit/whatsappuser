@@ -19,6 +19,11 @@
       
       // Dynamic lists fetched on profile sync
       banks: [],
+      contacts: [],
+      autoReplies: [],
+      reminders: [],
+      catalog: null,
+      services: [],
       planPrice: 149,
       
       // Admin-only caches
@@ -1019,6 +1024,10 @@
           <div class="card">
             <div class="tabs-nav">
               <button class="tab-btn ${state.currentTab === 'whatsappTab' ? 'active' : ''}" onclick="switchTab('whatsappTab')">WhatsApp Studio</button>
+              <button class="tab-btn ${state.currentTab === 'contactsTab' ? 'active' : ''}" onclick="switchTab('contactsTab')">Contacts</button>
+              <button class="tab-btn ${state.currentTab === 'autoReplyTab' ? 'active' : ''}" onclick="switchTab('autoReplyTab')">Auto Reply</button>
+              <button class="tab-btn ${state.currentTab === 'remindersTab' ? 'active' : ''}" onclick="switchTab('remindersTab')">Reminders</button>
+              <button class="tab-btn ${state.currentTab === 'catalogTab' ? 'active' : ''}" onclick="switchTab('catalogTab')">Digital Catalog</button>
               <button class="tab-btn ${state.currentTab === 'ordersTab' ? 'active' : ''}" onclick="switchTab('ordersTab')">Order History</button>
               <button class="tab-btn ${state.currentTab === 'userExpiryReportTab' ? 'active' : ''}" onclick="switchTab('userExpiryReportTab')">Expiry Report</button>
               <button class="tab-btn ${state.currentTab === 'apiDocsTab' ? 'active' : ''}" onclick="switchTab('apiDocsTab')">API Docs</button>
@@ -1410,6 +1419,229 @@
               
               <div class="docs-container" style="background: rgba(0,0,0,0.25); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border); max-height: 550px; overflow-y: auto; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.05);">
                 <pre style="white-space: pre-wrap; font-size: 0.85rem; margin: 0; font-family: 'Consolas', 'Courier New', monospace; line-height: 1.6;" id="apiDocsContent">Loading documentation...</pre>
+              </div>
+            </div>
+
+            <!-- TAB: Contacts Directory -->
+            <div id="contactsTab" class="tab-content ${state.currentTab === 'contactsTab' ? 'active' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+                <div class="card-title" style="margin-bottom:0;">CRM Contacts Directory</div>
+                <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                  <button onclick="document.getElementById('excelContactInput').click()" style="background:var(--accent-color);">📥 Import Excel</button>
+                  <input type="file" id="excelContactInput" accept=".xlsx,.xls" style="display:none;" onchange="importContactsExcel(event)">
+                  <button onclick="showAddContactModal()" class="btn-secondary">➕ Add Contact</button>
+                </div>
+              </div>
+
+              <div style="margin-bottom:1rem; width:100%; max-width:400px;">
+                <input type="text" id="contactSearchInput" placeholder="Search contacts by name, phone or shop..." oninput="filterContactsList(this.value)" style="padding:0.6rem;font-size:0.85rem;">
+              </div>
+
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Mobile Phone</th>
+                      <th>Shop Name</th>
+                      <th>Date Added</th>
+                      <th>Block List (Exclude)</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="contactsTableBody">
+                    ${renderContactsRows()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- TAB: Auto Reply Rules -->
+            <div id="autoReplyTab" class="tab-content ${state.currentTab === 'autoReplyTab' ? 'active' : ''}">
+              <div class="card-title">Auto-Reply Configuration</div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Create Auto-Reply Rule</h4>
+                  <form id="autoReplyForm" onsubmit="saveAutoReplyRule(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label>Match Type</label>
+                      <select id="replyMatchType" onchange="handleMatchTypeChange(this.value)" required>
+                        <option value="contains">Contains Keyword</option>
+                        <option value="exact">Exact Keyword</option>
+                        <option value="default">Default Welcome / Fallback Message</option>
+                      </select>
+                    </div>
+                    
+                    <div class="form-group" id="replyKeywordGroup">
+                      <label>Keyword / Trigger</label>
+                      <input type="text" id="replyKeyword" placeholder="e.g. hello, price, info">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Text Response</label>
+                      <textarea id="replyText" rows="3" placeholder="Type your auto-reply text..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Attach Media / Audio File (Optional)</label>
+                      <input type="file" id="replyMedia" accept="audio/*,image/*,application/pdf">
+                    </div>
+
+                    <button type="submit">Create Rule</button>
+                  </form>
+                </div>
+
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Active Auto-Reply Rules</h4>
+                  <div style="display:flex;flex-direction:column;gap:1rem;">
+                    ${renderAutoReplyCards()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Customer Reminders -->
+            <div id="remindersTab" class="tab-content ${state.currentTab === 'remindersTab' ? 'active' : ''}">
+              <div class="card-title">Scheduled Customer Reminders</div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Schedule New Reminder</h4>
+                  <form id="reminderForm" onsubmit="saveReminder(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    
+                    <div class="form-group">
+                      <label>Choose Customer / Contact</label>
+                      <select id="reminderContactSelect" onchange="handleReminderContactSelect(this.value)">
+                        <option value="">-- Select Contact (Optional) --</option>
+                        ${(state.contacts || []).map(c => `
+                          <option value="${c.id}" data-phone="${c.mobile}" data-name="${c.name}" data-shop="${c.shop_name || ''}">
+                            ${c.name} (${c.mobile}) ${c.shop_name ? `- ${c.shop_name}` : ''}
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Recipient Mobile Number</label>
+                      <input type="text" id="reminderPhone" required placeholder="e.g. 919876543210">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Recipient Name</label>
+                      <input type="text" id="reminderName" placeholder="e.g. John Doe">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Shop Name</label>
+                      <input type="text" id="reminderShop" placeholder="e.g. Star Enterprises">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Message Template</label>
+                      <textarea id="reminderTemplate" rows="4" required placeholder="Type your reminder... Use {Name} and {ShopName} for personalization."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Scheduling Method</label>
+                      <select id="reminderScheduleType" onchange="handleReminderScheduleTypeChange(this.value)" required>
+                        <option value="days">Send After X Days</option>
+                        <option value="datetime">Custom Date & Time</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group" id="reminderDaysGroup">
+                      <label>Send After (Days)</label>
+                      <input type="number" id="reminderDays" min="0" placeholder="e.g. 3" value="3">
+                    </div>
+
+                    <div class="form-group" id="reminderDatetimeGroup" style="display:none;">
+                      <label>Custom Date & Time</label>
+                      <input type="datetime-local" id="reminderDatetime">
+                    </div>
+
+                    <button type="submit">Schedule Message</button>
+                  </form>
+                </div>
+
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Upcoming & Historical Reminders</h4>
+                  <div class="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Recipient</th>
+                          <th>Scheduled For</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${renderReminderRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Digital Catalog Builder -->
+            <div id="catalogTab" class="tab-content ${state.currentTab === 'catalogTab' ? 'active' : ''}">
+              <div class="card-title">Digital Catalog Configurator</div>
+
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Catalog Settings</h4>
+                  <form id="catalogSettingsForm" onsubmit="saveCatalogSettings(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    
+                    <div class="form-group">
+                      <label>Brand / Shop Name</label>
+                      <input type="text" id="catalogBrandName" required placeholder="e.g. Star Garments" value="${state.catalog ? state.catalog.brand_name : ''}">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Description / Intro</label>
+                      <textarea id="catalogDescription" rows="3" placeholder="Welcome to our store...">${state.catalog ? state.catalog.description || '' : ''}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Upload Brand Logo Image</label>
+                      <input type="file" id="catalogLogo" accept="image/*">
+                      ${state.catalog?.logo_path ? `<div style="font-size:0.75rem;color:#10b981;margin-top:0.25rem;">✅ Logo uploaded: <a href="/${state.catalog.logo_path}" target="_blank" style="color:#60a5fa;text-decoration:none;">View Logo</a></div>` : ''}
+                    </div>
+
+                    <div class="form-group">
+                      <label>Upload Catalog Greeting Audio (Intro)</label>
+                      <input type="file" id="catalogAudio" accept="audio/*">
+                      ${state.catalog?.catalog_audio_path ? `<div style="font-size:0.75rem;color:#10b981;margin-top:0.25rem;">✅ Greeting audio uploaded: <a href="/${state.catalog.catalog_audio_path}" target="_blank" style="color:#60a5fa;text-decoration:none;">Listen</a></div>` : ''}
+                    </div>
+
+                    <button type="submit">Update Catalog Profile</button>
+                  </form>
+
+                  ${state.catalog ? `
+                    <div style="margin-top:1.5rem;background:rgba(99, 102, 241, 0.08);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.75rem;">
+                      <div style="font-size:0.75rem;color:#a5b4fc;font-weight:600;margin-bottom:0.25rem;">🌐 Public Catalog Link</div>
+                      <a href="/catalog/view/${state.user.id}" target="_blank" style="font-size:0.8rem;color:#60a5fa;word-break:break-all;text-decoration:underline;display:block;margin-bottom:0.5rem;">
+                        ` + window.location.origin + `/catalog/view/` + state.user.id + `
+                      </a>
+                      <button type="button" onclick="window.open('/catalog/view/${state.user.id}', '_blank')" style="font-size:0.75rem;padding:0.3rem 0.6rem;margin:0;width:100%;">🔗 Open Catalog Page</button>
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h4 style="color:#a5b4fc;margin:0;">Listed Services & Products</h4>
+                    <button type="button" onclick="showAddServiceModal()" style="font-size:0.8rem;padding:0.4rem 0.8rem;margin:0;background:var(--accent-color);">➕ Add Item</button>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:1rem;">
+                    ${renderServiceCards()}
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -2018,6 +2250,11 @@
       state.plans = [];
       state.orders = [];
       state.transactions = [];
+      state.contacts = [];
+      state.autoReplies = [];
+      state.reminders = [];
+      state.catalog = null;
+      state.services = [];
       state.currentTab = 'whatsappTab';
       state.whatsappSubTab = 'textTab';
       state.publicPage = 'home';
@@ -2056,6 +2293,12 @@
         const hasActivePlan = state.plan && state.plan.status === 'active' && new Date(state.plan.expires_at) > new Date();
         if (hasActivePlan && state.user.role !== 'admin') {
           startPollingWhatsappStatus();
+        }
+        if (state.user.role !== 'admin') {
+          fetchContacts();
+          fetchAutoReplies();
+          fetchReminders();
+          fetchCatalog();
         }
         bindDashboardEvents();
       } catch (err) {
@@ -2213,6 +2456,9 @@
       } catch (err) {
         console.error('Failed to load API docs:', err);
         const pre = document.getElementById('apiDocsContent');
+          if (pre) pre.textContent = 'Error: Failed to load API documentation file.';
+      }
+    }
            // ADMIN TAB: settings (plan price)
     async function fetchAdminSettings() {
       try {
@@ -3871,6 +4117,562 @@
       line.textContent = `[${time}] ${message}`;
       el.appendChild(line);
       el.scrollTop = el.scrollHeight;
+    }
+
+    function clearConsole(consoleId) {
+      const el = document.getElementById(consoleId);
+      if (el) el.innerHTML = '<div class="console-line system">[System] Console logs cleared.</div>';
+    }
+
+    // ─── CRM rendering lists & items functions ───────────────────────────────
+    function renderContactsRows() {
+      const list = state.contacts || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No contacts found. Click Import or Add Contact to get started.</td></tr>`;
+      }
+      return list.map(c => {
+        const isExcluded = c.is_excluded === 1;
+        const btnText = isExcluded ? 'Excluded (Blocked)' : 'Active (Exclude)';
+        const btnColor = isExcluded ? 'var(--error-color)' : 'var(--accent-color)';
+        return `
+          <tr>
+            <td>${c.name}</td>
+            <td>${c.mobile}</td>
+            <td>${c.shop_name || '-'}</td>
+            <td>${new Date(c.created_at).toLocaleDateString()}</td>
+            <td>
+              <button onclick="toggleExcludeContact(${c.id}, ${!isExcluded})" style="background:${btnColor};padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;min-width:120px;">
+                ${btnText}
+              </button>
+            </td>
+            <td>
+              <button onclick="deleteContactEntry(${c.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderAutoReplyCards() {
+      const list = state.autoReplies || [];
+      if (list.length === 0) {
+        return `<div style="text-align:center;color:var(--text-muted);padding:2rem;background:rgba(255,255,255,0.01);border:1px solid var(--glass-border);border-radius:12px;">No auto-reply rules configured yet.</div>`;
+      }
+      return list.map(r => {
+        const isDefault = r.keyword === 'DEFAULT_FALLBACK';
+        const keywordDisplay = isDefault ? '⚠️ DEFAULT FALLBACK' : `Trigger: "${r.keyword}" (${r.match_type})`;
+        const activeText = r.is_active === 1 ? 'Enabled' : 'Disabled';
+        const activeColor = r.is_active === 1 ? '#10b981' : '#94a3b8';
+        const mediaDisplay = r.media_path 
+          ? `<div style="font-size:0.75rem;color:#a5b4fc;margin-top:0.25rem;">📎 Attachment: ${r.media_path.split('/').pop().split('\\').pop()} (${r.media_type})</div>`
+          : '';
+
+        return `
+          <div class="card" style="margin:0;background:rgba(15, 23, 42, 0.4);border:1px solid var(--glass-border);padding:1rem;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:1rem;">
+            <div>
+              <div style="font-weight:700;font-size:0.9rem;color:#cbd5e1;">${keywordDisplay}</div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem;white-space:pre-wrap;">${r.reply_text || 'No text reply'}</div>
+              ${mediaDisplay}
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <button onclick="toggleAutoReplyRule(${r.id}, ${r.is_active === 1 ? 0 : 1})" style="background:${activeColor};padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;min-width:75px;">
+                ${activeText}
+              </button>
+              <button onclick="deleteAutoReplyRule(${r.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderReminderRows() {
+      const list = state.reminders || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No reminders scheduled yet.</td></tr>`;
+      }
+      return list.map(r => {
+        let badgeColor = '#eab308'; // pending
+        if (r.status === 'sent') badgeColor = '#10b981';
+        if (r.status === 'failed') badgeColor = '#ef4444';
+
+        const recipientLabel = r.contact_name 
+          ? `${r.contact_name} (${r.recipient_mobile})`
+          : r.recipient_mobile;
+
+        const actionHtml = r.status === 'pending'
+          ? `<button onclick="deleteReminderEntry(${r.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">Cancel</button>`
+          : `-`;
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600;">${recipientLabel}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);white-space:pre-wrap;margin-top:0.25rem;">${r.message_template}</div>
+              ${r.error_message ? `<div style="font-size:0.7rem;color:#f87171;margin-top:0.25rem;">❌ Error: ${r.error_message}</div>` : ''}
+            </td>
+            <td>${new Date(r.scheduled_at).toLocaleString()}</td>
+            <td>
+              <span style="background:${badgeColor};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+                ${r.status.toUpperCase()}
+              </span>
+            </td>
+            <td>${actionHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderServiceCards() {
+      const list = state.services || [];
+      if (list.length === 0) {
+        return `<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:3rem;background:rgba(255,255,255,0.01);border:1px solid var(--glass-border);border-radius:12px;">No products or services listed. Click "Add Item" to add your first product.</div>`;
+      }
+      return list.map(s => {
+        const imageSrc = s.image_path ? `/${s.image_path}` : '';
+        const imgStyle = s.image_path 
+          ? `background-image:url('${imageSrc}');background-size:cover;background-position:center;height:120px;border-radius:8px 8px 0 0;`
+          : `background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;height:120px;border-radius:8px 8px 0 0;font-size:0.8rem;color:var(--text-muted);`;
+
+        const audioPlayer = s.audio_path
+          ? `<audio controls src="/${s.audio_path}" style="width:100%;margin-top:0.5rem;"></audio>`
+          : '';
+
+        return `
+          <div class="card" style="margin:0;background:rgba(15, 23, 42, 0.4);border:1px solid var(--glass-border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;height:100%;">
+            <div>
+              <div style="${imgStyle}">
+                ${s.image_path ? '' : 'No Image'}
+              </div>
+              <div style="padding:0.75rem;">
+                <div style="font-weight:700;font-size:0.9rem;color:#cbd5e1;">${s.name}</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.3;">${s.description || ''}</div>
+                ${audioPlayer}
+              </div>
+            </div>
+            <div style="padding:0.75rem;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);">
+              <span style="font-weight:800;color:#60a5fa;font-size:1.1rem;">₹${s.price}</span>
+              <button onclick="deleteCatalogService(${s.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ─── CRM fetch APIs functions ─────────────────────────────────────────────
+    async function fetchContacts() {
+      try {
+        const res = await fetch('/api/crm/contacts', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.contacts = data.contacts || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching contacts:', err);
+      }
+    }
+
+    async function fetchAutoReplies() {
+      try {
+        const res = await fetch('/api/crm/auto-replies', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.autoReplies = data.rules || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching auto replies:', err);
+      }
+    }
+
+    async function fetchReminders() {
+      try {
+        const res = await fetch('/api/crm/reminders', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.reminders = data.reminders || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching reminders:', err);
+      }
+    }
+
+    async function fetchCatalog() {
+      try {
+        const res = await fetch('/api/crm/catalog', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.catalog = data.catalog || null;
+          state.services = data.services || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching catalog:', err);
+      }
+    }
+
+    // ─── CRM Contacts handlers ───────────────────────────────────────────────
+    function showAddContactModal() {
+      document.getElementById('addContactModal').style.display = 'flex';
+    }
+    function hideAddContactModal() {
+      document.getElementById('addContactModal').style.display = 'none';
+      document.getElementById('addContactModalForm').reset();
+    }
+    async function handleAddContactModalSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('modalContactName').value.trim();
+      const mobile = document.getElementById('modalContactPhone').value.trim();
+      const shop_name = document.getElementById('modalContactShop').value.trim();
+
+      try {
+        const res = await fetch('/api/crm/contacts', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, mobile, shop_name })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Contact added successfully');
+        hideAddContactModal();
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function toggleExcludeContact(contactId, isExcluded) {
+      try {
+        const res = await fetch('/api/crm/contacts/toggle-exclude', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ contactId, isExcluded })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteContactEntry(contactId) {
+      if (!confirm('Are you sure you want to delete this contact?')) return;
+      try {
+        const res = await fetch(`/api/crm/contacts/${contactId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function importContactsExcel(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/crm/contacts/import', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        alert(data.message || 'Contacts imported successfully');
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        e.target.value = '';
+      }
+    }
+
+    function filterContactsList(query) {
+      const q = query.trim().toLowerCase();
+      const rows = document.querySelectorAll('#contactsTableBody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        if (text.includes(q) || row.innerHTML.includes('No contacts found')) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    // ─── CRM Auto-Reply Rules handlers ───────────────────────────────────────
+    function handleMatchTypeChange(val) {
+      const group = document.getElementById('replyKeywordGroup');
+      if (val === 'default') {
+        group.style.display = 'none';
+        document.getElementById('replyKeyword').required = false;
+      } else {
+        group.style.display = 'block';
+        document.getElementById('replyKeyword').required = true;
+      }
+    }
+
+    async function saveAutoReplyRule(e) {
+      e.preventDefault();
+      const match_type = document.getElementById('replyMatchType').value;
+      const keyword = document.getElementById('replyKeyword').value;
+      const reply_text = document.getElementById('replyText').value;
+      const mediaFile = document.getElementById('replyMedia').files[0];
+
+      const formData = new FormData();
+      formData.append('match_type', match_type);
+      formData.append('keyword', match_type === 'default' ? 'DEFAULT_FALLBACK' : keyword);
+      formData.append('reply_text', reply_text);
+      if (mediaFile) {
+        formData.append('media', mediaFile);
+      }
+
+      try {
+        const res = await fetch('/api/crm/auto-replies', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Auto-reply rule created');
+        document.getElementById('autoReplyForm').reset();
+        handleMatchTypeChange('contains');
+        fetchAutoReplies();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function toggleAutoReplyRule(ruleId, isActive) {
+      try {
+        const res = await fetch(`/api/crm/auto-replies/${ruleId}/toggle`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ isActive })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchAutoReplies();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteAutoReplyRule(ruleId) {
+      if (!confirm('Are you sure you want to delete this auto-reply rule?')) return;
+      try {
+        const res = await fetch(`/api/crm/auto-replies/${ruleId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchAutoReplies();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ─── CRM Reminders handlers ──────────────────────────────────────────────
+    function handleReminderContactSelect(val) {
+      if (!val) return;
+      const select = document.getElementById('reminderContactSelect');
+      const opt = select.options[select.selectedIndex];
+      document.getElementById('reminderPhone').value = opt.getAttribute('data-phone') || '';
+      document.getElementById('reminderName').value = opt.getAttribute('data-name') || '';
+      document.getElementById('reminderShop').value = opt.getAttribute('data-shop') || '';
+    }
+
+    function handleReminderScheduleTypeChange(val) {
+      const daysGrp = document.getElementById('reminderDaysGroup');
+      const dtGrp = document.getElementById('reminderDatetimeGroup');
+      if (val === 'days') {
+        daysGrp.style.display = 'block';
+        dtGrp.style.display = 'none';
+      } else {
+        daysGrp.style.display = 'none';
+        dtGrp.style.display = 'flex';
+      }
+    }
+
+    async function saveReminder(e) {
+      e.preventDefault();
+      const contactSelect = document.getElementById('reminderContactSelect');
+      const contact_id = contactSelect.value || null;
+      const recipient_mobile = document.getElementById('reminderPhone').value.trim();
+      const recipient_name = document.getElementById('reminderName').value.trim();
+      const shop_name = document.getElementById('reminderShop').value.trim();
+      const message_template = document.getElementById('reminderTemplate').value;
+      
+      const schedType = document.getElementById('reminderScheduleType').value;
+      const send_after_days = document.getElementById('reminderDays').value;
+      const scheduled_at = document.getElementById('reminderDatetime').value;
+
+      const body = {
+        contact_id,
+        recipient_mobile,
+        recipient_name,
+        shop_name,
+        message_template
+      };
+
+      if (schedType === 'days') {
+        body.send_after_days = send_after_days;
+      } else {
+        if (!scheduled_at) {
+          alert('Please choose custom date and time');
+          return;
+        }
+        body.scheduled_at = new Date(scheduled_at).toISOString();
+      }
+
+      try {
+        const res = await fetch('/api/crm/reminders', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Reminder scheduled successfully');
+        document.getElementById('reminderForm').reset();
+        handleReminderScheduleTypeChange('days');
+        fetchReminders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteReminderEntry(remId) {
+      if (!confirm('Are you sure you want to cancel this reminder?')) return;
+      try {
+        const res = await fetch(`/api/crm/reminders/${remId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchReminders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ─── CRM Digital Catalog handlers ────────────────────────────────────────
+    async function saveCatalogSettings(e) {
+      e.preventDefault();
+      const brand_name = document.getElementById('catalogBrandName').value.trim();
+      const description = document.getElementById('catalogDescription').value;
+      const logoFile = document.getElementById('catalogLogo').files[0];
+      const audioFile = document.getElementById('catalogAudio').files[0];
+
+      const formData = new FormData();
+      formData.append('brand_name', brand_name);
+      formData.append('description', description);
+      if (logoFile) formData.append('logo', logoFile);
+      if (audioFile) formData.append('catalog_audio', audioFile);
+
+      try {
+        const res = await fetch('/api/crm/catalog', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Catalog updated successfully');
+        fetchCatalog();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function showAddServiceModal() {
+      document.getElementById('addServiceModal').style.display = 'flex';
+    }
+    function hideAddServiceModal() {
+      document.getElementById('addServiceModal').style.display = 'none';
+      document.getElementById('addServiceModalForm').reset();
+    }
+    async function handleAddServiceModalSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('modalServiceName').value.trim();
+      const price = document.getElementById('modalServicePrice').value.trim();
+      const description = document.getElementById('modalServiceDescription').value.trim();
+      const imageFile = document.getElementById('modalServiceImage').files[0];
+      const audioFile = document.getElementById('modalServiceAudio').files[0];
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('price', price);
+      formData.append('description', description);
+      if (imageFile) formData.append('image', imageFile);
+      if (audioFile) formData.append('audio', audioFile);
+
+      try {
+        const res = await fetch('/api/crm/catalog/services', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Service added successfully');
+        hideAddServiceModal();
+        fetchCatalog();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteCatalogService(serviceId) {
+      if (!confirm('Are you sure you want to delete this service?')) return;
+      try {
+        const res = await fetch(`/api/crm/catalog/services/${serviceId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchCatalog();
+      } catch (err) {
+        alert(err.message);
+      }
     }
 
     function clearConsole(consoleId) {

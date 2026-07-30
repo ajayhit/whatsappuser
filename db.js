@@ -43,6 +43,17 @@ export function initDb() {
     // Column already exists, ignore
   }
 
+  // Backfill older databases where role may be NULL/blank or missing a valid value.
+  try {
+    db.prepare(`
+      UPDATE users
+      SET role = 'user'
+      WHERE role IS NULL OR TRIM(role) = '' OR role NOT IN ('user', 'admin')
+    `).run();
+  } catch (err) {
+    // Older incompatible schemas will still be handled by SELECT fallbacks below.
+  }
+
   // Banks table
   db.exec(`
     CREATE TABLE IF NOT EXISTS banks (
@@ -173,6 +184,154 @@ export function initDb() {
     )
   `);
 
+  // Digital Catalog table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS digital_catalog (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      brand_name TEXT NOT NULL,
+      logo_path TEXT,
+      description TEXT,
+      catalog_audio_path TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Catalog Services table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS catalog_services (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      catalog_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      price REAL NOT NULL,
+      image_path TEXT,
+      audio_path TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (catalog_id) REFERENCES digital_catalog(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Contacts table (Name, Mobile, Shop Name) + is_excluded
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS contacts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      mobile TEXT NOT NULL,
+      shop_name TEXT,
+      is_excluded INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE(user_id, mobile)
+    )
+  `);
+
+  // Auto Replies table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS auto_replies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      keyword TEXT NOT NULL,
+      match_type TEXT NOT NULL DEFAULT 'contains',
+      reply_text TEXT,
+      media_path TEXT,
+      media_type TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Reminders table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      contact_id INTEGER,
+      recipient_mobile TEXT NOT NULL,
+      recipient_name TEXT,
+      shop_name TEXT,
+      message_template TEXT NOT NULL,
+      scheduled_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      sent_at TEXT,
+      error_message TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Message Templates table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS message_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      category TEXT DEFAULT 'General',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Automation Settings table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS automation_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      welcome_active INTEGER NOT NULL DEFAULT 0,
+      welcome_text TEXT,
+      welcome_media_path TEXT,
+      welcome_media_type TEXT,
+      away_active INTEGER NOT NULL DEFAULT 0,
+      away_text TEXT,
+      away_schedule_type TEXT DEFAULT 'always',
+      away_start_time TEXT,
+      away_end_time TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Campaigns table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS campaigns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      message_text TEXT NOT NULL,
+      media_path TEXT,
+      media_type TEXT,
+      scheduled_at TEXT, 
+      status TEXT NOT NULL DEFAULT 'pending', -- pending, running, paused, completed, failed
+      total_contacts INTEGER DEFAULT 0,
+      successful_deliveries INTEGER DEFAULT 0,
+      failed_deliveries INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Campaign Recipients table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS campaign_recipients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id INTEGER NOT NULL,
+      contact_id INTEGER,
+      mobile TEXT NOT NULL,
+      name TEXT,
+      shop_name TEXT,
+      status TEXT NOT NULL DEFAULT 'pending', -- pending, sent, failed
+      error_message TEXT,
+      sent_at TEXT,
+      FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+    )
+  `);
+
   // Ensure table columns exist for plans and orders
   try {
     db.exec("ALTER TABLE plans ADD COLUMN plan_type TEXT NOT NULL DEFAULT 'plan_28'");
@@ -186,20 +345,28 @@ export function initDb() {
   try {
     db.exec("ALTER TABLE orders ADD COLUMN plan_type TEXT");
   } catch (e) {}
+  try {
+    db.exec("ALTER TABLE contacts ADD COLUMN email TEXT");
+  } catch (e) {}
 
   console.log('[DB] All tables initialized.');
 }
 
 // ─── User Helpers ────────────────────────────────────────────────────────────
 
+function normalizeRole(role) {
+  return role === 'admin' ? 'admin' : 'user';
+}
+
 export function createUser({ name, email, phone, password, role = 'user' }) {
   const db = getDb();
   const password_hash = bcrypt.hashSync(password, 10);
+  const normalizedRole = normalizeRole(role);
   const stmt = db.prepare(`
     INSERT INTO users (name, email, phone, password_hash, role)
     VALUES (@name, @email, @phone, @password_hash, @role)
   `);
-  const result = stmt.run({ name, email, phone: phone || '', password_hash, role });
+  const result = stmt.run({ name, email, phone: phone || '', password_hash, role: normalizedRole });
   return getUserById(result.lastInsertRowid);
 }
 
@@ -210,13 +377,27 @@ export function getUserByEmail(email) {
 
 export function getUserById(id) {
   const db = getDb();
-  return db.prepare('SELECT id, name, email, phone, role, wallet_balance, is_blocked, created_at FROM users WHERE id = ?').get(id);
+  return db.prepare(`
+    SELECT
+      id,
+      name,
+      email,
+      phone,
+      CASE WHEN role = 'admin' THEN 'admin' ELSE 'user' END AS role,
+      wallet_balance,
+      is_blocked,
+      created_at
+    FROM users
+    WHERE id = ?
+  `).get(id);
 }
 
 export function getAllUsers() {
   const db = getDb();
   return db.prepare(`
-    SELECT u.id, u.name, u.email, u.phone, u.role, u.wallet_balance, u.is_blocked, u.created_at,
+    SELECT u.id, u.name, u.email, u.phone,
+           CASE WHEN u.role = 'admin' THEN 'admin' ELSE 'user' END AS role,
+           u.wallet_balance, u.is_blocked, u.created_at,
            p.status as plan_status, p.expires_at
     FROM users u
     LEFT JOIN plans p ON p.user_id = u.id AND p.status = 'active'
@@ -647,6 +828,13 @@ export function deleteUser(userId) {
     db.prepare('DELETE FROM wallet_transactions WHERE user_id = ?'),
     db.prepare('DELETE FROM plans WHERE user_id = ?'),
     db.prepare('DELETE FROM orders WHERE user_id = ?'),
+    db.prepare('DELETE FROM reminders WHERE user_id = ?'),
+    db.prepare('DELETE FROM message_templates WHERE user_id = ?'),
+    db.prepare('DELETE FROM automation_settings WHERE user_id = ?'),
+    db.prepare('DELETE FROM campaigns WHERE user_id = ?'),
+    db.prepare('DELETE FROM auto_replies WHERE user_id = ?'),
+    db.prepare('DELETE FROM contacts WHERE user_id = ?'),
+    db.prepare('DELETE FROM digital_catalog WHERE user_id = ?'),
     db.prepare('DELETE FROM users WHERE id = ?')
   ];
 
@@ -658,4 +846,382 @@ export function deleteUser(userId) {
 
   transaction(userId);
   return { id: userId, deleted: true };
+}
+
+// ─── CRM Helpers ─────────────────────────────────────────────────────────────
+
+// Digital Catalog Helpers
+export function getCatalogByUserId(userId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM digital_catalog WHERE user_id = ?').get(userId);
+}
+
+export function getServicesByCatalogId(catalogId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM catalog_services WHERE catalog_id = ? ORDER BY created_at ASC').all(catalogId);
+}
+
+export function upsertCatalog(userId, { brand_name, logo_path, description, catalog_audio_path }) {
+  const db = getDb();
+  const existing = getCatalogByUserId(userId);
+  if (existing) {
+    db.prepare(`
+      UPDATE digital_catalog
+      SET brand_name = ?,
+          logo_path = COALESCE(?, logo_path),
+          description = ?,
+          catalog_audio_path = COALESCE(?, catalog_audio_path)
+      WHERE user_id = ?
+    `).run(brand_name, logo_path || null, description || '', catalog_audio_path || null, userId);
+  } else {
+    db.prepare(`
+      INSERT INTO digital_catalog (user_id, brand_name, logo_path, description, catalog_audio_path)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, brand_name, logo_path || null, description || '', catalog_audio_path || null);
+  }
+  return getCatalogByUserId(userId);
+}
+
+export function createService(catalogId, { name, description, price, image_path, audio_path }) {
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO catalog_services (catalog_id, name, description, price, image_path, audio_path)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(catalogId, name, description || '', price, image_path || null, audio_path || null);
+  return db.prepare('SELECT * FROM catalog_services WHERE id = ?').get(result.lastInsertRowid);
+}
+
+export function updateService(serviceId, catalogId, { name, description, price, image_path, audio_path }) {
+  const db = getDb();
+  db.prepare(`
+    UPDATE catalog_services
+    SET name = ?,
+        description = ?,
+        price = ?,
+        image_path = COALESCE(?, image_path),
+        audio_path = COALESCE(?, audio_path)
+    WHERE id = ? AND catalog_id = ?
+  `).run(name, description || '', price, image_path || null, audio_path || null, serviceId, catalogId);
+  return db.prepare('SELECT * FROM catalog_services WHERE id = ?').get(serviceId);
+}
+
+export function deleteService(serviceId, catalogId) {
+  const db = getDb();
+  db.prepare('DELETE FROM catalog_services WHERE id = ? AND catalog_id = ?').run(serviceId, catalogId);
+  return { id: serviceId, deleted: true };
+}
+
+// Contacts Directory Helpers
+export function getContactsByUser(userId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM contacts WHERE user_id = ? ORDER BY name ASC').all(userId);
+}
+
+export function upsertContact({ user_id, name, mobile, shop_name, is_excluded = 0 }) {
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO contacts (user_id, name, mobile, shop_name, is_excluded)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, mobile) DO UPDATE SET
+      name = excluded.name,
+      shop_name = COALESCE(excluded.shop_name, shop_name),
+      is_excluded = COALESCE(excluded.is_excluded, is_excluded)
+  `).run(user_id, name, mobile, shop_name || null, is_excluded);
+  return db.prepare('SELECT * FROM contacts WHERE user_id = ? AND mobile = ?').get(user_id, mobile);
+}
+
+export function getContactByMobile(userId, mobile) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM contacts WHERE user_id = ? AND mobile = ?').get(userId, mobile);
+}
+
+export function deleteContact(contactId, userId) {
+  const db = getDb();
+  db.prepare('DELETE FROM contacts WHERE id = ? AND user_id = ?').run(contactId, userId);
+  return { id: contactId, deleted: true };
+}
+
+export function toggleContactExclude(contactId, userId, isExcluded) {
+  const db = getDb();
+  db.prepare('UPDATE contacts SET is_excluded = ? WHERE id = ? AND user_id = ?').run(isExcluded ? 1 : 0, contactId, userId);
+  return db.prepare('SELECT * FROM contacts WHERE id = ?').get(contactId);
+}
+
+export function isContactExcluded(userId, mobile) {
+  const db = getDb();
+  const row = db.prepare('SELECT is_excluded FROM contacts WHERE user_id = ? AND mobile = ?').get(userId, mobile);
+  return row ? row.is_excluded === 1 : false;
+}
+
+// Auto Reply Helpers
+export function getAutoRepliesByUser(userId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM auto_replies WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+}
+
+export function createAutoReply({ user_id, keyword, match_type = 'contains', reply_text, media_path, media_type }) {
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO auto_replies (user_id, keyword, match_type, reply_text, media_path, media_type)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(user_id, keyword, match_type, reply_text || null, media_path || null, media_type || null);
+  return db.prepare('SELECT * FROM auto_replies WHERE id = ?').get(result.lastInsertRowid);
+}
+
+export function deleteAutoReply(replyId, userId) {
+  const db = getDb();
+  db.prepare('DELETE FROM auto_replies WHERE id = ? AND user_id = ?').run(replyId, userId);
+  return { id: replyId, deleted: true };
+}
+
+export function toggleAutoReplyActive(replyId, userId, isActive) {
+  const db = getDb();
+  db.prepare('UPDATE auto_replies SET is_active = ? WHERE id = ? AND user_id = ?').run(isActive ? 1 : 0, replyId, userId);
+  return db.prepare('SELECT * FROM auto_replies WHERE id = ?').get(replyId);
+}
+
+// Scheduled Reminders Helpers
+export function getRemindersByUser(userId) {
+  const db = getDb();
+  return db.prepare(`
+    SELECT r.*, c.name as contact_name
+    FROM reminders r
+    LEFT JOIN contacts c ON c.id = r.contact_id
+    WHERE r.user_id = ?
+    ORDER BY r.scheduled_at DESC
+  `).all(userId);
+}
+
+export function createReminder({ user_id, contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at }) {
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO reminders (user_id, contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+  `).run(user_id, contact_id || null, recipient_mobile, recipient_name || null, shop_name || null, message_template, scheduled_at);
+  return db.prepare('SELECT * FROM reminders WHERE id = ?').get(result.lastInsertRowid);
+}
+
+export function deleteReminder(reminderId, userId) {
+  const db = getDb();
+  db.prepare('DELETE FROM reminders WHERE id = ? AND user_id = ?').run(reminderId, userId);
+  return { id: reminderId, deleted: true };
+}
+
+export function getPendingReminders() {
+  const db = getDb();
+  const now = new Date().toISOString();
+  return db.prepare(`
+    SELECT r.*, u.id as user_id, u.name as user_name
+    FROM reminders r
+    JOIN users u ON u.id = r.user_id
+    WHERE r.status = 'pending' AND r.scheduled_at <= ?
+  `).all(now);
+}
+
+export function updateReminderStatus(reminderId, status, errorMsg = null) {
+  const db = getDb();
+  db.prepare(`
+    UPDATE reminders
+    SET status = ?,
+        sent_at = CASE WHEN ? = 'sent' THEN datetime('now') ELSE sent_at END,
+        error_message = ?,
+        created_at = created_at
+    WHERE id = ?
+  `).run(status, status, errorMsg || null, reminderId);
+}
+
+// ─── Message Templates Helpers ────────────────────────────────────────────────
+export function getTemplatesByUser(userId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM message_templates WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+}
+
+export function createTemplate({ user_id, title, content, category }) {
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO message_templates (user_id, title, content, category)
+    VALUES (?, ?, ?, ?)
+  `).run(user_id, title, content, category || 'General');
+  return db.prepare('SELECT * FROM message_templates WHERE id = ?').get(result.lastInsertRowid);
+}
+
+export function updateTemplate(templateId, userId, { title, content, category }) {
+  const db = getDb();
+  db.prepare(`
+    UPDATE message_templates
+    SET title = ?, content = ?, category = ?
+    WHERE id = ? AND user_id = ?
+  `).run(title, content, category || 'General', templateId, userId);
+  return db.prepare('SELECT * FROM message_templates WHERE id = ? AND user_id = ?').get(templateId, userId);
+}
+
+export function deleteTemplate(templateId, userId) {
+  const db = getDb();
+  db.prepare('DELETE FROM message_templates WHERE id = ? AND user_id = ?').run(templateId, userId);
+  return { id: templateId, deleted: true };
+}
+
+// ─── Automation Settings Helpers (Welcome & Away Messages) ───────────────────
+export function getAutomationSettings(userId) {
+  const db = getDb();
+  const settings = db.prepare('SELECT * FROM automation_settings WHERE user_id = ?').get(userId);
+  if (!settings) {
+    // Default settings
+    return {
+      user_id: userId,
+      welcome_active: 0,
+      welcome_text: 'Hello {Name}! Welcome to {ShopName}. How can we assist you today?',
+      welcome_media_path: null,
+      welcome_media_type: null,
+      away_active: 0,
+      away_text: 'Thank you for contacting us! We are currently away and will reply to your message as soon as possible.',
+      away_schedule_type: 'always',
+      away_start_time: '19:00',
+      away_end_time: '09:00'
+    };
+  }
+  return settings;
+}
+
+export function upsertAutomationSettings(userId, settings) {
+  const db = getDb();
+  const existing = db.prepare('SELECT id FROM automation_settings WHERE user_id = ?').get(userId);
+  if (existing) {
+    db.prepare(`
+      UPDATE automation_settings
+      SET welcome_active = COALESCE(@welcome_active, welcome_active),
+          welcome_text = COALESCE(@welcome_text, welcome_text),
+          welcome_media_path = COALESCE(@welcome_media_path, welcome_media_path),
+          welcome_media_type = COALESCE(@welcome_media_type, welcome_media_type),
+          away_active = COALESCE(@away_active, away_active),
+          away_text = COALESCE(@away_text, away_text),
+          away_schedule_type = COALESCE(@away_schedule_type, away_schedule_type),
+          away_start_time = COALESCE(@away_start_time, away_start_time),
+          away_end_time = COALESCE(@away_end_time, away_end_time),
+          updated_at = datetime('now')
+      WHERE user_id = @user_id
+    `).run({
+      user_id: userId,
+      welcome_active: settings.welcome_active ?? null,
+      welcome_text: settings.welcome_text ?? null,
+      welcome_media_path: settings.welcome_media_path ?? null,
+      welcome_media_type: settings.welcome_media_type ?? null,
+      away_active: settings.away_active ?? null,
+      away_text: settings.away_text ?? null,
+      away_schedule_type: settings.away_schedule_type ?? null,
+      away_start_time: settings.away_start_time ?? null,
+      away_end_time: settings.away_end_time ?? null
+    });
+  } else {
+    db.prepare(`
+      INSERT INTO automation_settings (
+        user_id, welcome_active, welcome_text, welcome_media_path, welcome_media_type,
+        away_active, away_text, away_schedule_type, away_start_time, away_end_time
+      ) VALUES (
+        @user_id, @welcome_active, @welcome_text, @welcome_media_path, @welcome_media_type,
+        @away_active, @away_text, @away_schedule_type, @away_start_time, @away_end_time
+      )
+    `).run({
+      user_id: userId,
+      welcome_active: settings.welcome_active ?? 0,
+      welcome_text: settings.welcome_text || 'Hello {Name}! Welcome to {ShopName}. How can we assist you today?',
+      welcome_media_path: settings.welcome_media_path || null,
+      welcome_media_type: settings.welcome_media_type || null,
+      away_active: settings.away_active ?? 0,
+      away_text: settings.away_text || 'Thank you for contacting us! We are currently away and will reply to your message as soon as possible.',
+      away_schedule_type: settings.away_schedule_type || 'always',
+      away_start_time: settings.away_start_time || '19:00',
+      away_end_time: settings.away_end_time || '09:00'
+    });
+  }
+  return getAutomationSettings(userId);
+}
+
+// ─── Campaigns Helpers ───────────────────────────────────────────────────────
+
+export function getCampaignsByUser(userId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM campaigns WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+}
+
+export function getCampaignRecipients(campaignId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM campaign_recipients WHERE campaign_id = ?').all(campaignId);
+}
+
+export function getCampaignById(campaignId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignId);
+}
+
+export function createCampaign(userId, { name, message_text, media_path, media_type, scheduled_at, contacts }) {
+  const db = getDb();
+  let campaignId;
+  
+  const createTx = db.transaction(() => {
+    // Insert Campaign
+    const result = db.prepare(`
+      INSERT INTO campaigns (user_id, name, message_text, media_path, media_type, scheduled_at, total_contacts, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+    `).run(userId, name, message_text, media_path, media_type, scheduled_at || null, contacts.length);
+    
+    campaignId = result.lastInsertRowid;
+
+    // Insert Recipients
+    const stmt = db.prepare(`
+      INSERT INTO campaign_recipients (campaign_id, contact_id, mobile, name, shop_name)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    for (const c of contacts) {
+      stmt.run(campaignId, c.id || null, c.mobile, c.name, c.shop_name);
+    }
+  });
+
+  createTx();
+  return db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignId);
+}
+
+export function updateCampaignStatus(campaignId, status) {
+  const db = getDb();
+  db.prepare('UPDATE campaigns SET status = ? WHERE id = ?').run(status, campaignId);
+  return db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignId);
+}
+
+export function updateCampaignRecipientStatus(recipientId, status, errorMsg = null) {
+  const db = getDb();
+  db.prepare(`
+    UPDATE campaign_recipients 
+    SET status = ?, error_message = ?, sent_at = datetime('now') 
+    WHERE id = ?
+  `).run(status, errorMsg, recipientId);
+}
+
+export function incrementCampaignSuccess(campaignId) {
+  const db = getDb();
+  db.prepare('UPDATE campaigns SET successful_deliveries = successful_deliveries + 1 WHERE id = ?').run(campaignId);
+}
+
+export function incrementCampaignFailure(campaignId) {
+  const db = getDb();
+  db.prepare('UPDATE campaigns SET failed_deliveries = failed_deliveries + 1 WHERE id = ?').run(campaignId);
+}
+
+export function getPendingCampaigns() {
+  const db = getDb();
+  // Fetch campaigns that are 'pending' and their scheduled time is past, OR they are currently 'running'
+  return db.prepare(`
+    SELECT * FROM campaigns 
+    WHERE status = 'running' 
+       OR (status = 'pending' AND (scheduled_at IS NULL OR scheduled_at <= datetime('now', 'localtime')))
+  `).all();
+}
+
+export function getPendingRecipients(campaignId, limit = 50) {
+  const db = getDb();
+  return db.prepare(`
+    SELECT * FROM campaign_recipients 
+    WHERE campaign_id = ? AND status = 'pending'
+    LIMIT ?
+  `).all(campaignId, limit);
 }
