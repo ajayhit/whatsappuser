@@ -2478,6 +2478,7 @@
                 <div class="card-title" style="margin-bottom:0;">CRM Contacts Directory</div>
                 <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
                   <button onclick="openBroadcastTemplateModal()" style="background:linear-gradient(135deg, #6366f1, #8b5cf6);">📢 Send Template Broadcast</button>
+                  <button onclick="downloadSampleContactsExcel()" style="background:linear-gradient(135deg, #0284c7, #0369a1);" title="Download Sample Excel File">📄 Download Sample Excel</button>
                   <button onclick="document.getElementById('excelContactInput').click()" style="background:var(--accent-color);">📥 Import Excel</button>
                   <input type="file" id="excelContactInput" accept=".xlsx,.xls" style="display:none;" onchange="importContactsExcel(event)">
                   <button onclick="showAddContactModal()" class="btn-secondary">➕ Add Contact</button>
@@ -3142,6 +3143,9 @@
               <div class="card-title">📊 Import Contacts (Excel / CSV)</div>
               <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;max-width:520px;">
                 <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">Upload an Excel or CSV file to bulk-import contacts. The file must have columns: <strong>Name</strong>, <strong>Mobile</strong>, and optionally <strong>ShopName</strong>.</p>
+                <div style="margin-bottom: 1.25rem;">
+                  <button onclick="downloadSampleContactsExcel()" style="background:linear-gradient(135deg, #0284c7, #0369a1); font-size:0.85rem;">📄 Download Sample Excel Template</button>
+                </div>
                 <div class="form-group">
                   <label>Choose File (.xlsx, .xls)</label>
                   <input type="file" id="importContactsFileAlt" accept=".xlsx,.xls" onchange="importContactsExcel(event)">
@@ -4845,10 +4849,13 @@
     }
 
     // WHATSAPP CONTROLS (Only rendered/used by Subscribers with active plans)
+    let isAutoConnectDisabled = false;
+
     async function triggerLogin() {
+      isAutoConnectDisabled = false;
       const qrContainer = document.getElementById('qrContainer');
       if (qrContainer) {
-        qrContainer.innerHTML = `<div class="pulse" style="background-color: var(--warning-color); width: 16px; height: 16px; margin-bottom: 0.5rem;"></div><span style="font-size: 0.85rem; color: var(--text-muted);">Booting WhatsApp socket instance...</span>`;
+        qrContainer.innerHTML = `<div class="pulse" style="background-color: var(--warning-color); width: 16px; height: 16px; margin-bottom: 0.5rem;"></div><span style="font-size: 0.85rem; color: var(--text-muted);">Initializing WhatsApp connection...</span>`;
       }
       updateWhatsappBadge('CONNECTING');
 
@@ -4862,26 +4869,23 @@
         });
         const data = await res.json();
         
-        const msg = data.error ? `Failed: ${data.error}` : `Session triggered: ${data.status}`;
-        alert(data.message || msg);
-        
         handleWhatsappStateChange(data);
         startPollingWhatsappStatus();
       } catch (err) {
-        alert(`Connection setup error: ${err.message}`);
+        console.error('Connection setup error:', err.message);
         updateWhatsappBadge('DISCONNECTED');
       }
     }
 
     async function triggerLogout() {
       if (!confirm('Are you sure you want to log out and unlink this phone from WhatsApp servers?')) return;
+      isAutoConnectDisabled = true;
       try {
         const res = await fetch('/api/session/logout', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${state.token}` }
         });
         const data = await res.json();
-        alert(data.message || 'Logged out successfully');
         handleWhatsappStateChange({ status: 'DISCONNECTED' });
       } catch (err) {
         alert(`Logout error: ${err.message}`);
@@ -4892,8 +4896,10 @@
       if (statusPollInterval) clearInterval(statusPollInterval);
       
       async function poll() {
+        if (!state.token) return;
         try {
-          const res = await fetch('/api/session/status', {
+          const autoConnParam = isAutoConnectDisabled ? 'autoConnect=false' : 'autoConnect=true';
+          const res = await fetch(`/api/session/status?${autoConnParam}`, {
             headers: { 'Authorization': `Bearer ${state.token}` }
           });
           if (res.status === 403) {
@@ -4906,7 +4912,14 @@
 
           if (data.status === 'CONNECTED') {
             clearInterval(statusPollInterval);
-            statusPollInterval = setInterval(poll, 15000); // lower frequency once secure
+            statusPollInterval = setInterval(poll, 12000); // stable heartbeat once connected
+          } else if (data.status === 'CONNECTING' || data.status === 'QR') {
+            // Fast 1-second polling while connecting or displaying QR
+            if (statusPollInterval && statusPollInterval._fast !== true) {
+              clearInterval(statusPollInterval);
+              statusPollInterval = setInterval(poll, 1000);
+              statusPollInterval._fast = true;
+            }
           }
         } catch (e) {
           console.error('Status poll error:', e);
@@ -4914,7 +4927,8 @@
       }
 
       poll();
-      statusPollInterval = setInterval(poll, 2500);
+      statusPollInterval = setInterval(poll, 1000);
+      statusPollInterval._fast = true;
     }
 
     function stopPollingWhatsappStatus() {
@@ -5791,6 +5805,52 @@
         alert(err.message);
       } finally {
         e.target.value = '';
+      }
+    }
+
+    async function downloadSampleContactsExcel() {
+      try {
+        const res = await fetch('/api/crm/contacts/sample-excel', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to download sample file');
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sample_contacts.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function exportContactsExcel() {
+      try {
+        const res = await fetch('/api/crm/contacts/export-excel', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to export contacts');
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'contacts_export.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message);
       }
     }
 

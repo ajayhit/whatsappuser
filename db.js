@@ -228,6 +228,31 @@ export function initDb() {
     )
   `);
 
+  // Contact Groups table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS contact_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Contact Group Members junction table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS contact_group_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      group_id INTEGER NOT NULL,
+      contact_id INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (group_id) REFERENCES contact_groups(id) ON DELETE CASCADE,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
+      UNIQUE(group_id, contact_id)
+    )
+  `);
+
   // Auto Replies table
   db.exec(`
     CREATE TABLE IF NOT EXISTS auto_replies (

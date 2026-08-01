@@ -49,15 +49,34 @@ async function prepareDirectMessageSession(sock, jid) {
   }
 }
 
+let cachedBaileysVersion = [2, 3000, 1017539728];
+let versionLastFetchedAt = 0;
+
+async function getCachedBaileysVersion() {
+  if (Date.now() - versionLastFetchedAt < 3600000 && versionLastFetchedAt !== 0) {
+    return cachedBaileysVersion;
+  }
+  try {
+    const fetched = await fetchLatestBaileysVersion();
+    if (fetched?.version) {
+      cachedBaileysVersion = fetched.version;
+      versionLastFetchedAt = Date.now();
+    }
+  } catch (err) {
+    console.log(`[WhatsApp Version Warning] Failed to fetch latest web version, using fallback: ${err.message}`);
+  }
+  return cachedBaileysVersion;
+}
+
 /**
  * Initializes a new WhatsApp Web session or returns the state of an existing one.
  * @param {string} userId - Unique identifier for the user
  * @returns {Promise<{status: string, qr?: string}>}
  */
 export async function initSession(userId) {
-  // Check if session already exists
-  if (sessions.has(userId)) {
-    const status = sessionStatus.get(userId);
+  // Check if session already exists or is currently connecting
+  if (sessions.has(userId) || sessionStatus.get(userId) === 'CONNECTING') {
+    const status = sessionStatus.get(userId) || 'CONNECTING';
     if (status === 'CONNECTED') {
       return { status: 'CONNECTED' };
     }
@@ -75,16 +94,7 @@ export async function initSession(userId) {
   await fs.mkdir(sessionsDir, { recursive: true });
 
   const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
-
-  // Dynamically fetch the latest WhatsApp Web client version to avoid 405 handshake errors
-  let version = [2, 3000, 1017539728]; // Fallback version
-  try {
-    const fetched = await fetchLatestBaileysVersion();
-    version = fetched.version;
-    console.log(`[WhatsApp Version] Dynamically fetched latest: v${version.join('.')}, isLatest: ${fetched.isLatest}`);
-  } catch (err) {
-    console.log(`[WhatsApp Version Warning] Failed to fetch latest web version, using fallback v${version.join('.')}. Error: ${err.message}`);
-  }
+  const version = await getCachedBaileysVersion();
 
   const sock = makeWASocket({
     version,

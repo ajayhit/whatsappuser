@@ -40,8 +40,8 @@ router.use(planMiddleware);
 router.post('/session/login', async (req, res) => {
   const userId = String(req.user.id);
   try {
-    await initSession(userId);
-    const sessionInfo = await waitForSessionState(userId, ['CONNECTED', 'QR'], 8000);
+    initSession(userId).catch(err => console.error(`[InitSession Async] user ${userId}:`, err));
+    const sessionInfo = await waitForSessionState(userId, ['CONNECTED', 'QR'], 1000);
     return res.json({
       message: sessionInfo.status === 'CONNECTED'
         ? 'Session connected successfully'
@@ -59,13 +59,21 @@ router.post('/session/login', async (req, res) => {
 
 /**
  * Route: GET /api/session/status
- * Returns the current WhatsApp connection status.
+ * Returns the current WhatsApp connection status. Automatically connects if disconnected.
  * Accepts optional ?userId=<id> in query (falls back to JWT user id).
  */
-router.get('/session/status', (req, res) => {
+router.get('/session/status', async (req, res) => {
   const userId = String(req.query.userId || req.user.id);
+  const autoConnect = req.query.autoConnect !== 'false';
   try {
-    const statusInfo = getSessionStatus(userId);
+    let statusInfo = getSessionStatus(userId);
+    
+    // Immediately auto-connect in background if disconnected and autoConnect is active
+    if (statusInfo.status === 'DISCONNECTED' && autoConnect) {
+      initSession(userId).catch(err => console.error(`[AutoConnect Async] user ${userId}:`, err));
+      statusInfo = await waitForSessionState(userId, ['CONNECTED', 'QR'], 1000);
+    }
+
     return res.json({ userId, ...statusInfo });
   } catch (err) {
     return res.status(500).json({ error: err.message });

@@ -292,6 +292,61 @@ router.post('/contacts/import', upload.single('file'), (req, res) => {
   }
 });
 
+router.get('/contacts/sample-excel', (req, res) => {
+  try {
+    const sampleContacts = [
+      { Name: 'John Doe', Mobile: '919876543210', ShopName: 'Acme Traders' },
+      { Name: 'Jane Smith', Mobile: '919876543211', ShopName: 'Smith Enterprises' },
+      { Name: 'Rahul Sharma', Mobile: '919123456789', ShopName: 'Sharma Electronics' }
+    ];
+
+    const worksheet = xlsx.utils.json_to_sheet(sampleContacts);
+    worksheet['!cols'] = [
+      { wch: 20 },
+      { wch: 18 },
+      { wch: 25 }
+    ];
+
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, 'Contacts');
+
+    const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="sample_contacts.xlsx"');
+    return res.send(buffer);
+  } catch (err) {
+    return res.status(500).json({ error: `Failed to generate sample Excel: ${err.message}` });
+  }
+});
+
+router.get('/contacts/export-excel', (req, res) => {
+  try {
+    const contacts = getContactsByUser(req.user.id);
+    const data = contacts.map(c => ({
+      Name: c.name || '',
+      Mobile: c.mobile || '',
+      ShopName: c.shop_name || '',
+      Excluded: c.excluded ? 'Yes' : 'No',
+      CreatedAt: c.created_at || ''
+    }));
+
+    const worksheet = xlsx.utils.json_to_sheet(data.length ? data : [{ Name: '', Mobile: '', ShopName: '' }]);
+    worksheet['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 10 }, { wch: 20 }];
+
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, 'Contacts');
+
+    const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="contacts_export.xlsx"');
+    return res.send(buffer);
+  } catch (err) {
+    return res.status(500).json({ error: `Export failed: ${err.message}` });
+  }
+});
+
 // ─── Scheduled Reminders Endpoints ───────────────────────────────────────────
 
 router.get('/reminders', (req, res) => {
