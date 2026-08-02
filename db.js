@@ -466,6 +466,19 @@ export function initDb() {
     db.exec("ALTER TABLE contacts ADD COLUMN birthday TEXT");
   } catch (e) {}
 
+  // Follow-up sent log table — tracks which contacts received which automation
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS followup_sent_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      automation_id INTEGER NOT NULL,
+      contact_id INTEGER NOT NULL,
+      sent_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (automation_id) REFERENCES followup_automations(id) ON DELETE CASCADE
+    )
+  `);
+
   console.log('[DB] All tables initialized.');
 }
 

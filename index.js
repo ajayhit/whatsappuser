@@ -9,11 +9,14 @@ import adminRouter from './adminRouter.js';
 import crmRouter from './crmRouter.js';
 import { restoreAllSessions, getSessionStatus, sendMessageToJid, sendMediaToJid } from './sessionManager.js';
 import {
-  initDb, getUserByEmail, createUser, getUserById,
+  initDb, getDb, getUserByEmail, createUser, getUserById,
   getCatalogByUserId, getServicesByCatalogId,
   getPendingReminders, updateReminderStatus, isContactExcluded, getActivePlan,
   getPendingCampaigns, getPendingRecipients, updateCampaignStatus, updateCampaignRecipientStatus,
-  incrementCampaignSuccess, incrementCampaignFailure, getCampaignById
+  incrementCampaignSuccess, incrementCampaignFailure, getCampaignById,
+  getContactsByUser,
+  getDueBirthdayWishes, markBirthdayWishSent,
+  updatePaymentReminderStatus
 } from './db.js';
 
 dotenv.config();
@@ -277,6 +280,15 @@ app.listen(PORT, async () => {
   
   // Start Background Campaigns Poller
   startCampaignsPoller();
+
+  // Start Background Follow-up Automation Poller
+  startFollowUpPoller();
+
+  // Start Background Birthday Wishes Poller
+  startBirthdayPoller();
+
+  // Start Background Payment Reminders Poller
+  startPaymentReminderPoller();
 });
 
 // Background reminders polling handler
@@ -431,4 +443,194 @@ function startCampaignsPoller() {
       console.error('[Campaigns Poller Error]', e);
     }
   }, 10000); // Poll every 10 seconds for campaigns for faster execution
+}
+
+// ─── Follow-up Automation Poller ─────────────────────────────────────────────
+function startFollowUpPoller() {
+  setInterval(async () => {
+    try {
+      const dbConn = getDb();
+
+      // Fetch all active automations grouped by user
+      const automations = dbConn.prepare(`
+        SELECT fa.*, u.id AS owner_id
+        FROM followup_automations fa
+        JOIN users u ON u.id = fa.user_id
+        WHERE fa.active = 1
+      `).all();
+
+      if (!automations || automations.length === 0) return;
+
+      // Group by user
+      const byUser = {};
+      for (const auto of automations) {
+        if (!byUser[auto.user_id]) byUser[auto.user_id] = [];
+        byUser[auto.user_id].push(auto);
+      }
+
+      for (const [userId, rules] of Object.entries(byUser)) {
+        try {
+          const plan = getActivePlan(parseInt(userId));
+          if (!plan || new Date(plan.expires_at) < new Date()) continue;
+
+          const session = getSessionStatus(String(userId));
+          if (session.status !== 'CONNECTED') continue;
+
+          const user = getUserById(parseInt(userId));
+          const contacts = getContactsByUser(parseInt(userId));
+
+          for (const rule of rules) {
+            const nowMs = Date.now();
+            const delayMs = rule.delay_days * 24 * 60 * 60 * 1000;
+
+            for (const contact of contacts) {
+              if (contact.is_excluded) continue;
+
+              try {
+                // Check if this contact already received a follow-up for this rule recently
+                const lastSentRow = dbConn.prepare(`
+                  SELECT sent_at FROM followup_sent_log
+                  WHERE user_id = ? AND automation_id = ? AND contact_id = ?
+                  ORDER BY sent_at DESC LIMIT 1
+                `).get(parseInt(userId), rule.id, contact.id);
+
+                if (lastSentRow) {
+                  // Don't re-send if already sent within delay period
+                  const lastSentMs = new Date(lastSentRow.sent_at).getTime();
+                  if ((nowMs - lastSentMs) < delayMs) continue;
+                }
+
+                // For 'no_response' trigger — check if contact has been in DB longer than delay_days
+                if (rule.trigger_event === 'no_response') {
+                  const createdMs = new Date(contact.created_at).getTime();
+                  if ((nowMs - createdMs) < delayMs) continue;
+                }
+
+                // Build message with placeholder replacements
+                let text = rule.message_text;
+                text = text.replace(/\{name\}/gi, contact.name || '');
+                text = text.replace(/\{shopname\}/gi, contact.shop_name || '');
+                text = text.replace(/\{mobile\}/gi, contact.mobile || '');
+
+                await sendMessageToJid(String(userId), contact.mobile, text);
+
+                // Log this send so we don't re-send immediately
+                dbConn.prepare(`
+                  INSERT INTO followup_sent_log (user_id, automation_id, contact_id, sent_at)
+                  VALUES (?, ?, ?, datetime('now'))
+                `).run(parseInt(userId), rule.id, contact.id);
+
+                console.log(`[FollowUp Poller] Sent '${rule.name}' to ${contact.mobile} for user ${userId}`);
+
+                await new Promise(r => setTimeout(r, 1000));
+              } catch (contactErr) {
+                console.error(`[FollowUp Poller] Failed for contact ${contact.mobile}: ${contactErr.message}`);
+              }
+            }
+          }
+        } catch (userErr) {
+          console.error(`[FollowUp Poller] User ${userId} error: ${userErr.message}`);
+        }
+      }
+    } catch (e) {
+      console.error('[FollowUp Poller Error]', e);
+    }
+  }, 10 * 60 * 1000); // Poll every 10 minutes
+}
+
+// ─── Birthday Wishes Poller ───────────────────────────────────────────────────
+function startBirthdayPoller() {
+  setInterval(async () => {
+    try {
+      const dueWishes = getDueBirthdayWishes();
+      if (!dueWishes || dueWishes.length === 0) return;
+
+      const currentYear = new Date().getFullYear();
+      const currentHour = new Date().getHours();
+      const currentMinute = new Date().getMinutes();
+
+      for (const wish of dueWishes) {
+        try {
+          // Only send at or after the configured send_time
+          const [sendHour, sendMin] = (wish.send_time || '09:00').split(':').map(Number);
+          const nowInMinutes = currentHour * 60 + currentMinute;
+          const sendInMinutes = sendHour * 60 + sendMin;
+          if (nowInMinutes < sendInMinutes) continue;
+
+          const plan = getActivePlan(wish.user_id);
+          if (!plan || new Date(plan.expires_at) < new Date()) continue;
+
+          const session = getSessionStatus(String(wish.user_id));
+          if (session.status !== 'CONNECTED') continue;
+
+          const user = getUserById(wish.user_id);
+
+          let text = wish.message_text;
+          text = text.replace(/\{name\}/gi, wish.recipient_name || '');
+          text = text.replace(/\{shopname\}/gi, user?.name || '');
+
+          if (wish.media_path && wish.media_type) {
+            await sendMediaToJid(String(wish.user_id), wish.recipient_phone, wish.media_path, wish.media_type, text);
+          } else {
+            await sendMessageToJid(String(wish.user_id), wish.recipient_phone, text);
+          }
+
+          markBirthdayWishSent(wish.id, currentYear);
+          console.log(`[Birthday Poller] Sent birthday wish #${wish.id} to ${wish.recipient_phone}`);
+        } catch (err) {
+          console.error(`[Birthday Poller] Failed for wish #${wish.id}: ${err.message}`);
+        }
+      }
+    } catch (e) {
+      console.error('[Birthday Poller Error]', e);
+    }
+  }, 5 * 60 * 1000); // Poll every 5 minutes
+}
+
+// ─── Payment Reminder Poller ──────────────────────────────────────────────────
+function startPaymentReminderPoller() {
+  setInterval(async () => {
+    try {
+      const dbConn = getDb();
+
+      // Find active pending reminders due today (factoring in remind_days_before offset)
+      const dueReminders = dbConn.prepare(`
+        SELECT * FROM payment_reminders
+        WHERE active = 1 AND status = 'pending'
+          AND date(due_date, '-' || remind_days_before || ' days') <= date('now', 'localtime')
+          AND date(due_date) >= date('now', 'localtime')
+      `).all();
+
+      if (!dueReminders || dueReminders.length === 0) return;
+
+      for (const rem of dueReminders) {
+        try {
+          const plan = getActivePlan(rem.user_id);
+          if (!plan || new Date(plan.expires_at) < new Date()) continue;
+
+          const session = getSessionStatus(String(rem.user_id));
+          if (session.status !== 'CONNECTED') continue;
+
+          let text = rem.message_text;
+          text = text.replace(/\{name\}/gi, rem.recipient_name || '');
+          text = text.replace(/\{amount\}/gi, rem.amount ? `₹${rem.amount}` : '');
+          text = text.replace(/\{duedate\}/gi, rem.due_date || '');
+          text = text.replace(/\{shopname\}/gi, '');
+
+          if (rem.media_path && rem.media_type) {
+            await sendMediaToJid(String(rem.user_id), rem.recipient_phone, rem.media_path, rem.media_type, text);
+          } else {
+            await sendMessageToJid(String(rem.user_id), rem.recipient_phone, text);
+          }
+
+          updatePaymentReminderStatus(rem.id, rem.user_id, 'sent');
+          console.log(`[Payment Reminder Poller] Sent reminder #${rem.id} to ${rem.recipient_phone}`);
+        } catch (err) {
+          console.error(`[Payment Reminder Poller] Failed for #${rem.id}: ${err.message}`);
+        }
+      }
+    } catch (e) {
+      console.error('[Payment Reminder Poller Error]', e);
+    }
+  }, 10 * 60 * 1000); // Poll every 10 minutes
 }
