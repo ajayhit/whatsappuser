@@ -357,6 +357,95 @@ export function initDb() {
     )
   `);
 
+  // Birthday Wishes automation table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS birthday_wishes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      contact_id INTEGER,
+      recipient_name TEXT NOT NULL,
+      recipient_phone TEXT NOT NULL,
+      birthday_date TEXT NOT NULL,   -- MM-DD format for yearly recurrence
+      birth_year TEXT,               -- Optional full birth year
+      message_text TEXT NOT NULL,
+      media_path TEXT,
+      media_type TEXT,
+      send_time TEXT DEFAULT '09:00', -- HH:MM to send on birthday
+      active INTEGER NOT NULL DEFAULT 1,
+      last_sent_year INTEGER,        -- Year last sent to avoid duplicates
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Payment Reminders automation table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS payment_reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      contact_id INTEGER,
+      recipient_name TEXT NOT NULL,
+      recipient_phone TEXT NOT NULL,
+      amount REAL,
+      currency TEXT DEFAULT 'INR',
+      due_date TEXT NOT NULL,         -- ISO date of payment due
+      message_text TEXT NOT NULL,
+      media_path TEXT,
+      media_type TEXT,
+      remind_days_before INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'pending',  -- pending, sent, paid, cancelled
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Order Notifications automation table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS order_notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      contact_id INTEGER,
+      recipient_name TEXT NOT NULL,
+      recipient_phone TEXT NOT NULL,
+      order_id TEXT NOT NULL,
+      order_status TEXT NOT NULL DEFAULT 'placed', -- placed, confirmed, shipped, out_for_delivery, delivered, cancelled
+      product_name TEXT,
+      amount REAL,
+      currency TEXT DEFAULT 'INR',
+      message_text TEXT NOT NULL,
+      media_path TEXT,
+      media_type TEXT,
+      send_immediately INTEGER DEFAULT 1,
+      scheduled_at TEXT,
+      sent_at TEXT,
+      status TEXT DEFAULT 'pending',  -- pending, sent, failed
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Follow-up Automation table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS followup_automations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      trigger_event TEXT NOT NULL DEFAULT 'no_response', -- no_response, after_purchase, after_reminder
+      delay_days INTEGER NOT NULL DEFAULT 3,
+      message_text TEXT NOT NULL,
+      media_path TEXT,
+      media_type TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      apply_to TEXT DEFAULT 'all',    -- all, group (future: group_id)
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
   // Ensure table columns exist for plans and orders
   try {
     db.exec("ALTER TABLE plans ADD COLUMN plan_type TEXT NOT NULL DEFAULT 'plan_28'");
@@ -372,6 +461,9 @@ export function initDb() {
   } catch (e) {}
   try {
     db.exec("ALTER TABLE contacts ADD COLUMN email TEXT");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE contacts ADD COLUMN birthday TEXT");
   } catch (e) {}
 
   console.log('[DB] All tables initialized.');
@@ -978,6 +1070,115 @@ export function isContactExcluded(userId, mobile) {
   return row ? row.is_excluded === 1 : false;
 }
 
+// ─── Contact Groups Helpers ───────────────────────────────────────────────────
+
+export function getContactGroupsByUser(userId) {
+  const db = getDb();
+  return db.prepare(`
+    SELECT cg.*,
+      COUNT(DISTINCT cgm.contact_id) as member_count
+    FROM contact_groups cg
+    LEFT JOIN contact_group_members cgm ON cgm.group_id = cg.id
+    WHERE cg.user_id = ?
+    GROUP BY cg.id
+    ORDER BY cg.created_at DESC
+  `).all(userId);
+}
+
+export function getContactGroupById(groupId, userId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM contact_groups WHERE id = ? AND user_id = ?').get(groupId, userId);
+}
+
+export function createContactGroup(userId, { name, description }) {
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO contact_groups (user_id, name, description)
+    VALUES (?, ?, ?)
+  `).run(userId, name.trim(), description ? description.trim() : '');
+  return db.prepare(`
+    SELECT cg.*, COUNT(DISTINCT cgm.contact_id) as member_count
+    FROM contact_groups cg
+    LEFT JOIN contact_group_members cgm ON cgm.group_id = cg.id
+    WHERE cg.id = ?
+    GROUP BY cg.id
+  `).get(result.lastInsertRowid);
+}
+
+export function updateContactGroup(groupId, userId, { name, description }) {
+  const db = getDb();
+  db.prepare(`
+    UPDATE contact_groups
+    SET name = ?, description = ?
+    WHERE id = ? AND user_id = ?
+  `).run(name.trim(), description ? description.trim() : '', groupId, userId);
+  return getContactGroupById(groupId, userId);
+}
+
+export function deleteContactGroup(groupId, userId) {
+  const db = getDb();
+  db.prepare('DELETE FROM contact_groups WHERE id = ? AND user_id = ?').run(groupId, userId);
+  return { id: groupId, deleted: true };
+}
+
+export function getContactGroupMembers(groupId, userId) {
+  const db = getDb();
+  // Verify group belongs to user first
+  const group = getContactGroupById(groupId, userId);
+  if (!group) return null;
+  return db.prepare(`
+    SELECT c.*, cgm.id as membership_id
+    FROM contact_group_members cgm
+    JOIN contacts c ON c.id = cgm.contact_id
+    WHERE cgm.group_id = ?
+    ORDER BY c.name ASC
+  `).all(groupId);
+}
+
+export function addContactsToGroup(groupId, userId, contactIds) {
+  const db = getDb();
+  const group = getContactGroupById(groupId, userId);
+  if (!group) throw new Error('Group not found');
+
+  const insertStmt = db.prepare(`
+    INSERT OR IGNORE INTO contact_group_members (group_id, contact_id)
+    VALUES (?, ?)
+  `);
+
+  const addTx = db.transaction((ids) => {
+    let added = 0;
+    for (const contactId of ids) {
+      const result = insertStmt.run(groupId, contactId);
+      if (result.changes > 0) added++;
+    }
+    return added;
+  });
+
+  const added = addTx(contactIds);
+  return { added, groupId };
+}
+
+export function removeContactFromGroup(groupId, contactId, userId) {
+  const db = getDb();
+  const group = getContactGroupById(groupId, userId);
+  if (!group) throw new Error('Group not found');
+  db.prepare('DELETE FROM contact_group_members WHERE group_id = ? AND contact_id = ?').run(groupId, contactId);
+  return { groupId, contactId, removed: true };
+}
+
+export function getContactsNotInGroup(groupId, userId) {
+  const db = getDb();
+  return db.prepare(`
+    SELECT c.*
+    FROM contacts c
+    WHERE c.user_id = ?
+      AND c.id NOT IN (
+        SELECT contact_id FROM contact_group_members WHERE group_id = ?
+      )
+    ORDER BY c.name ASC
+  `).all(userId, groupId);
+}
+
 // Auto Reply Helpers
 export function getAutoRepliesByUser(userId) {
   const db = getDb();
@@ -1249,4 +1450,238 @@ export function getPendingRecipients(campaignId, limit = 50) {
     WHERE campaign_id = ? AND status = 'pending'
     LIMIT ?
   `).all(campaignId, limit);
+}
+
+// ─── Birthday Wishes Helpers ──────────────────────────────────────────────────
+
+export function getBirthdayWishesByUser(userId) {
+  const db = getDb();
+  return db.prepare(`
+    SELECT bw.*, c.name AS contact_name
+    FROM birthday_wishes bw
+    LEFT JOIN contacts c ON c.id = bw.contact_id
+    WHERE bw.user_id = ?
+    ORDER BY bw.birthday_date ASC
+  `).all(userId);
+}
+
+export function createBirthdayWish(userId, data) {
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO birthday_wishes (user_id, contact_id, recipient_name, recipient_phone,
+      birthday_date, birth_year, message_text, media_path, media_type, send_time, active)
+    VALUES (@user_id, @contact_id, @recipient_name, @recipient_phone,
+      @birthday_date, @birth_year, @message_text, @media_path, @media_type, @send_time, 1)
+  `).run({
+    user_id: userId,
+    contact_id: data.contact_id || null,
+    recipient_name: data.recipient_name,
+    recipient_phone: data.recipient_phone,
+    birthday_date: data.birthday_date,
+    birth_year: data.birth_year || null,
+    message_text: data.message_text,
+    media_path: data.media_path || null,
+    media_type: data.media_type || null,
+    send_time: data.send_time || '09:00'
+  });
+  return db.prepare('SELECT * FROM birthday_wishes WHERE id = ?').get(result.lastInsertRowid);
+}
+
+export function updateBirthdayWish(id, userId, data) {
+  const db = getDb();
+  db.prepare(`
+    UPDATE birthday_wishes SET
+      recipient_name = COALESCE(@recipient_name, recipient_name),
+      recipient_phone = COALESCE(@recipient_phone, recipient_phone),
+      birthday_date = COALESCE(@birthday_date, birthday_date),
+      birth_year = @birth_year,
+      message_text = COALESCE(@message_text, message_text),
+      send_time = COALESCE(@send_time, send_time),
+      active = COALESCE(@active, active)
+    WHERE id = @id AND user_id = @user_id
+  `).run({ id, user_id: userId, ...data, birth_year: data.birth_year || null });
+  return db.prepare('SELECT * FROM birthday_wishes WHERE id = ?').get(id);
+}
+
+export function deleteBirthdayWish(id, userId) {
+  const db = getDb();
+  return db.prepare('DELETE FROM birthday_wishes WHERE id = ? AND user_id = ?').run(id, userId);
+}
+
+export function getDueBirthdayWishes() {
+  const db = getDb();
+  const now = new Date();
+  const mmdd = String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  const currentYear = now.getFullYear();
+  return db.prepare(`
+    SELECT bw.*, u.id AS owner_user_id
+    FROM birthday_wishes bw
+    JOIN users u ON u.id = bw.user_id
+    WHERE bw.active = 1
+      AND bw.birthday_date = ?
+      AND (bw.last_sent_year IS NULL OR bw.last_sent_year < ?)
+  `).all(mmdd, currentYear);
+}
+
+export function markBirthdayWishSent(id, year) {
+  const db = getDb();
+  db.prepare('UPDATE birthday_wishes SET last_sent_year = ? WHERE id = ?').run(year, id);
+}
+
+// ─── Payment Reminder Helpers ─────────────────────────────────────────────────
+
+export function getPaymentRemindersByUser(userId) {
+  const db = getDb();
+  return db.prepare(`
+    SELECT pr.*, c.name AS contact_name
+    FROM payment_reminders pr
+    LEFT JOIN contacts c ON c.id = pr.contact_id
+    WHERE pr.user_id = ?
+    ORDER BY pr.due_date ASC
+  `).all(userId);
+}
+
+export function createPaymentReminder(userId, data) {
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO payment_reminders (user_id, contact_id, recipient_name, recipient_phone,
+      amount, currency, due_date, message_text, media_path, media_type, remind_days_before, status, active)
+    VALUES (@user_id, @contact_id, @recipient_name, @recipient_phone,
+      @amount, @currency, @due_date, @message_text, @media_path, @media_type, @remind_days_before, 'pending', 1)
+  `).run({
+    user_id: userId,
+    contact_id: data.contact_id || null,
+    recipient_name: data.recipient_name,
+    recipient_phone: data.recipient_phone,
+    amount: data.amount || null,
+    currency: data.currency || 'INR',
+    due_date: data.due_date,
+    message_text: data.message_text,
+    media_path: data.media_path || null,
+    media_type: data.media_type || null,
+    remind_days_before: data.remind_days_before || 1
+  });
+  return db.prepare('SELECT * FROM payment_reminders WHERE id = ?').get(result.lastInsertRowid);
+}
+
+export function updatePaymentReminderStatus(id, userId, status) {
+  const db = getDb();
+  db.prepare('UPDATE payment_reminders SET status = ? WHERE id = ? AND user_id = ?').run(status, id, userId);
+  return db.prepare('SELECT * FROM payment_reminders WHERE id = ?').get(id);
+}
+
+export function deletePaymentReminder(id, userId) {
+  const db = getDb();
+  return db.prepare('DELETE FROM payment_reminders WHERE id = ? AND user_id = ?').run(id, userId);
+}
+
+// ─── Order Notification Helpers ───────────────────────────────────────────────
+
+export function getOrderNotificationsByUser(userId) {
+  const db = getDb();
+  return db.prepare(`
+    SELECT orn.*, c.name AS contact_name
+    FROM order_notifications orn
+    LEFT JOIN contacts c ON c.id = orn.contact_id
+    WHERE orn.user_id = ?
+    ORDER BY orn.created_at DESC
+  `).all(userId);
+}
+
+export function createOrderNotification(userId, data) {
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO order_notifications (user_id, contact_id, recipient_name, recipient_phone,
+      order_id, order_status, product_name, amount, currency, message_text,
+      media_path, media_type, send_immediately, scheduled_at, status)
+    VALUES (@user_id, @contact_id, @recipient_name, @recipient_phone,
+      @order_id, @order_status, @product_name, @amount, @currency, @message_text,
+      @media_path, @media_type, @send_immediately, @scheduled_at, 'pending')
+  `).run({
+    user_id: userId,
+    contact_id: data.contact_id || null,
+    recipient_name: data.recipient_name,
+    recipient_phone: data.recipient_phone,
+    order_id: data.order_id,
+    order_status: data.order_status || 'placed',
+    product_name: data.product_name || null,
+    amount: data.amount || null,
+    currency: data.currency || 'INR',
+    message_text: data.message_text,
+    media_path: data.media_path || null,
+    media_type: data.media_type || null,
+    send_immediately: data.send_immediately !== false ? 1 : 0,
+    scheduled_at: data.scheduled_at || null
+  });
+  return db.prepare('SELECT * FROM order_notifications WHERE id = ?').get(result.lastInsertRowid);
+}
+
+export function updateOrderNotificationStatus(id, userId, status, sentAt) {
+  const db = getDb();
+  db.prepare('UPDATE order_notifications SET status = ?, sent_at = ? WHERE id = ? AND user_id = ?')
+    .run(status, sentAt || null, id, userId);
+  return db.prepare('SELECT * FROM order_notifications WHERE id = ?').get(id);
+}
+
+export function deleteOrderNotification(id, userId) {
+  const db = getDb();
+  return db.prepare('DELETE FROM order_notifications WHERE id = ? AND user_id = ?').run(id, userId);
+}
+
+export function getPendingOrderNotifications() {
+  const db = getDb();
+  return db.prepare(`
+    SELECT * FROM order_notifications
+    WHERE status = 'pending'
+      AND (send_immediately = 1 OR (scheduled_at IS NOT NULL AND scheduled_at <= datetime('now', 'localtime')))
+  `).all();
+}
+
+// ─── Follow-up Automation Helpers ─────────────────────────────────────────────
+
+export function getFollowupAutomationsByUser(userId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM followup_automations WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+}
+
+export function createFollowupAutomation(userId, data) {
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO followup_automations (user_id, name, trigger_event, delay_days,
+      message_text, media_path, media_type, active, apply_to)
+    VALUES (@user_id, @name, @trigger_event, @delay_days,
+      @message_text, @media_path, @media_type, 1, @apply_to)
+  `).run({
+    user_id: userId,
+    name: data.name,
+    trigger_event: data.trigger_event || 'no_response',
+    delay_days: data.delay_days || 3,
+    message_text: data.message_text,
+    media_path: data.media_path || null,
+    media_type: data.media_type || null,
+    apply_to: data.apply_to || 'all'
+  });
+  return db.prepare('SELECT * FROM followup_automations WHERE id = ?').get(result.lastInsertRowid);
+}
+
+export function updateFollowupAutomation(id, userId, data) {
+  const db = getDb();
+  db.prepare(`
+    UPDATE followup_automations SET
+      name = COALESCE(@name, name),
+      trigger_event = COALESCE(@trigger_event, trigger_event),
+      delay_days = COALESCE(@delay_days, delay_days),
+      message_text = COALESCE(@message_text, message_text),
+      active = COALESCE(@active, active),
+      apply_to = COALESCE(@apply_to, apply_to)
+    WHERE id = @id AND user_id = @user_id
+  `).run({ id, user_id: userId, name: data.name || null, trigger_event: data.trigger_event || null,
+    delay_days: data.delay_days || null, message_text: data.message_text || null,
+    active: data.active ?? null, apply_to: data.apply_to || null });
+  return db.prepare('SELECT * FROM followup_automations WHERE id = ?').get(id);
+}
+
+export function deleteFollowupAutomation(id, userId) {
+  const db = getDb();
+  return db.prepare('DELETE FROM followup_automations WHERE id = ? AND user_id = ?').run(id, userId);
 }

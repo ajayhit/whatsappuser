@@ -13,7 +13,13 @@ import {
   getRemindersByUser, createReminder, deleteReminder,
   getTemplatesByUser, createTemplate, updateTemplate, deleteTemplate,
   getUserById, getAutomationSettings, upsertAutomationSettings,
-  getCampaignsByUser, getCampaignRecipients, createCampaign, updateCampaignStatus, getCampaignById
+  getCampaignsByUser, getCampaignRecipients, createCampaign, updateCampaignStatus, getCampaignById,
+  getContactGroupsByUser, getContactGroupById, createContactGroup, updateContactGroup, deleteContactGroup,
+  getContactGroupMembers, addContactsToGroup, removeContactFromGroup, getContactsNotInGroup,
+  getBirthdayWishesByUser, createBirthdayWish, updateBirthdayWish, deleteBirthdayWish,
+  getPaymentRemindersByUser, createPaymentReminder, updatePaymentReminderStatus, deletePaymentReminder,
+  getOrderNotificationsByUser, createOrderNotification, deleteOrderNotification,
+  getFollowupAutomationsByUser, createFollowupAutomation, updateFollowupAutomation, deleteFollowupAutomation
 } from './db.js';
 
 const router = express.Router();
@@ -226,6 +232,109 @@ router.delete('/contacts/:id', (req, res) => {
   const contactId = parseInt(req.params.id);
   try {
     const result = deleteContact(contactId, req.user.id);
+    return res.json(result);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Contact Groups Endpoints ─────────────────────────────────────────────────
+
+router.get('/contact-groups', (req, res) => {
+  try {
+    const groups = getContactGroupsByUser(req.user.id);
+    return res.json({ groups });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/contact-groups', (req, res) => {
+  const { name, description } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Group name is required' });
+  }
+  try {
+    const group = createContactGroup(req.user.id, { name, description });
+    return res.json({ message: 'Group created successfully', group });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/contact-groups/:id', (req, res) => {
+  const groupId = parseInt(req.params.id);
+  const { name, description } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Group name is required' });
+  }
+  try {
+    const group = updateContactGroup(groupId, req.user.id, { name, description });
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+    return res.json({ message: 'Group updated successfully', group });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/contact-groups/:id', (req, res) => {
+  const groupId = parseInt(req.params.id);
+  try {
+    const group = getContactGroupById(groupId, req.user.id);
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+    const result = deleteContactGroup(groupId, req.user.id);
+    return res.json(result);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Get members of a group
+router.get('/contact-groups/:id/members', (req, res) => {
+  const groupId = parseInt(req.params.id);
+  try {
+    const members = getContactGroupMembers(groupId, req.user.id);
+    if (members === null) return res.status(404).json({ error: 'Group not found' });
+    return res.json({ members });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Get contacts NOT yet in a group (for add-member picker)
+router.get('/contact-groups/:id/available-contacts', (req, res) => {
+  const groupId = parseInt(req.params.id);
+  try {
+    const group = getContactGroupById(groupId, req.user.id);
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+    const contacts = getContactsNotInGroup(groupId, req.user.id);
+    return res.json({ contacts });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Add contacts to a group
+router.post('/contact-groups/:id/members', (req, res) => {
+  const groupId = parseInt(req.params.id);
+  const { contactIds } = req.body;
+  if (!Array.isArray(contactIds) || contactIds.length === 0) {
+    return res.status(400).json({ error: 'contactIds array is required' });
+  }
+  try {
+    const result = addContactsToGroup(groupId, req.user.id, contactIds.map(Number));
+    return res.json({ message: `${result.added} contact(s) added to group`, result });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Remove a contact from a group
+router.delete('/contact-groups/:id/members/:contactId', (req, res) => {
+  const groupId = parseInt(req.params.id);
+  const contactId = parseInt(req.params.contactId);
+  try {
+    const result = removeContactFromGroup(groupId, contactId, req.user.id);
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -660,6 +769,228 @@ router.put('/campaigns/:id/status', (req, res) => {
 
     const updated = updateCampaignStatus(req.params.id, status);
     return res.json({ message: 'Campaign status updated', campaign: updated });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Birthday Wishes Endpoints ───────────────────────────────────────────────
+
+router.get('/birthday-wishes', (req, res) => {
+  try {
+    const wishes = getBirthdayWishesByUser(req.user.id);
+    return res.json(wishes);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/birthday-wishes', upload.single('media'), (req, res) => {
+  try {
+    const { contact_id, recipient_name, recipient_phone, birthday_date, birth_year, message_text, send_time } = req.body;
+    if (!recipient_name || !recipient_phone || !birthday_date || !message_text) {
+      return res.status(400).json({ error: 'Name, phone, birthday date, and message text are required' });
+    }
+    const media_path = req.file ? req.file.path : null;
+    const media_type = req.file ? getMediaType(req.file.mimetype) : null;
+
+    const wish = createBirthdayWish(req.user.id, {
+      contact_id: contact_id ? parseInt(contact_id) : null,
+      recipient_name,
+      recipient_phone: normalizePhone(recipient_phone),
+      birthday_date,
+      birth_year,
+      message_text,
+      media_path,
+      media_type,
+      send_time: send_time || '09:00'
+    });
+    return res.json({ message: 'Birthday wish configured', wish });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/birthday-wishes/:id', (req, res) => {
+  try {
+    deleteBirthdayWish(req.params.id, req.user.id);
+    return res.json({ message: 'Birthday wish deleted' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Payment Reminder Endpoints ─────────────────────────────────────────────
+
+router.get('/payment-reminders', (req, res) => {
+  try {
+    const reminders = getPaymentRemindersByUser(req.user.id);
+    return res.json(reminders);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/payment-reminders', upload.single('media'), (req, res) => {
+  try {
+    const { contact_id, recipient_name, recipient_phone, amount, currency, due_date, message_text, remind_days_before } = req.body;
+    if (!recipient_name || !recipient_phone || !due_date || !message_text) {
+      return res.status(400).json({ error: 'Name, phone, due date, and message text are required' });
+    }
+    const media_path = req.file ? req.file.path : null;
+    const media_type = req.file ? getMediaType(req.file.mimetype) : null;
+
+    const reminder = createPaymentReminder(req.user.id, {
+      contact_id: contact_id ? parseInt(contact_id) : null,
+      recipient_name,
+      recipient_phone: normalizePhone(recipient_phone),
+      amount: amount ? parseFloat(amount) : null,
+      currency: currency || 'INR',
+      due_date,
+      message_text,
+      media_path,
+      media_type,
+      remind_days_before: remind_days_before ? parseInt(remind_days_before) : 1
+    });
+    return res.json({ message: 'Payment reminder scheduled', reminder });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/payment-reminders/:id/status', (req, res) => {
+  try {
+    const { status } = req.body;
+    const updated = updatePaymentReminderStatus(req.params.id, req.user.id, status);
+    return res.json({ message: 'Payment reminder status updated', reminder: updated });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/payment-reminders/:id', (req, res) => {
+  try {
+    deletePaymentReminder(req.params.id, req.user.id);
+    return res.json({ message: 'Payment reminder deleted' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Order Notifications Endpoints ──────────────────────────────────────────
+
+router.get('/order-notifications', (req, res) => {
+  try {
+    const notifications = getOrderNotificationsByUser(req.user.id);
+    return res.json(notifications);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/order-notifications', upload.single('media'), (req, res) => {
+  try {
+    const { contact_id, recipient_name, recipient_phone, order_id, order_status, product_name, amount, currency, message_text, send_immediately, scheduled_at } = req.body;
+    if (!recipient_name || !recipient_phone || !order_id || !message_text) {
+      return res.status(400).json({ error: 'Name, phone, Order ID, and message text are required' });
+    }
+    const media_path = req.file ? req.file.path : null;
+    const media_type = req.file ? getMediaType(req.file.mimetype) : null;
+
+    const notif = createOrderNotification(req.user.id, {
+      contact_id: contact_id ? parseInt(contact_id) : null,
+      recipient_name,
+      recipient_phone: normalizePhone(recipient_phone),
+      order_id,
+      order_status: order_status || 'placed',
+      product_name,
+      amount: amount ? parseFloat(amount) : null,
+      currency: currency || 'INR',
+      message_text,
+      media_path,
+      media_type,
+      send_immediately: send_immediately !== 'false' && send_immediately !== false,
+      scheduled_at: scheduled_at || null
+    });
+
+    // If send_immediately, attempt sending right away
+    if (notif.send_immediately) {
+      const sessionStatus = getSessionStatus(req.user.id);
+      if (sessionStatus && sessionStatus.status === 'CONNECTED') {
+        const jid = notif.recipient_phone.includes('@') ? notif.recipient_phone : `${notif.recipient_phone}@s.whatsapp.net`;
+        sendMessageToJid(req.user.id, jid, notif.message_text, notif.media_path, notif.media_type)
+          .then(() => {
+            updateOrderNotificationStatus(notif.id, req.user.id, 'sent', new Date().toISOString());
+          })
+          .catch(err => {
+            console.error('[Order Notification Send Error]', err);
+          });
+      }
+    }
+
+    return res.json({ message: 'Order notification created', notification: notif });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/order-notifications/:id', (req, res) => {
+  try {
+    deleteOrderNotification(req.params.id, req.user.id);
+    return res.json({ message: 'Order notification deleted' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Follow-up Automation Endpoints ─────────────────────────────────────────
+
+router.get('/followup-automations', (req, res) => {
+  try {
+    const automations = getFollowupAutomationsByUser(req.user.id);
+    return res.json(automations);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/followup-automations', upload.single('media'), (req, res) => {
+  try {
+    const { name, trigger_event, delay_days, message_text, apply_to } = req.body;
+    if (!name || !message_text) {
+      return res.status(400).json({ error: 'Automation name and message text are required' });
+    }
+    const media_path = req.file ? req.file.path : null;
+    const media_type = req.file ? getMediaType(req.file.mimetype) : null;
+
+    const auto = createFollowupAutomation(req.user.id, {
+      name,
+      trigger_event: trigger_event || 'no_response',
+      delay_days: delay_days ? parseInt(delay_days) : 3,
+      message_text,
+      media_path,
+      media_type,
+      apply_to: apply_to || 'all'
+    });
+    return res.json({ message: 'Follow-up automation created', automation: auto });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/followup-automations/:id', (req, res) => {
+  try {
+    const updated = updateFollowupAutomation(req.params.id, req.user.id, req.body);
+    return res.json({ message: 'Follow-up automation updated', automation: updated });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/followup-automations/:id', (req, res) => {
+  try {
+    deleteFollowupAutomation(req.params.id, req.user.id);
+    return res.json({ message: 'Follow-up automation deleted' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

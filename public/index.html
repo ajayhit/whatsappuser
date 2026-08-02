@@ -1051,6 +1051,8 @@
       // Dynamic lists fetched on profile sync
       banks: [],
       contacts: [],
+      contactGroups: [],
+      activeGroupId: null, // group currently open in member panel
       autoReplies: [], // removed feature placeholder
       reminders: [],
       templates: [],
@@ -2512,6 +2514,103 @@
               </div>
             </div>
 
+            <!-- TAB: Contact Groups -->
+            <div id="contactGroupsTab" class="tab-content ${state.currentTab === 'contactGroupsTab' ? 'active' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+                <div class="card-title" style="margin-bottom:0;">📋 Contact Groups</div>
+                <button onclick="showCreateGroupModal()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);width:auto;">➕ New Group</button>
+              </div>
+
+              ${(state.contactGroups || []).length === 0 ? `
+                <div style="text-align:center;padding:3rem;background:rgba(255,255,255,0.01);border:1px dashed var(--glass-border);border-radius:16px;">
+                  <div style="font-size:2.5rem;margin-bottom:1rem;">📋</div>
+                  <div style="font-weight:600;margin-bottom:0.5rem;">No groups yet</div>
+                  <div style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.5rem;">Create a group to organise your contacts for targeted broadcasts.</div>
+                  <button onclick="showCreateGroupModal()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);width:auto;padding:0.6rem 1.5rem;">➕ Create First Group</button>
+                </div>
+              ` : `
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem;">
+                  ${(state.contactGroups || []).map(g => `
+                    <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:14px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;transition:box-shadow 0.2s;" onmouseenter="this.style.boxShadow='0 4px 24px rgba(99,102,241,0.18)'" onmouseleave="this.style.boxShadow=''">
+                      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
+                        <div>
+                          <div style="font-weight:700;font-size:1rem;color:#c7d2fe;">${g.name}</div>
+                          ${g.description ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">${g.description}</div>` : ''}
+                        </div>
+                        <div style="display:flex;gap:0.4rem;flex-shrink:0;">
+                          <button onclick="showEditGroupModal(${g.id},'${g.name.replace(/'/g,"\\'")}','${(g.description||'').replace(/'/g,"\\'")}')" style="background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;width:auto;" title="Edit group">✏️</button>
+                          <button onclick="deleteGroupEntry(${g.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;width:auto;" title="Delete group">🗑️</button>
+                        </div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <span style="background:rgba(99,102,241,0.18);color:#a5b4fc;padding:0.2rem 0.6rem;border-radius:9999px;font-size:0.78rem;font-weight:600;">👥 ${g.member_count || 0} member${g.member_count !== 1 ? 's' : ''}</span>
+                        <span style="font-size:0.75rem;color:var(--text-muted);">Created ${new Date(g.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <div style="display:flex;gap:0.5rem;">
+                        <button onclick="openGroupMembersPanel(${g.id})" style="background:rgba(99,102,241,0.18);border:1px solid rgba(99,102,241,0.3);color:#c7d2fe;padding:0.4rem 0.75rem;font-size:0.82rem;margin:0;flex:1;" title="Manage members">👥 Manage Members</button>
+                        <button onclick="broadcastToGroup(${g.id},'${g.name.replace(/'/g,"\\'")}')" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#6ee7b7;padding:0.4rem 0.75rem;font-size:0.82rem;margin:0;flex:1;" title="Send broadcast to group">📢 Broadcast</button>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+
+              <!-- Create/Edit Group Modal -->
+              <div id="groupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+                <div style="background:#1e2942;border:1px solid rgba(99,102,241,0.3);border-radius:18px;padding:2rem;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+                  <div style="font-size:1.1rem;font-weight:700;color:#c7d2fe;margin-bottom:1.5rem;" id="groupModalTitle">Create Group</div>
+                  <form onsubmit="submitGroupForm(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <input type="hidden" id="groupModalId" value="">
+                    <div class="form-group">
+                      <label>Group Name *</label>
+                      <input type="text" id="groupModalName" required placeholder="e.g. VIP Customers, Wholesale Buyers">
+                    </div>
+                    <div class="form-group">
+                      <label>Description (optional)</label>
+                      <input type="text" id="groupModalDesc" placeholder="Short description of this group">
+                    </div>
+                    <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+                      <button type="button" onclick="hideGroupModal()" class="btn-secondary" style="flex:1;">Cancel</button>
+                      <button type="submit" style="flex:1;background:linear-gradient(135deg,#6366f1,#8b5cf6);">Save Group</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Group Members Side Panel -->
+              <div id="groupMembersPanel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(520px,100vw);background:#0f172a;border-left:1px solid rgba(99,102,241,0.3);z-index:1001;overflow-y:auto;box-shadow:-8px 0 40px rgba(0,0,0,0.5);transition:transform 0.3s;">
+                <div style="padding:1.5rem;border-bottom:1px solid rgba(99,102,241,0.15);display:flex;justify-content:space-between;align-items:center;background:rgba(99,102,241,0.06);position:sticky;top:0;z-index:2;">
+                  <div>
+                    <div style="font-weight:700;color:#c7d2fe;" id="groupPanelTitle">Group Members</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);" id="groupPanelSubtitle"></div>
+                  </div>
+                  <button onclick="closeGroupMembersPanel()" style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);width:auto;padding:0.4rem 0.8rem;font-size:0.85rem;margin:0;">✕ Close</button>
+                </div>
+
+                <div style="padding:1.25rem;">
+                  <!-- Add members area -->
+                  <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:1rem;margin-bottom:1.25rem;">
+                    <div style="font-size:0.85rem;font-weight:600;color:#6ee7b7;margin-bottom:0.75rem;">➕ Add Contacts to Group</div>
+                    <div style="display:flex;gap:0.5rem;">
+                      <select id="addMemberSelect" style="flex:1;font-size:0.82rem;" multiple size="4">
+                        <option disabled>Loading...</option>
+                      </select>
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">Hold Ctrl/Cmd to select multiple contacts</div>
+                    <button onclick="submitAddMembers()" style="background:linear-gradient(135deg,#10b981,#059669);margin-top:0.75rem;font-size:0.85rem;">Add Selected</button>
+                  </div>
+
+                  <!-- Current members -->
+                  <div style="font-size:0.85rem;font-weight:600;color:#a5b4fc;margin-bottom:0.75rem;">Current Members</div>
+                  <div id="groupMembersList">
+                    <div style="color:var(--text-muted);text-align:center;padding:2rem;font-size:0.85rem;">Loading members...</div>
+                  </div>
+                </div>
+              </div>
+              <!-- Overlay for panel -->
+              <div id="groupPanelOverlay" onclick="closeGroupMembersPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;"></div>
+            </div>
+
             <!-- TAB: Personalized Message Templates -->
             <div id="templatesTab" class="tab-content ${state.currentTab === 'templatesTab' ? 'active' : ''}">
               <div class="card-title">Personalized Message Templates</div>
@@ -2684,6 +2783,52 @@
               </div>
             </div>
 
+            <!-- TAB: Campaign Analytics -->
+            <div id="campaignAnalyticsTab" class="tab-content ${state.currentTab === 'campaignAnalyticsTab' ? 'active' : ''}">
+              <div class="card-title">📈 Campaign Analytics</div>
+              <div id="campaignAnalyticsContent" style="display:flex;flex-direction:column;gap:1.5rem;">
+                ${renderCampaignAnalytics()}
+              </div>
+            </div>
+
+            <!-- TAB: Campaign Scheduler -->
+            <div id="campaignSchedulerTab" class="tab-content ${state.currentTab === 'campaignSchedulerTab' ? 'active' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                <div class="card-title" style="margin:0;">📅 Campaign Scheduler</div>
+                <button onclick="openCreateCampaignModal()" style="background:var(--accent-color);">+ Schedule New Campaign</button>
+              </div>
+              <div id="schedulerCampaignsList" style="display:flex;flex-direction:column;gap:1rem;">
+                ${renderScheduledCampaigns()}
+              </div>
+            </div>
+
+            <!-- TAB: Messages Report -->
+            <div id="reportsTab" class="tab-content ${state.currentTab === 'reportsTab' ? 'active' : ''}">
+              <div class="card-title">📊 Messages Report</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;">
+                <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#34d399;" id="reportTotalSent">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">✅ Messages Sent</div>
+                </div>
+                <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#818cf8;" id="reportTotalCampaigns">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📢 Total Campaigns</div>
+                </div>
+                <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#f87171;" id="reportTotalFailed">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">❌ Failed Deliveries</div>
+                </div>
+                <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#fbbf24;" id="reportSuccessRate">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📈 Success Rate</div>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;padding:1.25rem;">
+                <div style="font-size:0.9rem;font-weight:600;margin-bottom:1rem;">Recent Campaign Performance</div>
+                <div id="reportsTableContainer">${renderReportsTable()}</div>
+              </div>
+            </div>
+
             <!-- TAB: Customer Reminders -->
             <div id="remindersTab" class="tab-content ${state.currentTab === 'remindersTab' ? 'active' : ''}">
               <div class="card-title">Scheduled Customer Reminders</div>
@@ -2762,6 +2907,286 @@
                       </thead>
                       <tbody>
                         ${renderReminderRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Birthday Wishes Automation -->
+            <div id="birthdayTab" class="tab-content ${state.currentTab === 'birthdayTab' ? 'active' : ''}">
+              <div class="card-title">🎂 Birthday Wishes Automation</div>
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Schedule Birthday Wish</h4>
+                  <form id="birthdayForm" onsubmit="saveBirthdayWish(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label>Choose Contact (Optional)</label>
+                      <select id="birthdayContactSelect" onchange="handleBirthdayContactSelect(this.value)">
+                        <option value="">-- Select Contact --</option>
+                        ${(state.contacts || []).map(c => `
+                          <option value="${c.id}" data-phone="${c.mobile}" data-name="${c.name}" data-bday="${c.birthday || ''}">
+                            ${c.name} (${c.mobile})
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Recipient Mobile Number *</label>
+                      <input type="text" id="birthdayPhone" required placeholder="e.g. 919876543210">
+                    </div>
+                    <div class="form-group">
+                      <label>Recipient Name *</label>
+                      <input type="text" id="birthdayName" required placeholder="e.g. John Doe">
+                    </div>
+                    <div class="form-group" style="display:flex;gap:1rem;">
+                      <div style="flex:1;">
+                        <label>Birthday Date *</label>
+                        <input type="date" id="birthdayDate" required>
+                      </div>
+                      <div style="flex:1;">
+                        <label>Send Time</label>
+                        <input type="time" id="birthdaySendTime" value="09:00">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Wish Message Text *</label>
+                      <textarea id="birthdayMessage" rows="4" required placeholder="Type birthday wish message...">🎉 Happy Birthday {Name}! Wishing you a wonderful year ahead filled with health, happiness, and success! 🎁</textarea>
+                    </div>
+                    <div class="form-group">
+                      <label>Greeting Media Attachment (Optional)</label>
+                      <input type="file" id="birthdayMedia" accept="image/*,video/*">
+                    </div>
+                    <button type="submit" style="background:var(--accent-color);">🎂 Save Birthday Wish</button>
+                  </form>
+                </div>
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Configured Birthday Wishes</h4>
+                  <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Recipient</th>
+                          <th>Birthday</th>
+                          <th>Send Time</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="birthdayWishesTableBody">
+                        ${renderBirthdayWishRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Payment Reminder -->
+            <div id="paymentReminderTab" class="tab-content ${state.currentTab === 'paymentReminderTab' ? 'active' : ''}">
+              <div class="card-title">💳 Payment Reminder Automation</div>
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Schedule Payment Reminder</h4>
+                  <form id="paymentReminderForm" onsubmit="savePaymentReminder(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label>Choose Contact (Optional)</label>
+                      <select id="payContactSelect" onchange="handlePayContactSelect(this.value)">
+                        <option value="">-- Select Contact --</option>
+                        ${(state.contacts || []).map(c => `
+                          <option value="${c.id}" data-phone="${c.mobile}" data-name="${c.name}">
+                            ${c.name} (${c.mobile})
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Recipient Mobile Number *</label>
+                      <input type="text" id="payPhone" required placeholder="e.g. 919876543210">
+                    </div>
+                    <div class="form-group">
+                      <label>Recipient Name *</label>
+                      <input type="text" id="payName" required placeholder="e.g. John Doe">
+                    </div>
+                    <div class="form-group" style="display:flex;gap:1rem;">
+                      <div style="flex:1;">
+                        <label>Amount (₹) *</label>
+                        <input type="number" step="0.01" id="payAmount" required placeholder="1500.00">
+                      </div>
+                      <div style="flex:1;">
+                        <label>Payment Due Date *</label>
+                        <input type="date" id="payDueDate" required>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Remind Days Before Due Date</label>
+                      <select id="payRemindOffset">
+                        <option value="0">On Due Date</option>
+                        <option value="1" selected>1 Day Before</option>
+                        <option value="2">2 Days Before</option>
+                        <option value="3">3 Days Before</option>
+                        <option value="7">7 Days Before</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Reminder Message Text *</label>
+                      <textarea id="payMessage" rows="4" required placeholder="Type payment reminder message...">Hello {Name}, this is a gentle reminder that your payment of ₹{Amount} is due on {DueDate}. Please clear your dues at your earliest. Thank you!</textarea>
+                    </div>
+                    <div class="form-group">
+                      <label>Attach Invoice / QR / Bill (Optional)</label>
+                      <input type="file" id="payMedia" accept="image/*,application/pdf">
+                    </div>
+                    <button type="submit" style="background:var(--accent-color);">💳 Create Payment Reminder</button>
+                  </form>
+                </div>
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Payment Reminders List</h4>
+                  <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Recipient</th>
+                          <th>Amount</th>
+                          <th>Due Date</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="paymentRemindersTableBody">
+                        ${renderPaymentReminderRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Order Notifications -->
+            <div id="orderNotifyTab" class="tab-content ${state.currentTab === 'orderNotifyTab' ? 'active' : ''}">
+              <div class="card-title">📦 Order Notifications Automation</div>
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Send / Trigger Order Notification</h4>
+                  <form id="orderNotifyForm" onsubmit="saveOrderNotification(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label>Customer Mobile Number *</label>
+                      <input type="text" id="orderPhone" required placeholder="e.g. 919876543210">
+                    </div>
+                    <div class="form-group">
+                      <label>Customer Name *</label>
+                      <input type="text" id="orderCustomerName" required placeholder="e.g. John Doe">
+                    </div>
+                    <div class="form-group" style="display:flex;gap:1rem;">
+                      <div style="flex:1;">
+                        <label>Order ID / No. *</label>
+                        <input type="text" id="orderIdNum" required placeholder="ORD-9982">
+                      </div>
+                      <div style="flex:1;">
+                        <label>Order Status *</label>
+                        <select id="orderStatusSelect" onchange="updateOrderNotificationTemplate(this.value)">
+                          <option value="placed" selected>🛍️ Order Placed</option>
+                          <option value="confirmed">✅ Confirmed</option>
+                          <option value="shipped">🚚 Shipped</option>
+                          <option value="out_for_delivery">📦 Out for Delivery</option>
+                          <option value="delivered">🎉 Delivered</option>
+                          <option value="cancelled">❌ Cancelled</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-group" style="display:flex;gap:1rem;">
+                      <div style="flex:1.5;">
+                        <label>Product / Item Name</label>
+                        <input type="text" id="orderProductName" placeholder="e.g. Premium Cotton Shirt">
+                      </div>
+                      <div style="flex:1;">
+                        <label>Order Amount (₹)</label>
+                        <input type="number" step="0.01" id="orderAmount" placeholder="999.00">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Notification Message Text *</label>
+                      <textarea id="orderMessageText" rows="4" required placeholder="Type notification message...">Hello {Name}, your order #{OrderId} for {Product} of ₹{Amount} has been placed successfully! Thank you for shopping with us.</textarea>
+                    </div>
+                    <div class="form-group">
+                      <label>Send Timing</label>
+                      <select id="orderSendTiming">
+                        <option value="immediate">⚡ Send Immediately via WhatsApp</option>
+                        <option value="scheduled">⏱️ Queue for Batch Sending</option>
+                      </select>
+                    </div>
+                    <button type="submit" style="background:var(--accent-color);">📦 Send Order Notification</button>
+                  </form>
+                </div>
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Order Notification History</h4>
+                  <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Recipient</th>
+                          <th>Order Status</th>
+                          <th>Delivery Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="orderNotificationsTableBody">
+                        ${renderOrderNotificationRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Follow-up Automation -->
+            <div id="followUpTab" class="tab-content ${state.currentTab === 'followUpTab' ? 'active' : ''}">
+              <div class="card-title">🔔 Follow-up Sequence Automation</div>
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Create Follow-up Rule</h4>
+                  <form id="followUpForm" onsubmit="saveFollowUpAutomation(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label>Follow-up Sequence Name *</label>
+                      <input type="text" id="followUpName" required placeholder="e.g. 3-Day Lead Check-in" value="3-Day Lead Check-in">
+                    </div>
+                    <div class="form-group" style="display:flex;gap:1rem;">
+                      <div style="flex:1;">
+                        <label>Trigger Event *</label>
+                        <select id="followUpTrigger" onchange="updateFollowUpTemplate(this.value)">
+                          <option value="no_response" selected>⏳ No Reply in N Days</option>
+                          <option value="after_purchase">🛍️ After Purchase</option>
+                          <option value="after_reminder">⏰ After Reminder Sent</option>
+                        </select>
+                      </div>
+                      <div style="flex:1;">
+                        <label>Delay (Days) *</label>
+                        <input type="number" id="followUpDelay" min="1" max="30" value="3" required>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Follow-up Message Text *</label>
+                      <textarea id="followUpMessage" rows="4" required placeholder="Type follow-up message...">Hi {Name}, just checking in to see if you had any questions regarding your inquiry! Let us know how we can assist you.</textarea>
+                    </div>
+                    <button type="submit" style="background:var(--accent-color);">🔔 Create Follow-up Automation</button>
+                  </form>
+                </div>
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Active Follow-up Automation Rules</h4>
+                  <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Sequence Name</th>
+                          <th>Trigger</th>
+                          <th>Delay</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="followUpTableBody">
+                        ${renderFollowUpRows()}
                       </tbody>
                     </table>
                   </div>
@@ -3164,52 +3589,6 @@
               </div>
             </div>
 
-            <!-- TAB: Campaign Analytics -->
-            <div id="campaignAnalyticsTab" class="tab-content ${state.currentTab === 'campaignAnalyticsTab' ? 'active' : ''}">
-              <div class="card-title">📈 Campaign Analytics</div>
-              <div id="campaignAnalyticsContent" style="display:flex;flex-direction:column;gap:1.5rem;">
-                ${renderCampaignAnalytics()}
-              </div>
-            </div>
-
-            <!-- TAB: Campaign Scheduler -->
-            <div id="campaignSchedulerTab" class="tab-content ${state.currentTab === 'campaignSchedulerTab' ? 'active' : ''}">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-                <div class="card-title" style="margin:0;">📅 Campaign Scheduler</div>
-                <button onclick="openCreateCampaignModal()" style="background:var(--accent-color);">+ Schedule New Campaign</button>
-              </div>
-              <div id="schedulerCampaignsList" style="display:flex;flex-direction:column;gap:1rem;">
-                ${renderScheduledCampaigns()}
-              </div>
-            </div>
-
-            <!-- TAB: Messages Report -->
-            <div id="reportsTab" class="tab-content ${state.currentTab === 'reportsTab' ? 'active' : ''}">
-              <div class="card-title">📊 Messages Report</div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;">
-                <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
-                  <div style="font-size:2rem;font-weight:800;color:#34d399;" id="reportTotalSent">—</div>
-                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">✅ Messages Sent</div>
-                </div>
-                <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
-                  <div style="font-size:2rem;font-weight:800;color:#818cf8;" id="reportTotalCampaigns">—</div>
-                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📢 Total Campaigns</div>
-                </div>
-                <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
-                  <div style="font-size:2rem;font-weight:800;color:#f87171;" id="reportTotalFailed">—</div>
-                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">❌ Failed Deliveries</div>
-                </div>
-                <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
-                  <div style="font-size:2rem;font-weight:800;color:#fbbf24;" id="reportSuccessRate">—</div>
-                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📈 Success Rate</div>
-                </div>
-              </div>
-              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;padding:1.25rem;">
-                <div style="font-size:0.9rem;font-weight:600;margin-bottom:1rem;">Recent Campaign Performance</div>
-                <div id="reportsTableContainer">${renderReportsTable()}</div>
-              </div>
-            </div>
-
           </div>
         </div>
       `;
@@ -3584,10 +3963,7 @@
         ],
         contacts: [
           { tab: 'contactsTab', label: '👥 Contact Management' },
-          { tab: 'contactGroupsTab', label: '📋 Contact Groups (Soon)' },
-          { tab: 'tagsTab', label: '🏷️ Tags (Soon)' },
-          { tab: 'importContactsTab', label: '📊 Import Contacts' },
-          { tab: 'exportContactsTab', label: '📤 Export Contacts' }
+          { tab: 'contactGroupsTab', label: '📋 Contact Groups' }
         ],
         campaigns: [
           { tab: 'campaignsTab', label: '📢 Broadcast Campaigns' },
@@ -3597,10 +3973,10 @@
         automation: [
           { tab: 'autoRespondersTab', label: '🤖 Welcome & Away' },
           { tab: 'remindersTab', label: '⏰ Reminder Messages' },
-          { tab: 'birthdayTab', label: '🎂 Birthday Wishes (Soon)' },
-          { tab: 'paymentReminderTab', label: '💳 Payment Reminder (Soon)' },
-          { tab: 'orderNotifyTab', label: '📦 Order Notifications (Soon)' },
-          { tab: 'followUpTab', label: '🔔 Follow-up Automation (Soon)' }
+          { tab: 'birthdayTab', label: '🎂 Birthday Wishes' },
+          { tab: 'paymentReminderTab', label: '💳 Payment Reminder' },
+          { tab: 'orderNotifyTab', label: '📦 Order Notifications' },
+          { tab: 'followUpTab', label: '🔔 Follow-up Automation' }
         ],
         api: [
           { tab: 'apiDocsTab', label: '📚 API Documentation' },
@@ -3693,11 +4069,16 @@
         }
         if (state.user.role !== 'admin') {
           fetchContacts();
+          fetchContactGroups();
           fetchTemplates();
           fetchAutomationSettings();
           fetchCampaigns();
           fetchReminders();
           fetchCatalog();
+          fetchBirthdayWishes();
+          fetchPaymentReminders();
+          fetchOrderNotifications();
+          fetchFollowupAutomations();
         }
         bindDashboardEvents();
       } catch (err) {
@@ -5717,6 +6098,168 @@
       }
     }
 
+    async function fetchBirthdayWishes() {
+      try {
+        const res = await fetch('/api/crm/birthday-wishes', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          state.birthdayWishes = await res.json();
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching birthday wishes:', err);
+      }
+    }
+
+    async function fetchPaymentReminders() {
+      try {
+        const res = await fetch('/api/crm/payment-reminders', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          state.paymentReminders = await res.json();
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching payment reminders:', err);
+      }
+    }
+
+    async function fetchOrderNotifications() {
+      try {
+        const res = await fetch('/api/crm/order-notifications', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          state.orderNotifications = await res.json();
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching order notifications:', err);
+      }
+    }
+
+    async function fetchFollowupAutomations() {
+      try {
+        const res = await fetch('/api/crm/followup-automations', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          state.followUpAutomations = await res.json();
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching follow-up automations:', err);
+      }
+    }
+
+    function renderBirthdayWishRows() {
+      const list = state.birthdayWishes || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No birthday wishes configured yet.</td></tr>`;
+      }
+      return list.map(b => `
+        <tr>
+          <td>
+            <div style="font-weight:600;">${b.recipient_name}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">${b.recipient_phone}</div>
+          </td>
+          <td>📅 ${b.birthday_date}${b.birth_year ? `-${b.birth_year}` : ''}</td>
+          <td>⏰ ${b.send_time || '09:00'}</td>
+          <td>
+            <span style="background:${b.active ? '#10b981' : '#94a3b8'};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+              ${b.active ? 'ACTIVE' : 'PAUSED'}
+            </span>
+          </td>
+          <td>
+            <button onclick="deleteBirthdayWishEntry(${b.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderPaymentReminderRows() {
+      const list = state.paymentReminders || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No payment reminders created yet.</td></tr>`;
+      }
+      return list.map(p => {
+        let statusBadge = '#eab308';
+        if (p.status === 'paid') statusBadge = '#10b981';
+        if (p.status === 'cancelled') statusBadge = '#ef4444';
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600;">${p.recipient_name}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${p.recipient_phone}</div>
+            </td>
+            <td style="font-weight:700;color:#60a5fa;">₹${p.amount || '0'}</td>
+            <td>📅 ${p.due_date}</td>
+            <td>
+              <span style="background:${statusBadge};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+                ${(p.status || 'pending').toUpperCase()}
+              </span>
+            </td>
+            <td style="display:flex;gap:0.3rem;">
+              ${p.status !== 'paid' ? `<button onclick="updatePaymentStatus(${p.id}, 'paid')" style="padding:0.2rem 0.4rem;font-size:0.7rem;background:#10b981;margin:0;">Mark Paid</button>` : ''}
+              <button onclick="deletePaymentReminderEntry(${p.id})" class="btn-danger" style="padding:0.2rem 0.4rem;font-size:0.7rem;margin:0;">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderOrderNotificationRows() {
+      const list = state.orderNotifications || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No order notifications sent yet.</td></tr>`;
+      }
+      return list.map(o => {
+        let deliveryBadge = o.status === 'sent' ? '#10b981' : '#eab308';
+        return `
+          <tr>
+            <td><strong style="color:#a5b4fc;">#${o.order_id}</strong></td>
+            <td>
+              <div style="font-weight:600;">${o.recipient_name}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${o.recipient_phone}</div>
+            </td>
+            <td><span style="background:rgba(99,102,241,0.2);color:#a5b4fc;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.75rem;">${(o.order_status || 'placed').toUpperCase()}</span></td>
+            <td>
+              <span style="background:${deliveryBadge};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+                ${(o.status || 'pending').toUpperCase()}
+              </span>
+            </td>
+            <td>
+              <button onclick="deleteOrderNotificationEntry(${o.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderFollowUpRows() {
+      const list = state.followUpAutomations || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No follow-up sequences defined yet.</td></tr>`;
+      }
+      return list.map(f => `
+        <tr>
+          <td><strong style="color:#f472b6;">${f.name}</strong></td>
+          <td><span style="font-size:0.75rem;color:var(--text-muted);">${f.trigger_event}</span></td>
+          <td>⏳ ${f.delay_days} Day(s)</td>
+          <td>
+            <span style="background:${f.active ? '#10b981' : '#94a3b8'};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+              ${f.active ? 'ACTIVE' : 'PAUSED'}
+            </span>
+          </td>
+          <td>
+            <button onclick="deleteFollowUpEntry(${f.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
     // ─── CRM Contacts handlers ───────────────────────────────────────────────
     function showAddContactModal() {
       document.getElementById('addContactModal').style.display = 'flex';
@@ -5782,6 +6325,229 @@
       } catch (err) {
         alert(err.message);
       }
+    }
+
+    // ─── Contact Groups JS ────────────────────────────────────────────────────
+
+    async function fetchContactGroups() {
+      try {
+        const res = await fetch('/api/crm/contact-groups', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.contactGroups = data.groups || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching contact groups:', err);
+      }
+    }
+
+    function showCreateGroupModal() {
+      document.getElementById('groupModalTitle').textContent = 'Create New Group';
+      document.getElementById('groupModalId').value = '';
+      document.getElementById('groupModalName').value = '';
+      document.getElementById('groupModalDesc').value = '';
+      document.getElementById('groupModal').style.display = 'flex';
+    }
+
+    function showEditGroupModal(id, name, desc) {
+      document.getElementById('groupModalTitle').textContent = 'Edit Group';
+      document.getElementById('groupModalId').value = id;
+      document.getElementById('groupModalName').value = name;
+      document.getElementById('groupModalDesc').value = desc;
+      document.getElementById('groupModal').style.display = 'flex';
+    }
+
+    function hideGroupModal() {
+      document.getElementById('groupModal').style.display = 'none';
+    }
+
+    async function submitGroupForm(e) {
+      e.preventDefault();
+      const id = document.getElementById('groupModalId').value;
+      const name = document.getElementById('groupModalName').value.trim();
+      const description = document.getElementById('groupModalDesc').value.trim();
+
+      const isEdit = !!id;
+      const url = isEdit ? `/api/crm/contact-groups/${id}` : '/api/crm/contact-groups';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, description })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        hideGroupModal();
+        fetchContactGroups();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteGroupEntry(groupId) {
+      if (!confirm('Delete this group? Contacts will NOT be deleted, only the group.')) return;
+      try {
+        const res = await fetch(`/api/crm/contact-groups/${groupId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchContactGroups();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function openGroupMembersPanel(groupId) {
+      state.activeGroupId = groupId;
+      const group = (state.contactGroups || []).find(g => g.id === groupId);
+      document.getElementById('groupPanelTitle').textContent = group ? group.name : 'Group Members';
+      document.getElementById('groupPanelSubtitle').textContent = 'Manage who belongs to this group';
+      document.getElementById('groupMembersPanel').style.display = 'block';
+      document.getElementById('groupPanelOverlay').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+
+      // Load members and available contacts in parallel
+      await Promise.all([
+        loadGroupMembers(groupId),
+        loadAvailableContacts(groupId)
+      ]);
+    }
+
+    function closeGroupMembersPanel() {
+      state.activeGroupId = null;
+      document.getElementById('groupMembersPanel').style.display = 'none';
+      document.getElementById('groupPanelOverlay').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    async function loadGroupMembers(groupId) {
+      const container = document.getElementById('groupMembersList');
+      container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:2rem;font-size:0.85rem;">Loading...</div>';
+      try {
+        const res = await fetch(`/api/crm/contact-groups/${groupId}/members`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        const members = data.members || [];
+
+        if (members.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:2rem;font-size:0.85rem;">No members yet. Add contacts above.</div>';
+          return;
+        }
+
+        container.innerHTML = members.map(m => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0.85rem;background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:8px;margin-bottom:0.4rem;">
+            <div>
+              <div style="font-weight:600;font-size:0.88rem;">${m.name}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">${m.mobile}${m.shop_name ? ' · ' + m.shop_name : ''}</div>
+            </div>
+            <button onclick="removeMemberFromGroup(${groupId}, ${m.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;width:auto;" title="Remove from group">✕ Remove</button>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div style="color:var(--error-color);padding:1rem;font-size:0.85rem;">Error: ${err.message}</div>`;
+      }
+    }
+
+    async function loadAvailableContacts(groupId) {
+      const sel = document.getElementById('addMemberSelect');
+      sel.innerHTML = '<option disabled>Loading...</option>';
+      try {
+        const res = await fetch(`/api/crm/contact-groups/${groupId}/available-contacts`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        const contacts = data.contacts || [];
+
+        if (contacts.length === 0) {
+          sel.innerHTML = '<option disabled>All contacts are already in this group</option>';
+          return;
+        }
+        sel.innerHTML = contacts.map(c =>
+          `<option value="${c.id}">${c.name} (${c.mobile})${c.shop_name ? ' - ' + c.shop_name : ''}</option>`
+        ).join('');
+      } catch (err) {
+        sel.innerHTML = `<option disabled>Error loading contacts</option>`;
+      }
+    }
+
+    async function submitAddMembers() {
+      const groupId = state.activeGroupId;
+      if (!groupId) return;
+      const sel = document.getElementById('addMemberSelect');
+      const contactIds = Array.from(sel.selectedOptions).map(o => parseInt(o.value)).filter(Boolean);
+      if (contactIds.length === 0) {
+        alert('Please select at least one contact to add.');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/crm/contact-groups/${groupId}/members`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ contactIds })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        // Reload both lists and refresh group count
+        await Promise.all([
+          loadGroupMembers(groupId),
+          loadAvailableContacts(groupId)
+        ]);
+        fetchContactGroups();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function removeMemberFromGroup(groupId, contactId) {
+      if (!confirm('Remove this contact from the group?')) return;
+      try {
+        const res = await fetch(`/api/crm/contact-groups/${groupId}/members/${contactId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        await Promise.all([
+          loadGroupMembers(groupId),
+          loadAvailableContacts(groupId)
+        ]);
+        fetchContactGroups();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function broadcastToGroup(groupId, groupName) {
+      // Navigate to contacts tab and pre-select members of this group
+      switchTab('contactsTab');
+      // Get group members and pre-select them for broadcast
+      fetch(`/api/crm/contact-groups/${groupId}/members`, {
+        headers: { 'Authorization': `Bearer ${state.token}` }
+      }).then(r => r.json()).then(data => {
+        const memberIds = (data.members || []).map(m => m.id);
+        state.selectedContactIds = memberIds;
+        renderApp();
+        // Open broadcast modal if available
+        if (typeof openBroadcastTemplateModal === 'function') {
+          openBroadcastTemplateModal();
+        }
+      }).catch(err => console.error('Error loading group members for broadcast:', err));
     }
 
     async function importContactsExcel(e) {
@@ -6779,6 +7545,282 @@ function exportContactsExcel() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// ─── Automation Handlers (Birthday, Payment Reminder, Order Notify, Followup) ───
+
+function handleBirthdayContactSelect(contactId) {
+  const c = (state.contacts || []).find(x => String(x.id) === String(contactId));
+  if (c) {
+    document.getElementById('birthdayPhone').value = c.mobile || '';
+    document.getElementById('birthdayName').value = c.name || '';
+    if (c.birthday) document.getElementById('birthdayDate').value = c.birthday;
+  }
+}
+
+async function saveBirthdayWish(e) {
+  e.preventDefault();
+  try {
+    const formData = new FormData();
+    const contact_id = document.getElementById('birthdayContactSelect').value;
+    if (contact_id) formData.append('contact_id', contact_id);
+    formData.append('recipient_phone', document.getElementById('birthdayPhone').value);
+    formData.append('recipient_name', document.getElementById('birthdayName').value);
+    
+    let rawDate = document.getElementById('birthdayDate').value;
+    let mmdd = rawDate;
+    let birthYear = '';
+    if (rawDate && rawDate.includes('-')) {
+      const parts = rawDate.split('-');
+      if (parts.length === 3) {
+        birthYear = parts[0];
+        mmdd = `${parts[1]}-${parts[2]}`;
+      }
+    }
+    formData.append('birthday_date', mmdd);
+    if (birthYear) formData.append('birth_year', birthYear);
+
+    formData.append('send_time', document.getElementById('birthdaySendTime').value || '09:00');
+    formData.append('message_text', document.getElementById('birthdayMessage').value);
+
+    const mediaInput = document.getElementById('birthdayMedia');
+    if (mediaInput && mediaInput.files.length > 0) {
+      formData.append('media', mediaInput.files[0]);
+    }
+
+    const res = await fetch('/api/crm/birthday-wishes', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${state.token}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    alert(data.message || 'Birthday wish saved successfully!');
+    document.getElementById('birthdayForm').reset();
+    fetchBirthdayWishes();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function deleteBirthdayWishEntry(id) {
+  if (!confirm('Are you sure you want to delete this birthday wish entry?')) return;
+  try {
+    const res = await fetch(`/api/crm/birthday-wishes/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    fetchBirthdayWishes();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function handlePayContactSelect(contactId) {
+  const c = (state.contacts || []).find(x => String(x.id) === String(contactId));
+  if (c) {
+    document.getElementById('payPhone').value = c.mobile || '';
+    document.getElementById('payName').value = c.name || '';
+  }
+}
+
+async function savePaymentReminder(e) {
+  e.preventDefault();
+  try {
+    const formData = new FormData();
+    const contact_id = document.getElementById('payContactSelect').value;
+    if (contact_id) formData.append('contact_id', contact_id);
+    formData.append('recipient_phone', document.getElementById('payPhone').value);
+    formData.append('recipient_name', document.getElementById('payName').value);
+    formData.append('amount', document.getElementById('payAmount').value);
+    formData.append('due_date', document.getElementById('payDueDate').value);
+    formData.append('remind_days_before', document.getElementById('payRemindOffset').value);
+    formData.append('message_text', document.getElementById('payMessage').value);
+
+    const mediaInput = document.getElementById('payMedia');
+    if (mediaInput && mediaInput.files.length > 0) {
+      formData.append('media', mediaInput.files[0]);
+    }
+
+    const res = await fetch('/api/crm/payment-reminders', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${state.token}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    alert(data.message || 'Payment reminder scheduled!');
+    document.getElementById('paymentReminderForm').reset();
+    fetchPaymentReminders();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function updatePaymentStatus(id, status) {
+  try {
+    const res = await fetch(`/api/crm/payment-reminders/${id}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      },
+      body: JSON.stringify({ status })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    fetchPaymentReminders();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function deletePaymentReminderEntry(id) {
+  if (!confirm('Are you sure you want to delete this payment reminder?')) return;
+  try {
+    const res = await fetch(`/api/crm/payment-reminders/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    fetchPaymentReminders();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function updateOrderNotificationTemplate(status) {
+  const name = document.getElementById('orderCustomerName').value || '{Name}';
+  const orderId = document.getElementById('orderIdNum').value || '{OrderId}';
+  const product = document.getElementById('orderProductName').value || '{Product}';
+  const amount = document.getElementById('orderAmount').value || '{Amount}';
+
+  const templates = {
+    placed: `Hello ${name}, your order #${orderId} for ${product} (₹${amount}) has been placed successfully! Thank you for shopping with us.`,
+    confirmed: `Hi ${name}, great news! Your order #${orderId} has been confirmed and is being packed.`,
+    shipped: `Hello ${name}, your order #${orderId} has been shipped and is on its way to you! 🚚`,
+    out_for_delivery: `Hi ${name}, your order #${orderId} is out for delivery today. Please be ready to receive it! 📦`,
+    delivered: `🎉 Hello ${name}, your order #${orderId} has been delivered! We hope you love your purchase.`,
+    cancelled: `Hi ${name}, your order #${orderId} has been cancelled. If you have any questions, please contact our support.`
+  };
+
+  if (templates[status]) {
+    document.getElementById('orderMessageText').value = templates[status];
+  }
+}
+
+async function saveOrderNotification(e) {
+  e.preventDefault();
+  try {
+    const formData = new FormData();
+    formData.append('recipient_phone', document.getElementById('orderPhone').value);
+    formData.append('recipient_name', document.getElementById('orderCustomerName').value);
+    formData.append('order_id', document.getElementById('orderIdNum').value);
+    formData.append('order_status', document.getElementById('orderStatusSelect').value);
+    formData.append('product_name', document.getElementById('orderProductName').value);
+    formData.append('amount', document.getElementById('orderAmount').value);
+    formData.append('message_text', document.getElementById('orderMessageText').value);
+    formData.append('send_immediately', document.getElementById('orderSendTiming').value === 'immediate');
+
+    const res = await fetch('/api/crm/order-notifications', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${state.token}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    alert(data.message || 'Order notification triggered!');
+    document.getElementById('orderNotifyForm').reset();
+    fetchOrderNotifications();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function deleteOrderNotificationEntry(id) {
+  if (!confirm('Delete this order notification log?')) return;
+  try {
+    const res = await fetch(`/api/crm/order-notifications/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    fetchOrderNotifications();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function updateFollowUpTemplate(trigger) {
+  const name = document.getElementById('followUpName');
+  const msg = document.getElementById('followUpMessage');
+
+  const templates = {
+    no_response: {
+      name: '3-Day Lead Check-in',
+      text: `Hi {Name}, just checking in to see if you had any questions regarding your inquiry! Let us know how we can assist you.`
+    },
+    after_purchase: {
+      name: 'Post-Purchase Thank You & Feedback',
+      text: `Hello {Name}, thank you for your recent purchase! We hope everything is working great. Feel free to reach out if you need any support.`
+    },
+    after_reminder: {
+      name: 'Payment Reminder Follow-up',
+      text: `Hi {Name}, following up on our previous payment reminder. Please let us know if you need any assistance with completing your payment. Thank you!`
+    }
+  };
+
+  if (templates[trigger]) {
+    if (name) name.value = templates[trigger].name;
+    if (msg) msg.value = templates[trigger].text;
+  }
+}
+
+async function saveFollowUpAutomation(e) {
+  e.preventDefault();
+  try {
+    const formData = new FormData();
+    formData.append('name', document.getElementById('followUpName').value);
+    formData.append('trigger_event', document.getElementById('followUpTrigger').value);
+    formData.append('delay_days', document.getElementById('followUpDelay').value);
+    formData.append('message_text', document.getElementById('followUpMessage').value);
+
+    const res = await fetch('/api/crm/followup-automations', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${state.token}` },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    alert(data.message || 'Follow-up automation rule created!');
+    document.getElementById('followUpForm').reset();
+    fetchFollowupAutomations();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function deleteFollowUpEntry(id) {
+  if (!confirm('Are you sure you want to delete this follow-up automation rule?')) return;
+  try {
+    const res = await fetch(`/api/crm/followup-automations/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    fetchFollowupAutomations();
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 </script>
