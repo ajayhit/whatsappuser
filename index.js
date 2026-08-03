@@ -15,7 +15,7 @@ import {
   getPendingCampaigns, getPendingRecipients, updateCampaignStatus, updateCampaignRecipientStatus,
   incrementCampaignSuccess, incrementCampaignFailure, getCampaignById,
   getContactsByUser,
-  getDueBirthdayWishes, markBirthdayWishSent,
+  getDueBirthdayWishes, markBirthdayWishSent, markBirthdayWishFailed,
   updatePaymentReminderStatus
 } from './db.js';
 
@@ -545,17 +545,25 @@ function startBirthdayPoller() {
       const dueWishes = getDueBirthdayWishes();
       if (!dueWishes || dueWishes.length === 0) return;
 
-      const currentYear = new Date().getFullYear();
-      const currentHour = new Date().getHours();
-      const currentMinute = new Date().getMinutes();
+      const now = new Date();
+      const currentYear   = now.getFullYear();
+      // getHours() and getMinutes() use the process timezone (TZ env var), so these
+      // will be in IST if TZ=Asia/Kolkata is set — fixing the "wrong send time" bug.
+      const currentHour   = now.getHours();
+      const currentMinute = now.getMinutes();
+      const nowInMinutes  = currentHour * 60 + currentMinute;
+
+      console.log(`[Birthday Poller] ${dueWishes.length} due wish(es). Local time: ${String(currentHour).padStart(2,'0')}:${String(currentMinute).padStart(2,'0')}`);
 
       for (const wish of dueWishes) {
         try {
-          // Only send at or after the configured send_time
+          // Only send at or after the configured send_time (local time)
           const [sendHour, sendMin] = (wish.send_time || '09:00').split(':').map(Number);
-          const nowInMinutes = currentHour * 60 + currentMinute;
           const sendInMinutes = sendHour * 60 + sendMin;
-          if (nowInMinutes < sendInMinutes) continue;
+          if (nowInMinutes < sendInMinutes) {
+            console.log(`[Birthday Poller] Wish #${wish.id} — not yet time (send at ${wish.send_time}, now ${String(currentHour).padStart(2,'0')}:${String(currentMinute).padStart(2,'0')})`);
+            continue;
+          }
 
           const plan = getActivePlan(wish.user_id);
           if (!plan || new Date(plan.expires_at) < new Date()) continue;
@@ -576,9 +584,10 @@ function startBirthdayPoller() {
           }
 
           markBirthdayWishSent(wish.id, currentYear);
-          console.log(`[Birthday Poller] Sent birthday wish #${wish.id} to ${wish.recipient_phone}`);
+          console.log(`[Birthday Poller] ✅ Sent birthday wish #${wish.id} to ${wish.recipient_phone}`);
         } catch (err) {
           console.error(`[Birthday Poller] Failed for wish #${wish.id}: ${err.message}`);
+          markBirthdayWishFailed(wish.id, err.message);
         }
       }
     } catch (e) {
@@ -586,6 +595,7 @@ function startBirthdayPoller() {
     }
   }, 5 * 60 * 1000); // Poll every 5 minutes
 }
+
 
 // ─── Payment Reminder Poller ──────────────────────────────────────────────────
 function startPaymentReminderPoller() {

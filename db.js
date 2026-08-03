@@ -465,6 +465,16 @@ export function initDb() {
   try {
     db.exec("ALTER TABLE contacts ADD COLUMN birthday TEXT");
   } catch (e) {}
+  // Birthday wish delivery status tracking
+  try {
+    db.exec("ALTER TABLE birthday_wishes ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE birthday_wishes ADD COLUMN last_error TEXT");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE birthday_wishes ADD COLUMN last_sent_at TEXT");
+  } catch (e) {}
 
   // Follow-up sent log table — tracks which contacts received which automation
   db.exec(`
@@ -1524,7 +1534,10 @@ export function deleteBirthdayWish(id, userId) {
 export function getDueBirthdayWishes() {
   const db = getDb();
   const now = new Date();
-  const mmdd = String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  // Use local date parts (respects TZ env var / system timezone) to avoid UTC-vs-local date mismatch
+  const month  = String(now.getMonth() + 1).padStart(2, '0');
+  const day    = String(now.getDate()).padStart(2, '0');
+  const mmdd   = `${month}-${day}`;
   const currentYear = now.getFullYear();
   return db.prepare(`
     SELECT bw.*, u.id AS owner_user_id
@@ -1536,9 +1549,23 @@ export function getDueBirthdayWishes() {
   `).all(mmdd, currentYear);
 }
 
+
 export function markBirthdayWishSent(id, year) {
   const db = getDb();
-  db.prepare('UPDATE birthday_wishes SET last_sent_year = ? WHERE id = ?').run(year, id);
+  db.prepare(`
+    UPDATE birthday_wishes
+    SET last_sent_year = ?, status = 'sent', last_error = NULL, last_sent_at = datetime('now')
+    WHERE id = ?
+  `).run(year, id);
+}
+
+export function markBirthdayWishFailed(id, errorMessage) {
+  const db = getDb();
+  db.prepare(`
+    UPDATE birthday_wishes
+    SET status = 'failed', last_error = ?
+    WHERE id = ?
+  `).run(errorMessage || 'Unknown error', id);
 }
 
 // ─── Payment Reminder Helpers ─────────────────────────────────────────────────

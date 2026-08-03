@@ -2971,6 +2971,7 @@
                           <th>Birthday</th>
                           <th>Send Time</th>
                           <th>Status</th>
+                          <th>Last Sent</th>
                           <th>Action</th>
                         </tr>
                       </thead>
@@ -6157,26 +6158,45 @@
     function renderBirthdayWishRows() {
       const list = state.birthdayWishes || [];
       if (list.length === 0) {
-        return `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No birthday wishes configured yet.</td></tr>`;
+        return `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No birthday wishes configured yet.</td></tr>`;
       }
-      return list.map(b => `
-        <tr>
-          <td>
-            <div style="font-weight:600;">${b.recipient_name}</div>
-            <div style="font-size:0.75rem;color:var(--text-muted);">${b.recipient_phone}</div>
-          </td>
-          <td>📅 ${b.birthday_date}${b.birth_year ? `-${b.birth_year}` : ''}</td>
-          <td>⏰ ${b.send_time || '09:00'}</td>
-          <td>
-            <span style="background:${b.active ? '#10b981' : '#94a3b8'};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
-              ${b.active ? 'ACTIVE' : 'PAUSED'}
-            </span>
-          </td>
-          <td>
-            <button onclick="deleteBirthdayWishEntry(${b.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
-          </td>
-        </tr>
-      `).join('');
+      return list.map(b => {
+        // Status badge — same colour logic as Scheduled Reminders
+        let badgeColor = '#eab308'; // pending  = yellow
+        if (b.status === 'sent')   badgeColor = '#10b981'; // green
+        if (b.status === 'failed') badgeColor = '#ef4444'; // red
+        const statusLabel = (b.status || 'pending').toUpperCase();
+
+        // Human-readable birthday: DD/MM (YYYY)
+        const [mm, dd] = (b.birthday_date || '--').split('-');
+        const bdayDisplay = `${dd || '??'}/${mm || '??'}${b.birth_year ? ` (${b.birth_year})` : ''}`;
+
+        // Last sent timestamp
+        const lastSentDisplay = b.last_sent_at
+          ? new Date(b.last_sent_at + (b.last_sent_at.endsWith('Z') ? '' : 'Z')).toLocaleString()
+          : '-';
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600;">${b.recipient_name}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${b.recipient_phone}</div>
+              ${b.last_error ? `<div style="font-size:0.7rem;color:#f87171;margin-top:0.25rem;">❌ ${b.last_error}</div>` : ''}
+            </td>
+            <td>📅 ${bdayDisplay}</td>
+            <td>⏰ ${b.send_time || '09:00'}</td>
+            <td>
+              <span style="background:${badgeColor};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+                ${statusLabel}
+              </span>
+            </td>
+            <td style="font-size:0.8rem;color:var(--text-muted);">${lastSentDisplay}</td>
+            <td>
+              <button onclick="deleteBirthdayWishEntry(${b.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function renderPaymentReminderRows() {
@@ -7567,18 +7587,15 @@ async function saveBirthdayWish(e) {
     formData.append('recipient_phone', document.getElementById('birthdayPhone').value);
     formData.append('recipient_name', document.getElementById('birthdayName').value);
     
-    let rawDate = document.getElementById('birthdayDate').value;
-    let mmdd = rawDate;
-    let birthYear = '';
-    if (rawDate && rawDate.includes('-')) {
-      const parts = rawDate.split('-');
-      if (parts.length === 3) {
-        birthYear = parts[0];
-        mmdd = `${parts[1]}-${parts[2]}`;
-      }
-    }
-    formData.append('birthday_date', mmdd);
-    if (birthYear) formData.append('birth_year', birthYear);
+    let rawDate = document.getElementById('birthdayDate').value; // YYYY-MM-DD from <input type="date">
+    if (!rawDate) throw new Error('Please select a birthday date.');
+    const dateParts = rawDate.split('-');
+    if (dateParts.length !== 3) throw new Error('Invalid date format. Please pick a date using the date picker.');
+    const birthYear = dateParts[0]; // YYYY
+    const mmdd = `${dateParts[1]}-${dateParts[2]}`;  // MM-DD stored in DB for yearly recurrence
+    if (!mmdd || mmdd.length !== 5) throw new Error('Could not parse birthday date. Please try again.');
+    formData.append('birthday_date', mmdd);  // sends MM-DD to server
+    if (birthYear && birthYear !== '0000') formData.append('birth_year', birthYear);
 
     formData.append('send_time', document.getElementById('birthdaySendTime').value || '09:00');
     formData.append('message_text', document.getElementById('birthdayMessage').value);
