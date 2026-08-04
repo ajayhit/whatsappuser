@@ -10,7 +10,7 @@ import {
   getCatalogByUserId, getServicesByCatalogId, upsertCatalog,
   createService, updateService, deleteService,
   getContactsByUser, upsertContact, deleteContact, toggleContactExclude,
-  getRemindersByUser, createReminder, deleteReminder,
+  getRemindersByUser, createReminder, deleteReminder, calculateNextScheduleDate,
   getTemplatesByUser, createTemplate, updateTemplate, deleteTemplate,
   getUserById, getAutomationSettings, upsertAutomationSettings,
   getCampaignsByUser, getCampaignRecipients, createCampaign, updateCampaignStatus, getCampaignById,
@@ -19,8 +19,10 @@ import {
   getBirthdayWishesByUser, createBirthdayWish, updateBirthdayWish, deleteBirthdayWish,
   getPaymentRemindersByUser, createPaymentReminder, updatePaymentReminderStatus, deletePaymentReminder,
   getOrderNotificationsByUser, createOrderNotification, deleteOrderNotification,
-  getFollowupAutomationsByUser, createFollowupAutomation, updateFollowupAutomation, deleteFollowupAutomation
+  getFollowupAutomationsByUser, createFollowupAutomation, updateFollowupAutomation, deleteFollowupAutomation,
+  getFollowupLogsByUser, deleteFollowupLog
 } from './db.js';
+
 
 const router = express.Router();
 const uploadDir = './uploads';
@@ -391,12 +393,12 @@ router.post('/contacts/import', upload.single('file'), (req, res) => {
     }
 
     // Clean up uploaded file
-    try { fs.unlinkSync(req.file.path); } catch (e) {}
+    try { fs.unlinkSync(req.file.path); } catch (e) { }
 
     return res.json({ success: true, message: `Successfully imported ${importCount} contacts!`, count: importCount });
   } catch (err) {
     // Clean up uploaded file in case of error
-    try { fs.unlinkSync(req.file.path); } catch (e) {}
+    try { fs.unlinkSync(req.file.path); } catch (e) { }
     return res.status(500).json({ error: `Import failed: ${err.message}` });
   }
 });
@@ -468,7 +470,7 @@ router.get('/reminders', (req, res) => {
 });
 
 router.post('/reminders', (req, res) => {
-  const { contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, send_after_days } = req.body;
+  const { contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, send_after_days, selected_days, send_time, repeat_option } = req.body;
 
   if (!recipient_mobile || !message_template) {
     return res.status(400).json({ error: 'recipient_mobile and message_template are required' });
@@ -480,7 +482,9 @@ router.post('/reminders', (req, res) => {
   }
 
   let finalScheduledAt = scheduled_at;
-  if (send_after_days !== undefined && send_after_days !== null) {
+  if (selected_days) {
+    finalScheduledAt = calculateNextScheduleDate(selected_days, send_time || '09:00');
+  } else if (send_after_days !== undefined && send_after_days !== null) {
     const days = parseInt(send_after_days);
     if (isNaN(days) || days < 0) {
       return res.status(400).json({ error: 'send_after_days must be a non-negative integer' });
@@ -489,7 +493,7 @@ router.post('/reminders', (req, res) => {
   }
 
   if (!finalScheduledAt) {
-    return res.status(400).json({ error: 'Either scheduled_at or send_after_days must be provided' });
+    return res.status(400).json({ error: 'Either scheduled_at, send_after_days, or selected_days must be provided' });
   }
 
   try {
@@ -507,7 +511,10 @@ router.post('/reminders', (req, res) => {
       recipient_name: recipient_name || '',
       shop_name: shop_name || '',
       message_template,
-      scheduled_at: finalScheduledAt
+      scheduled_at: finalScheduledAt,
+      repeat_option: repeat_option || 'once',
+      selected_days: selected_days || null,
+      send_time: send_time || null
     });
     return res.json({ message: 'Reminder scheduled successfully', reminder });
   } catch (err) {
@@ -601,7 +608,7 @@ router.post('/templates/send-bulk', async (req, res) => {
 
   try {
     let contacts = getContactsByUser(req.user.id);
-    
+
     // Filter out excluded contacts
     contacts = contacts.filter(c => c.is_excluded !== 1);
 
@@ -729,7 +736,7 @@ router.post('/campaigns', upload.single('media'), (req, res) => {
     if (contactsStr) {
       contacts = JSON.parse(contactsStr);
     }
-    
+
     if (!contacts || contacts.length === 0) {
       return res.status(400).json({ error: 'No contacts selected for the campaign' });
     }
@@ -755,7 +762,7 @@ router.post('/campaigns', upload.single('media'), (req, res) => {
 router.put('/campaigns/:id/status', (req, res) => {
   try {
     const { status } = req.body;
-    
+
     // Validate ownership
     const campaign = getCampaignById(req.params.id);
     if (!campaign || campaign.user_id !== req.user.id) {
@@ -991,6 +998,24 @@ router.delete('/followup-automations/:id', (req, res) => {
   try {
     deleteFollowupAutomation(req.params.id, req.user.id);
     return res.json({ message: 'Follow-up automation deleted' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/followup-logs', (req, res) => {
+  try {
+    const logs = getFollowupLogsByUser(req.user.id);
+    return res.json(logs);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/followup-logs/:id', (req, res) => {
+  try {
+    deleteFollowupLog(req.params.id, req.user.id);
+    return res.json({ message: 'Follow-up log deleted' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

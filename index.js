@@ -11,7 +11,7 @@ import { restoreAllSessions, getSessionStatus, sendMessageToJid, sendMediaToJid 
 import {
   initDb, getDb, getUserByEmail, createUser, getUserById,
   getCatalogByUserId, getServicesByCatalogId,
-  getPendingReminders, updateReminderStatus, isContactExcluded, getActivePlan,
+  getPendingReminders, updateReminderStatus, isContactExcluded, getActivePlan, calculateNextScheduleDate,
   getPendingCampaigns, getPendingRecipients, updateCampaignStatus, updateCampaignRecipientStatus,
   incrementCampaignSuccess, incrementCampaignFailure, getCampaignById,
   getContactsByUser,
@@ -338,9 +338,19 @@ function startRemindersPoller() {
           // 5. Send message
           await sendMessageToJid(String(rem.user_id), rem.recipient_mobile, text);
 
-          // 6. Update status
-          updateReminderStatus(rem.id, 'sent');
-          console.log(`[Reminders Poller] Successfully sent reminder #${rem.id} to ${rem.recipient_mobile}`);
+          // 6. Update status or reschedule if recurring
+          if (rem.repeat_option === 'weekly' && rem.selected_days) {
+            const nextScheduledAt = calculateNextScheduleDate(rem.selected_days, rem.send_time || '09:00');
+            getDb().prepare(`
+              UPDATE reminders
+              SET scheduled_at = ?, sent_at = datetime('now'), status = 'pending', error_message = NULL
+              WHERE id = ?
+            `).run(nextScheduledAt, rem.id);
+            console.log(`[Reminders Poller] Sent recurring reminder #${rem.id} to ${rem.recipient_mobile}. Rescheduled for ${nextScheduledAt}`);
+          } else {
+            updateReminderStatus(rem.id, 'sent');
+            console.log(`[Reminders Poller] Successfully sent reminder #${rem.id} to ${rem.recipient_mobile}`);
+          }
         } catch (err) {
           console.error(`[Reminders Poller Failed] Reminder #${rem.id} failed: ${err.message}`);
           updateReminderStatus(rem.id, 'failed', err.message);
@@ -516,8 +526,8 @@ function startFollowUpPoller() {
 
                 // Log this send so we don't re-send immediately
                 dbConn.prepare(`
-                  INSERT INTO followup_sent_log (user_id, automation_id, contact_id, sent_at)
-                  VALUES (?, ?, ?, datetime('now'))
+                  INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, sent_at)
+                  VALUES (?, ?, ?, 'sent', datetime('now'))
                 `).run(parseInt(userId), rule.id, contact.id);
 
                 console.log(`[FollowUp Poller] Sent '${rule.name}' to ${contact.mobile} for user ${userId}`);
@@ -525,6 +535,12 @@ function startFollowUpPoller() {
                 await new Promise(r => setTimeout(r, 1000));
               } catch (contactErr) {
                 console.error(`[FollowUp Poller] Failed for contact ${contact.mobile}: ${contactErr.message}`);
+                try {
+                  dbConn.prepare(`
+                    INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, error_message, sent_at)
+                    VALUES (?, ?, ?, 'failed', ?, datetime('now'))
+                  `).run(parseInt(userId), rule.id, contact.id, contactErr.message || 'Send error');
+                } catch (logErr) {}
               }
             }
           }
@@ -557,11 +573,16 @@ function startBirthdayPoller() {
 
       for (const wish of dueWishes) {
         try {
-          // Only send at or after the configured send_time (local time)
+          // Only send within a 2-minute window of the configured send_time (local time).
+          // This ensures the message goes out at exactly the right time rather than
+          // drifting up to 5–10 minutes late due to the polling interval.
           const [sendHour, sendMin] = (wish.send_time || '09:00').split(':').map(Number);
           const sendInMinutes = sendHour * 60 + sendMin;
-          if (nowInMinutes < sendInMinutes) {
-            console.log(`[Birthday Poller] Wish #${wish.id} — not yet time (send at ${wish.send_time}, now ${String(currentHour).padStart(2,'0')}:${String(currentMinute).padStart(2,'0')})`);
+          const WINDOW = 2; // minutes — matches the poll interval
+          if (nowInMinutes < sendInMinutes || nowInMinutes > sendInMinutes + WINDOW) {
+            if (nowInMinutes < sendInMinutes) {
+              console.log(`[Birthday Poller] Wish #${wish.id} — not yet time (send at ${wish.send_time}, now ${String(currentHour).padStart(2,'0')}:${String(currentMinute).padStart(2,'0')})`);
+            }
             continue;
           }
 
@@ -593,7 +614,7 @@ function startBirthdayPoller() {
     } catch (e) {
       console.error('[Birthday Poller Error]', e);
     }
-  }, 5 * 60 * 1000); // Poll every 5 minutes
+  }, 1 * 60 * 1000); // Poll every 1 minute for accurate send-time delivery
 }
 
 

@@ -483,11 +483,31 @@ export function initDb() {
       user_id INTEGER NOT NULL,
       automation_id INTEGER NOT NULL,
       contact_id INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'sent',
+      error_message TEXT,
       sent_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (automation_id) REFERENCES followup_automations(id) ON DELETE CASCADE
     )
   `);
+
+  try {
+    db.exec("ALTER TABLE followup_sent_log ADD COLUMN status TEXT NOT NULL DEFAULT 'sent'");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE followup_sent_log ADD COLUMN error_message TEXT");
+  } catch (e) {}
+
+  // Reminders table extra columns for day-of-week / recurring schedule
+  try {
+    db.exec("ALTER TABLE reminders ADD COLUMN repeat_option TEXT DEFAULT 'once'");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE reminders ADD COLUMN selected_days TEXT");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE reminders ADD COLUMN send_time TEXT");
+  } catch (e) {}
 
   console.log('[DB] All tables initialized.');
 }
@@ -1241,12 +1261,60 @@ export function getRemindersByUser(userId) {
   `).all(userId);
 }
 
-export function createReminder({ user_id, contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at }) {
+export function calculateNextScheduleDate(selectedDays, sendTimeStr, fromDate = new Date()) {
+  const dayNameMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  
+  let targetHour = 9, targetMin = 0;
+  if (sendTimeStr && sendTimeStr.includes(':')) {
+    const parts = sendTimeStr.split(':').map(Number);
+    if (!isNaN(parts[0])) targetHour = parts[0];
+    if (!isNaN(parts[1])) targetMin = parts[1];
+  }
+
+  let dayList = [];
+  if (Array.isArray(selectedDays)) {
+    dayList = selectedDays.map(d => String(d).toLowerCase().trim());
+  } else if (typeof selectedDays === 'string') {
+    dayList = selectedDays.split(',').map(d => d.toLowerCase().trim());
+  }
+
+  const isAllDays = dayList.length === 0 || dayList.includes('all');
+  const startMs = fromDate.getTime();
+
+  for (let offsetDays = 0; offsetDays <= 7; offsetDays++) {
+    const candidate = new Date(startMs + offsetDays * 24 * 60 * 60 * 1000);
+    candidate.setHours(targetHour, targetMin, 0, 0);
+
+    if (candidate.getTime() <= fromDate.getTime()) {
+      continue;
+    }
+
+    const candidateDayOfWeek = candidate.getDay();
+    if (isAllDays) {
+      return candidate.toISOString();
+    }
+
+    const matchesDay = dayList.some(dayStr => {
+      const targetDayNum = dayNameMap[dayStr];
+      return targetDayNum !== undefined && targetDayNum === candidateDayOfWeek;
+    });
+
+    if (matchesDay) {
+      return candidate.toISOString();
+    }
+  }
+
+  const fallback = new Date(startMs + 24 * 60 * 60 * 1000);
+  fallback.setHours(targetHour, targetMin, 0, 0);
+  return fallback.toISOString();
+}
+
+export function createReminder({ user_id, contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, repeat_option, selected_days, send_time }) {
   const db = getDb();
   const result = db.prepare(`
-    INSERT INTO reminders (user_id, contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-  `).run(user_id, contact_id || null, recipient_mobile, recipient_name || null, shop_name || null, message_template, scheduled_at);
+    INSERT INTO reminders (user_id, contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, repeat_option, selected_days, send_time, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+  `).run(user_id, contact_id || null, recipient_mobile, recipient_name || null, shop_name || null, message_template, scheduled_at, repeat_option || 'once', selected_days || null, send_time || null);
   return db.prepare('SELECT * FROM reminders WHERE id = ?').get(result.lastInsertRowid);
 }
 
@@ -1681,7 +1749,17 @@ export function getPendingOrderNotifications() {
 
 export function getFollowupAutomationsByUser(userId) {
   const db = getDb();
-  return db.prepare('SELECT * FROM followup_automations WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+  return db.prepare(`
+    SELECT fa.*,
+      COUNT(CASE WHEN fsl.status = 'sent' THEN 1 END) AS sent_count,
+      COUNT(CASE WHEN fsl.status = 'failed' THEN 1 END) AS failed_count,
+      MAX(fsl.sent_at) AS last_sent_at
+    FROM followup_automations fa
+    LEFT JOIN followup_sent_log fsl ON fsl.automation_id = fa.id
+    WHERE fa.user_id = ?
+    GROUP BY fa.id
+    ORDER BY fa.created_at DESC
+  `).all(userId);
 }
 
 export function createFollowupAutomation(userId, data) {
@@ -1724,4 +1802,22 @@ export function updateFollowupAutomation(id, userId, data) {
 export function deleteFollowupAutomation(id, userId) {
   const db = getDb();
   return db.prepare('DELETE FROM followup_automations WHERE id = ? AND user_id = ?').run(id, userId);
+}
+
+export function getFollowupLogsByUser(userId) {
+  const db = getDb();
+  return db.prepare(`
+    SELECT fsl.*, fa.name AS automation_name, c.name AS contact_name, c.mobile AS contact_mobile
+    FROM followup_sent_log fsl
+    JOIN followup_automations fa ON fa.id = fsl.automation_id
+    LEFT JOIN contacts c ON c.id = fsl.contact_id
+    WHERE fsl.user_id = ?
+    ORDER BY fsl.sent_at DESC
+    LIMIT 50
+  `).all(userId);
+}
+
+export function deleteFollowupLog(id, userId) {
+  const db = getDb();
+  return db.prepare('DELETE FROM followup_sent_log WHERE id = ? AND user_id = ?').run(id, userId);
 }
