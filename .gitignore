@@ -6,6 +6,16 @@ npm-debug.log*
 !.env.example
 
 sessions/
+uploads/
+
+# SQLite files
+database.db
+database.db-shm
+database.db-wal
+
+# Logs
+server.log
+server.err
 
 .DS_Store
 Thumbs.db
