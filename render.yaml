@@ -9,6 +9,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: TZ
+        value: Asia/Kolkata
       - key: SESSION_DIR
         value: /opt/render/project/.data/sessions
     disk:

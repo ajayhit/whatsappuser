@@ -540,21 +540,20 @@ function startBirthdayPoller() {
       const dueWishes = getDueBirthdayWishes();
       if (!dueWishes || dueWishes.length === 0) return;
 
-      const now = new Date();
-      const currentYear   = now.getFullYear();
-      // getHours() and getMinutes() use the process timezone (TZ env var), so these
-      // will be in IST if TZ=Asia/Kolkata is set — fixing the "wrong send time" bug.
-      const currentHour   = now.getHours();
-      const currentMinute = now.getMinutes();
+      // IST is UTC + 5 hours 30 minutes
+      const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+      const istNow = new Date(Date.now() + IST_OFFSET_MS);
+
+      const currentYear   = istNow.getUTCFullYear();
+      const currentHour   = istNow.getUTCHours();
+      const currentMinute = istNow.getUTCMinutes();
       const nowInMinutes  = currentHour * 60 + currentMinute;
 
-      console.log(`[Birthday Poller] ${dueWishes.length} due wish(es). Local time: ${String(currentHour).padStart(2,'0')}:${String(currentMinute).padStart(2,'0')}`);
+      console.log(`[Birthday Poller] ${dueWishes.length} due wish(es). Local time (IST): ${String(currentHour).padStart(2,'0')}:${String(currentMinute).padStart(2,'0')}`);
 
       for (const wish of dueWishes) {
         try {
           // Only send within a 2-minute window of the configured send_time (local time).
-          // This ensures the message goes out at exactly the right time rather than
-          // drifting up to 5–10 minutes late due to the polling interval.
           const [sendHour, sendMin] = (wish.send_time || '09:00').split(':').map(Number);
           const sendInMinutes = sendHour * 60 + sendMin;
           const WINDOW = 2; // minutes — matches the poll interval
@@ -602,14 +601,16 @@ function startPaymentReminderPoller() {
   setInterval(async () => {
     try {
       const dbConn = getDb();
+      const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+      const istDateStr = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
 
       // Find active pending reminders due today (factoring in remind_days_before offset)
       const dueReminders = dbConn.prepare(`
         SELECT * FROM payment_reminders
         WHERE active = 1 AND status = 'pending'
-          AND date(due_date, '-' || remind_days_before || ' days') <= date('now', 'localtime')
-          AND date(due_date) >= date('now', 'localtime')
-      `).all();
+          AND date(due_date, '-' || remind_days_before || ' days') <= ?
+          AND date(due_date) >= ?
+      `).all(istDateStr, istDateStr);
 
       if (!dueReminders || dueReminders.length === 0) return;
 

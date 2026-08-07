@@ -1260,19 +1260,32 @@ export function calculateNextScheduleDate(selectedDays, sendTimeStr, fromDate = 
   }
 
   const isAllDays = dayList.length === 0 || dayList.includes('all');
-  const startMs = fromDate.getTime();
+  
+  // IST offset is UTC + 5h 30m (330 minutes)
+  const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+
+  // Convert fromDate to IST Date representation
+  const fromIst = new Date(fromDate.getTime() + IST_OFFSET_MS);
+
+  const startYear = fromIst.getUTCFullYear();
+  const startMonth = fromIst.getUTCMonth();
+  const startDate = fromIst.getUTCDate();
 
   for (let offsetDays = 0; offsetDays <= 7; offsetDays++) {
-    const candidate = new Date(startMs + offsetDays * 24 * 60 * 60 * 1000);
-    candidate.setHours(targetHour, targetMin, 0, 0);
+    // candidate in IST (expressed in UTC components)
+    const candidateIstMs = Date.UTC(startYear, startMonth, startDate + offsetDays, targetHour, targetMin, 0, 0);
+    // convert back to actual UTC Date timestamp
+    const candidateUtcMs = candidateIstMs - IST_OFFSET_MS;
 
-    if (candidate.getTime() <= fromDate.getTime()) {
+    if (candidateUtcMs <= fromDate.getTime()) {
       continue;
     }
 
-    const candidateDayOfWeek = candidate.getDay();
+    const candidateIstDate = new Date(candidateIstMs);
+    const candidateDayOfWeek = candidateIstDate.getUTCDay();
+
     if (isAllDays) {
-      return candidate.toISOString();
+      return new Date(candidateUtcMs).toISOString();
     }
 
     const matchesDay = dayList.some(dayStr => {
@@ -1281,13 +1294,12 @@ export function calculateNextScheduleDate(selectedDays, sendTimeStr, fromDate = 
     });
 
     if (matchesDay) {
-      return candidate.toISOString();
+      return new Date(candidateUtcMs).toISOString();
     }
   }
 
-  const fallback = new Date(startMs + 24 * 60 * 60 * 1000);
-  fallback.setHours(targetHour, targetMin, 0, 0);
-  return fallback.toISOString();
+  const fallbackIstMs = Date.UTC(startYear, startMonth, startDate + 1, targetHour, targetMin, 0, 0);
+  return new Date(fallbackIstMs - IST_OFFSET_MS).toISOString();
 }
 
 export function createReminder({ user_id, contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, repeat_option, selected_days, send_time }) {
@@ -1582,12 +1594,12 @@ export function deleteBirthdayWish(id, userId) {
 
 export function getDueBirthdayWishes() {
   const db = getDb();
-  const now = new Date();
-  // Use local date parts (respects TZ env var / system timezone) to avoid UTC-vs-local date mismatch
-  const month  = String(now.getMonth() + 1).padStart(2, '0');
-  const day    = String(now.getDate()).padStart(2, '0');
+  const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+  const istNow = new Date(Date.now() + IST_OFFSET_MS);
+  const month  = String(istNow.getUTCMonth() + 1).padStart(2, '0');
+  const day    = String(istNow.getUTCDate()).padStart(2, '0');
   const mmdd   = `${month}-${day}`;
-  const currentYear = now.getFullYear();
+  const currentYear = istNow.getUTCFullYear();
   return db.prepare(`
     SELECT bw.*, u.id AS owner_user_id
     FROM birthday_wishes bw
