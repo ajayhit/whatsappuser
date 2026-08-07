@@ -74,25 +74,6 @@ export function initDb() {
     )
   `);
 
-  // Seed default bank if empty
-  try {
-    const bankCount = db.prepare('SELECT COUNT(*) as cnt FROM banks').get().cnt;
-    if (bankCount === 0) {
-      db.prepare(`
-        INSERT INTO banks (bank_name, account_number, ifsc, account_holder)
-        VALUES (?, ?, ?, ?)
-      `).run(
-        process.env.BANK_NAME || 'State Bank of India',
-        process.env.BANK_ACCOUNT_NUMBER || '123456789012',
-        process.env.BANK_IFSC || 'SBIN0001234',
-        process.env.BANK_ACCOUNT_HOLDER || 'WhatsApp SaaS Admin'
-      );
-      console.log('[DB Seed] Seeded default bank account.');
-    }
-  } catch (e) {
-    console.error('Error seeding banks:', e);
-  }
-
   // Seed default settings
   const defaultPrices = {
     plan_price: '199',
