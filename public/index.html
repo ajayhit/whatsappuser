@@ -3413,7 +3413,6 @@
                         <label>Role</label>
                         <select id="adminNewRole">
                           <option value="user">User / Subscriber</option>
-                          <option value="admin">Admin / System Manager</option>
                         </select>
                       </div>
                       <button type="submit" style="grid-column: span 2; margin-top: 0.25rem;">Create Account</button>
@@ -5117,7 +5116,7 @@
       const email = document.getElementById('adminNewEmail').value.trim();
       const phone = document.getElementById('adminNewPhone').value.trim();
       const password = document.getElementById('adminNewPassword').value;
-      const role = document.getElementById('adminNewRole').value;
+      const role = (document.getElementById('adminNewRole')?.value) || 'user';
 
       try {
         const res = await fetch('/admin/users', {
