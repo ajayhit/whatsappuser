@@ -7,7 +7,8 @@ import {
   getProfileInfo,
   getGroupsList,
   waitForSessionState,
-  sendMediaToJid
+  sendMediaToJid,
+  hasSessionFiles
 } from './sessionManager.js';
 import { authMiddleware } from './middleware/authMiddleware.js';
 import { planMiddleware } from './middleware/planMiddleware.js';
@@ -67,6 +68,7 @@ router.get('/session/status', async (req, res) => {
   const autoConnect = req.query.autoConnect !== 'false';
   try {
     let statusInfo = getSessionStatus(userId);
+    const filesExist = hasSessionFiles(userId);
     
     // Immediately auto-connect in background if disconnected and autoConnect is active
     if (statusInfo.status === 'DISCONNECTED' && autoConnect) {
@@ -74,7 +76,7 @@ router.get('/session/status', async (req, res) => {
       statusInfo = await waitForSessionState(userId, ['CONNECTED', 'QR'], 1000);
     }
 
-    return res.json({ userId, ...statusInfo });
+    return res.json({ userId, hasFiles: filesExist, ...statusInfo });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

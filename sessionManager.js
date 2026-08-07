@@ -2,6 +2,7 @@ import makeWASocket, { useMultiFileAuthState, DisconnectReason, Browsers, fetchL
 import pino from 'pino';
 import QRCode from 'qrcode';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 import { isContactExcluded, getContactByMobile, getUserById, getAutomationSettings } from './db.js';
 
@@ -15,6 +16,18 @@ const lastWelcomeSentMap = new Map();
 const lastAwaySentMap = new Map();
 
 const sessionsDir = process.env.SESSION_DIR || './sessions';
+
+/**
+ * Synchronously checks whether session credential files exist on disk for a user.
+ * Returns true  → session files present (session is restoring or previously authenticated).
+ * Returns false → no files, user has never scanned a QR code (or files were wiped).
+ * @param {string} userId
+ * @returns {boolean}
+ */
+export function hasSessionFiles(userId) {
+  const sessionDir = path.join(sessionsDir, `session_${userId}`);
+  return fsSync.existsSync(sessionDir);
+}
 
 function normalizeTargetJid(to) {
   let jid = to.trim();

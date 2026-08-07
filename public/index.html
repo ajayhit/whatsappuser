@@ -5438,6 +5438,8 @@
       state.whatsappStatus = data.status;
       state.whatsappQr = data.qr;
       state.whatsappAccount = data.user;
+      // Track hasFiles so the connect button logic can use it
+      state.whatsappHasFiles = data.hasFiles || false;
       
       updateWhatsappBadge(data.status);
 
@@ -5471,20 +5473,38 @@
           fetchOwnAvatar();
         }
       } else if (data.status === 'CONNECTING') {
+        // Could be restoring an existing session from disk on the server
+        const restoringMsg = data.hasFiles
+          ? 'Restoring your WhatsApp session — please wait…'
+          : 'Initializing WebSocket link…';
         qrContainer.innerHTML = `
           <div class="pulse" style="background-color: var(--warning-color); width: 16px; height: 16px; margin-bottom: 0.5rem;"></div>
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Initializing WebSocket link...</span>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">${restoringMsg}</span>
         `;
         profileContainer.style.display = 'none';
       } else {
-        qrContainer.innerHTML = `
-          <span style="color: var(--text-muted); font-size: 0.85rem; text-align: center;">
-            Session disconnected. Click "Connect / Reload Session" to start.
-          </span>
-        `;
+        // DISCONNECTED — differentiate based on whether session files exist on disk
+        let disconnectedMsg;
+        if (data.hasFiles) {
+          // Files exist but session isn't in memory — server may have just restarted
+          disconnectedMsg = `
+            <span style="color: var(--warning-color); font-size: 0.85rem; text-align: center; font-weight: 500;">
+              ⚠️ Session files found but connection dropped.<br>
+              <span style="color: var(--text-muted); font-weight: 400;">Click <strong>Connect / Reload Session</strong> to restore your WhatsApp link without scanning a new QR code.</span>
+            </span>
+          `;
+        } else {
+          disconnectedMsg = `
+            <span style="color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+              No active session. Click <strong>Connect / Reload Session</strong> to scan a QR code and link your WhatsApp.
+            </span>
+          `;
+        }
+        qrContainer.innerHTML = disconnectedMsg;
         profileContainer.style.display = 'none';
       }
     }
+
 
     async function fetchOwnAvatar() {
       try {
