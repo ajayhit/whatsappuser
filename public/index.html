@@ -7429,8 +7429,10 @@ function openCreateCampaignModal() {
   
   // Populate templates dropdown in campaign modal
   const select = document.getElementById('campaignTemplateSelect');
-  select.innerHTML = '<option value="">-- Or Select a Saved Template --</option>' + 
-    state.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  if (select) {
+    select.innerHTML = '<option value="">-- Or Select a Saved Template --</option>' + 
+      (state.templates || []).map(t => `<option value="${t.id}">${t.title || t.name || 'Untitled Template'}${t.category ? ` (${t.category})` : ''}</option>`).join('');
+  }
 }
 
 function hideCreateCampaignModal() {
@@ -7440,9 +7442,9 @@ function hideCreateCampaignModal() {
 
 function handleCampaignTemplateSelect(templateId) {
   if (!templateId) return;
-  const tmpl = state.templates.find(t => t.id == templateId);
+  const tmpl = (state.templates || []).find(t => t.id == templateId);
   if (tmpl) {
-    document.getElementById('campaignMsgContent').value = tmpl.message_text;
+    document.getElementById('campaignMsgContent').value = tmpl.content || tmpl.message_text || '';
   }
 }
 
