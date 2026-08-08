@@ -6224,7 +6224,13 @@
         });
         if (res.ok) {
           state.birthdayWishes = await res.json();
-          renderApp();
+          // Only update the table body directly to avoid re-rendering the whole page (which resets form inputs)
+          const tbody = document.getElementById('birthdayWishesTableBody');
+          if (tbody) {
+            tbody.innerHTML = renderBirthdayWishRows();
+          } else {
+            renderApp();
+          }
         }
       } catch (err) {
         console.error('Error fetching birthday wishes:', err);
