@@ -81,7 +81,8 @@ export function initDb() {
     plan_price_28: '199',
     plan_price_quarter: '549',
     plan_price_half_year: '999',
-    plan_price_year: '1899'
+    plan_price_year: '1899',
+    admin_whatsapp_number: process.env.ADMIN_WHATSAPP_NUMBER || ''
   };
   for (const [key, val] of Object.entries(defaultPrices)) {
     try {
@@ -533,6 +534,12 @@ export function getUserById(id) {
   `).get(id);
 }
 
+export function updateUserProfile(userId, { name, phone }) {
+  const db = getDb();
+  db.prepare('UPDATE users SET name = ?, phone = ? WHERE id = ?').run(name, phone || '', userId);
+  return getUserById(userId);
+}
+
 export function getAllUsers() {
   const db = getDb();
   return db.prepare(`
@@ -720,6 +727,16 @@ export function getAllOrders() {
     JOIN users u ON u.id = o.user_id
     ORDER BY o.created_at DESC
   `).all();
+}
+
+export function getOrderById(orderId) {
+  const db = getDb();
+  return db.prepare(`
+    SELECT o.*, u.name as user_name, u.email as user_email, u.phone as user_phone
+    FROM orders o
+    JOIN users u ON u.id = o.user_id
+    WHERE o.id = ?
+  `).get(orderId);
 }
 
 export function confirmOrder(orderId) {

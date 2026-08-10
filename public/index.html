@@ -1954,11 +1954,12 @@
               <div style="font-size:0.75rem; color:#fbbf24; background:rgba(245,158,11,0.1); padding:0.35rem 0.75rem; border-radius:10px; border:1px solid rgba(245,158,11,0.25);">
                 Expires: <strong>${new Date(state.plan.expires_at).toLocaleDateString()}</strong> (${Math.ceil((new Date(state.plan.expires_at) - new Date()) / (1000*60*60*24))}d left)
               </div>` : ''}
-            <div class="user-profile" style="display:flex; align-items:center; gap:0.75rem;">
-              <div class="user-details" style="text-align:right;">
-                <div class="user-name" style="font-weight:600; font-size:0.85rem;">${state.user.name}</div>
-                <div class="user-role" style="font-size:0.7rem; color:#a5b4fc;">SUBSCRIBER</div>
+            <div class="user-profile" style="display:flex; align-items:center; gap:0.6rem;">
+              <div class="user-details" onclick="switchTab('profileTab')" style="text-align:right; cursor:pointer;" title="Click to view & edit profile">
+                <div class="user-name" style="font-weight:600; font-size:0.85rem;">${state.user.name} 👤</div>
+                <div class="user-role" style="font-size:0.7rem; color:#86efac;">${state.user.phone ? `📱 ${state.user.phone}` : 'SUBSCRIBER'}</div>
               </div>
+              <button onclick="switchTab('profileTab')" style="padding:0.35rem 0.7rem; font-size:0.8rem; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#fff; border-radius:8px; cursor:pointer;">👤 Profile</button>
               <button class="btn-logout" onclick="handleLogout()" style="padding:0.4rem 0.8rem; font-size:0.8rem;">Sign Out</button>
             </div>
           </div>
@@ -2062,6 +2063,10 @@
                   <div class="form-group">
                     <label>Deposit Amount (₹)</label>
                     <input type="number" id="orderAmountInput" required min="1" placeholder="Enter amount sent" value="199">
+                  </div>
+                  <div class="form-group">
+                    <label>Your WhatsApp / Mobile Number</label>
+                    <input type="text" id="orderUserPhone" placeholder="10-digit mobile number for WhatsApp updates" value="${state.user?.phone || ''}">
                   </div>
                   <div class="form-group">
                     <label>Sender Account Name</label>
@@ -3329,6 +3334,72 @@
 
               </div>
             </div>
+
+            <!-- TAB: User Profile & Account Settings -->
+            <div id="profileTab" class="tab-content ${state.currentTab === 'profileTab' ? 'active' : ''}">
+              <div class="card-title">My Profile & Mobile Settings</div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                <!-- User Profile Form -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem;">
+                  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #fff; font-weight: 700;">
+                      ${(state.user?.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style="font-size: 1.2rem; font-weight: 700; color: #fff;">${state.user?.name || 'User'}</div>
+                      <div style="font-size: 0.85rem; color: #86efac; font-weight: 600;">👤 USER ACCOUNT</div>
+                      <div style="font-size: 0.8rem; color: var(--text-muted);">${state.user?.email || ''}</div>
+                    </div>
+                  </div>
+
+                  <form onsubmit="handleProfileUpdate(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div id="profileAlert" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:500;"></div>
+                    <div class="form-group">
+                      <label>Full Name</label>
+                      <input type="text" id="profileEditName" required value="${state.user?.name || ''}" placeholder="Full Name">
+                    </div>
+                    <div class="form-group">
+                      <label>WhatsApp / Mobile Number</label>
+                      <input type="tel" id="profileEditPhone" value="${state.user?.phone || ''}" placeholder="10-digit mobile number e.g. 9876543210">
+                      <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">
+                        📱 Used for receiving payment confirmation alerts & automated notifications.
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Email Address</label>
+                      <input type="email" value="${state.user?.email || ''}" disabled style="background: rgba(255,255,255,0.05); color: #94a3b8;">
+                    </div>
+                    <button type="submit" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 0.75rem; border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer;">
+                      💾 Save Profile Details
+                    </button>
+                  </form>
+                </div>
+
+                <!-- Password Change Form -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem;">
+                  <div style="font-size: 1.05rem; font-weight: 600; color: #a5b4fc; margin-bottom: 1rem;">🔐 Change Password</div>
+                  <form onsubmit="handleChangePassword(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div id="changePwAlert" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:500;"></div>
+                    <div class="form-group">
+                      <label>Current Password</label>
+                      <input type="password" id="currentPassword" required placeholder="Enter current password">
+                    </div>
+                    <div class="form-group">
+                      <label>New Password</label>
+                      <input type="password" id="newPassword" required minlength="6" placeholder="At least 6 characters">
+                    </div>
+                    <div class="form-group">
+                      <label>Confirm New Password</label>
+                      <input type="password" id="confirmNewPassword" required minlength="6" placeholder="Re-type new password">
+                    </div>
+                    <button type="submit" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); padding: 0.75rem; border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer;">
+                      🔒 Update Password
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       `;
@@ -3347,11 +3418,12 @@
             <h1>WhatsApp Messaging — Admin Portal</h1>
             <p>User Accounts Directory, Deposit approvals, and Bank Details settings</p>
           </div>
-          <div class="user-profile">
-            <div class="user-details">
-              <div class="user-name">${state.user.name}</div>
-              <div class="user-role" style="color: var(--warning-color);">SYSTEM ADMIN</div>
+          <div class="user-profile" style="display:flex; align-items:center; gap:0.6rem;">
+            <div class="user-details" onclick="switchTab('adminProfileTab')" style="cursor:pointer; text-align:right;" title="Click to view & edit admin profile">
+              <div class="user-name">${state.user.name} 👤</div>
+              <div class="user-role" style="color: var(--warning-color); font-size:0.75rem;">${state.user.phone ? `📱 ${state.user.phone}` : 'SYSTEM ADMIN'}</div>
             </div>
+            <button onclick="switchTab('adminProfileTab')" style="padding:0.35rem 0.7rem; font-size:0.8rem; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#fff; border-radius:8px; cursor:pointer;">👤 Profile</button>
             <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
           </div>
         </header>
@@ -3364,6 +3436,8 @@
               <button class="tab-btn ${state.currentTab === 'adminExpiryReportTab' ? 'active' : ''}" onclick="switchTab('adminExpiryReportTab')">Expiry Report</button>
               <button class="tab-btn ${state.currentTab === 'adminBanksTab' ? 'active' : ''}" onclick="switchTab('adminBanksTab')">Manage Banks</button>
               <button class="tab-btn ${state.currentTab === 'adminSettingsTab' ? 'active' : ''}" onclick="switchTab('adminSettingsTab')">SaaS Settings</button>
+              <button class="tab-btn ${state.currentTab === 'adminWhatsappTab' ? 'active' : ''}" onclick="switchTab('adminWhatsappTab')" style="color:${state.currentTab === 'adminWhatsappTab' ? '#fff' : '#86efac'};">📱 Admin WhatsApp</button>
+              <button class="tab-btn ${state.currentTab === 'adminProfileTab' ? 'active' : ''}" onclick="switchTab('adminProfileTab')">👤 Admin Profile</button>
             </div>
 
             <!-- TAB: Admin Users Directory -->
@@ -3607,6 +3681,64 @@
               </div>
             </div>
 
+            <!-- TAB: Admin WhatsApp Session -->
+            <div id="adminWhatsappTab" class="tab-content ${state.currentTab === 'adminWhatsappTab' ? 'active' : ''}">
+              <div class="card-title" style="margin-bottom:1.5rem;">📱 Admin WhatsApp Connection</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+
+                <!-- QR / Status Card -->
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:16px;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+                  <div style="font-size:1rem;font-weight:600;color:#a5b4fc;">🔗 Connection Status</div>
+                  <div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;background:rgba(0,0,0,0.2);border-radius:10px;border:1px solid var(--glass-border);">
+                    <div id="adminWaStatusDot" style="width:13px;height:13px;border-radius:50%;background:#ef4444;flex-shrink:0;transition:background 0.4s;box-shadow:0 0 8px rgba(239,68,68,0.6);"></div>
+                    <span id="adminWaStatusLabel" style="font-weight:600;font-size:0.95rem;color:#f8fafc;">Checking...</span>
+                  </div>
+
+                  <!-- QR Code display -->
+                  <div id="adminWaQrContainer" style="display:none;flex-direction:column;align-items:center;gap:0.75rem;padding:1rem;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(99,102,241,0.25);">
+                    <div style="font-size:0.85rem;color:#fde68a;text-align:center;">📲 Scan with your admin WhatsApp number</div>
+                    <img id="adminWaQrImage" src="" alt="QR Code" style="width:220px;height:220px;border-radius:12px;background:#fff;padding:8px;box-shadow:0 4px 24px rgba(0,0,0,0.4);">
+                    <div style="font-size:0.75rem;color:var(--text-muted);text-align:center;">QR auto-refreshes every 30s. Scan quickly!</div>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                    <button id="adminWaConnectBtn" onclick="adminWaConnect()" style="flex:1;padding:0.65rem 1rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:#fff;border-radius:10px;cursor:pointer;font-weight:600;font-size:0.9rem;transition:opacity 0.2s;">⚡ Connect WhatsApp</button>
+                    <button onclick="adminWaDisconnect()" style="padding:0.65rem 1rem;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#fca5a5;border-radius:10px;cursor:pointer;font-weight:600;font-size:0.9rem;transition:opacity 0.2s;">✕ Disconnect</button>
+                  </div>
+                  <p style="font-size:0.78rem;color:var(--text-muted);margin:0;line-height:1.5;">
+                    Connect the admin WhatsApp number once — it stays active until the server restarts or you disconnect it. All deposit notifications will be sent through this session.
+                  </p>
+                </div>
+
+                <!-- Notification Settings Card -->
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:16px;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+                  <div style="font-size:1rem;font-weight:600;color:#a5b4fc;">⚙️ Notification Settings</div>
+                  <p style="font-size:0.85rem;color:var(--text-muted);margin:0;line-height:1.5;">
+                    The admin WhatsApp number that receives new deposit alerts. Include country code, no <code style="color:#a5b4fc;background:rgba(165,180,252,0.1);padding:1px 4px;border-radius:4px;">+</code>
+                    (e.g. <code style="color:#a5b4fc;background:rgba(165,180,252,0.1);padding:1px 4px;border-radius:4px;">919876543210</code>).
+                  </p>
+                  <div class="form-group">
+                    <label>Admin Notification Number</label>
+                    <input type="tel" id="adminWaNumber" placeholder="e.g. 919876543210" style="font-family:monospace;font-size:1rem;letter-spacing:1px;">
+                  </div>
+                  <button onclick="saveAdminWaNumber()" style="padding:0.65rem 1.25rem;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;color:#fff;border-radius:10px;cursor:pointer;font-weight:600;font-size:0.9rem;">💾 Save Number</button>
+
+                  <!-- Flow info box -->
+                  <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:1rem;">
+                    <div style="font-size:0.85rem;font-weight:600;color:#a5b4fc;margin-bottom:0.6rem;">📢 Notification Flow</div>
+                    <ul style="font-size:0.8rem;color:var(--text-muted);margin:0;padding-left:1.2rem;line-height:2;">
+                      <li>User submits deposit → <strong style="color:#fde68a;">Admin gets alert</strong> on this number</li>
+                      <li>User submits deposit → <strong style="color:#86efac;">User gets "wait 5 min" message</strong></li>
+                      <li>Admin confirms order → <strong style="color:#86efac;">User gets ✅ confirmed message</strong></li>
+                      <li>Admin rejects order → <strong style="color:#fca5a5;">User gets ❌ rejected message</strong></li>
+                    </ul>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
             <!-- TAB: Expiry Report -->
             <div id="adminExpiryReportTab" class="tab-content ${state.currentTab === 'adminExpiryReportTab' ? 'active' : ''}">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
@@ -3622,6 +3754,9 @@
               </div>
               
               <div class="table-container">
+                <table class="user-table">
+                  <thead>
+                    <tr>
                       <th>User ID</th>
                       <th>User Name</th>
                       <th>Email / Phone</th>
@@ -3661,6 +3796,71 @@
               <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;max-width:520px;">
                 <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1.5rem;">Download all your contacts as an Excel spreadsheet. The file will include Name, Mobile, Shop Name and other stored details.</p>
                 <button onclick="exportContactsExcel()" style="background:linear-gradient(135deg,#10b981,#059669);">📥 Download Contacts as Excel</button>
+              </div>
+            </div>
+
+            <!-- TAB: Admin Profile -->
+            <div id="adminProfileTab" class="tab-content ${state.currentTab === 'adminProfileTab' ? 'active' : ''}">
+              <div class="card-title">Admin Profile & Mobile Settings</div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                <!-- Admin Profile Form -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem;">
+                  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #fff; font-weight: 700;">
+                      ${(state.user.name || 'A').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style="font-size: 1.2rem; font-weight: 700; color: #fff;">${state.user.name}</div>
+                      <div style="font-size: 0.85rem; color: var(--warning-color); font-weight: 600;">👑 SYSTEM ADMINISTRATOR</div>
+                      <div style="font-size: 0.8rem; color: var(--text-muted);">${state.user.email}</div>
+                    </div>
+                  </div>
+
+                  <form onsubmit="handleProfileUpdate(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div id="profileAlert" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:500;"></div>
+                    <div class="form-group">
+                      <label>Admin Name</label>
+                      <input type="text" id="profileEditName" required value="${state.user.name || ''}" placeholder="Admin Full Name">
+                    </div>
+                    <div class="form-group">
+                      <label>Admin WhatsApp / Mobile Number</label>
+                      <input type="tel" id="profileEditPhone" value="${state.user.phone || ''}" placeholder="e.g. 919876543210 (with country code)">
+                      <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">
+                        📱 Deposit notifications will be sent to this WhatsApp mobile number.
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Role</label>
+                      <input type="text" value="System Administrator" disabled style="background: rgba(255,255,255,0.05); color: #94a3b8;">
+                    </div>
+                    <button type="submit" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 0.75rem; border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer;">
+                      💾 Save Admin Profile
+                    </button>
+                  </form>
+                </div>
+
+                <!-- Admin Password Change Form -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem;">
+                  <div style="font-size: 1.05rem; font-weight: 600; color: #a5b4fc; margin-bottom: 1rem;">🔐 Change Password</div>
+                  <form onsubmit="handleChangePassword(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div id="changePwAlert" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:500;"></div>
+                    <div class="form-group">
+                      <label>Current Password</label>
+                      <input type="password" id="currentPassword" required placeholder="Enter current password">
+                    </div>
+                    <div class="form-group">
+                      <label>New Password</label>
+                      <input type="password" id="newPassword" required minlength="6" placeholder="At least 6 characters">
+                    </div>
+                    <div class="form-group">
+                      <label>Confirm New Password</label>
+                      <input type="password" id="confirmNewPassword" required minlength="6" placeholder="Re-type new password">
+                    </div>
+                    <button type="submit" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); padding: 0.75rem; border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer;">
+                      🔒 Update Password
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
 
@@ -3872,6 +4072,50 @@
       }
     }
 
+    async function handleProfileUpdate(e) {
+      e.preventDefault();
+      const nameInput = document.getElementById('profileEditName');
+      const phoneInput = document.getElementById('profileEditPhone');
+      const alertDiv = document.getElementById('profileAlert');
+
+      const name = nameInput ? nameInput.value.trim() : '';
+      const phone = phoneInput ? phoneInput.value.trim() : '';
+
+      if (alertDiv) alertDiv.style.display = 'none';
+
+      try {
+        const res = await fetch('/auth/profile', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, phone })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update profile');
+
+        state.user = data.user;
+        if (alertDiv) {
+          alertDiv.textContent = data.message || 'Profile updated successfully!';
+          alertDiv.style.display = 'block';
+          alertDiv.style.background = 'rgba(16, 185, 129, 0.15)';
+          alertDiv.style.border = '1px solid var(--accent-color)';
+          alertDiv.style.color = 'var(--accent-color)';
+        }
+        await fetchUserProfile();
+        renderApp();
+      } catch (err) {
+        if (alertDiv) {
+          alertDiv.textContent = err.message;
+          alertDiv.style.display = 'block';
+          alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+          alertDiv.style.border = '1px solid var(--error-color)';
+          alertDiv.style.color = 'var(--error-color)';
+        }
+      }
+    }
+
     async function handleChangePassword(e) {
       e.preventDefault();
       const currentPassword = document.getElementById('currentPassword').value;
@@ -4008,14 +4252,14 @@
 
     function getActiveCategory(currentTab) {
       const categoryMap = {
-        plansTab: 'account', banksTab: 'account', depositTab: 'account',
+        plansTab: 'account', banksTab: 'account', depositTab: 'account', adminProfileTab: 'account',
         whatsappTab: 'whatsapp', templatesTab: 'whatsapp',
         contactsTab: 'contacts', contactGroupsTab: 'contacts', tagsTab: 'contacts', importContactsTab: 'contacts', exportContactsTab: 'contacts',
         campaignsTab: 'campaigns', campaignAnalyticsTab: 'campaigns', campaignSchedulerTab: 'campaigns',
         autoRespondersTab: 'automation', remindersTab: 'automation', birthdayTab: 'automation', paymentReminderTab: 'automation', orderNotifyTab: 'automation', followUpTab: 'automation',
         apiDocsTab: 'api', apiKeysTab: 'api', webhooksTab: 'api',
         reportsTab: 'reports', userExpiryReportTab: 'reports', ordersTab: 'reports',
-        catalogTab: 'more', changePasswordTab: 'more'
+        catalogTab: 'more', changePasswordTab: 'more', profileTab: 'more'
       };
       return categoryMap[currentTab] || 'whatsapp';
     }
@@ -4064,8 +4308,8 @@
           { tab: 'ordersTab', label: '🧾 Order History' }
         ],
         more: [
-          { tab: 'catalogTab', label: '🛍️ Digital Catalog' },
-          { tab: 'changePasswordTab', label: '⚙️ Account Settings' }
+          { tab: 'profileTab', label: '👤 My Profile' },
+          { tab: 'catalogTab', label: '🛍️ Digital Catalog' }
         ]
       };
 
@@ -4166,11 +4410,13 @@
     async function handleOrderSubmit(e) {
       e.preventDefault();
       const bankId = document.getElementById('orderBankSelect').value;
+      const userPhoneInput = document.getElementById('orderUserPhone');
       const account_name = document.getElementById('orderAccountName').value.trim();
       const utr = document.getElementById('orderUtr').value.trim();
       const fileInput = document.getElementById('orderScreenshot');
       const plan_type = document.getElementById('orderPlanTypeSelect').value;
       const amount = document.getElementById('orderAmountInput').value.trim();
+      const user_phone = userPhoneInput ? userPhoneInput.value.trim() : '';
 
       if (!bankId) {
         alert('Please choose the destination bank account where you transferred funds.');
@@ -4187,6 +4433,9 @@
       formData.append('utr', utr);
       formData.append('plan_type', plan_type);
       formData.append('amount', amount);
+      if (user_phone) {
+        formData.append('user_phone', user_phone);
+      }
       if (fileInput.files.length > 0) {
         formData.append('screenshot', fileInput.files[0]);
       }
@@ -4289,6 +4538,9 @@
         fetchAdminBanks();
       } else if (state.currentTab === 'adminSettingsTab') {
         fetchAdminSettings();
+      } else if (state.currentTab === 'adminWhatsappTab') {
+        fetchAdminWaStatus();
+        fetchAdminSettings(); // loads admin_whatsapp_number into input
       } else if (state.currentTab === 'ordersTab') {
         renderUserOrders();
       } else if (state.currentTab === 'userExpiryReportTab') {
@@ -4332,8 +4584,135 @@
         if (pQuarterInput && data.plan_price_quarter) pQuarterInput.value = data.plan_price_quarter;
         if (pHalfYearInput && data.plan_price_half_year) pHalfYearInput.value = data.plan_price_half_year;
         if (pYearInput && data.plan_price_year) pYearInput.value = data.plan_price_year;
+
+        // Populate admin WA number if the field is present
+        const adminWaNumField = document.getElementById('adminWaNumber');
+        if (adminWaNumField && data.admin_whatsapp_number) {
+          adminWaNumField.value = data.admin_whatsapp_number;
+        }
       } catch (e) {
         console.error(e);
+      }
+    }
+
+    // ─── Admin WhatsApp Session Functions ────────────────────────────────────────
+
+    let adminWaPollTimer = null;
+
+    function updateAdminWaStatusUI(status, qr) {
+      const dot   = document.getElementById('adminWaStatusDot');
+      const label = document.getElementById('adminWaStatusLabel');
+      const qrBox = document.getElementById('adminWaQrContainer');
+      const qrImg = document.getElementById('adminWaQrImage');
+      if (!dot || !label) return;
+
+      if (status === 'CONNECTED') {
+        dot.style.background   = '#22c55e';
+        dot.style.boxShadow    = '0 0 10px rgba(34,197,94,0.7)';
+        label.textContent      = '✅ Connected';
+        label.style.color      = '#86efac';
+        if (qrBox) qrBox.style.display = 'none';
+        stopAdminWaPoll();
+      } else if (status === 'QR') {
+        dot.style.background   = '#f59e0b';
+        dot.style.boxShadow    = '0 0 10px rgba(245,158,11,0.7)';
+        label.textContent      = '⏳ Waiting for QR Scan…';
+        label.style.color      = '#fde68a';
+        if (qrBox) { qrBox.style.display = 'flex'; }
+        if (qrImg && qr) { qrImg.src = qr; }
+      } else if (status === 'CONNECTING') {
+        dot.style.background   = '#a78bfa';
+        dot.style.boxShadow    = '0 0 10px rgba(167,139,250,0.7)';
+        label.textContent      = '🔄 Connecting…';
+        label.style.color      = '#c4b5fd';
+        if (qrBox) qrBox.style.display = 'none';
+      } else {
+        dot.style.background   = '#ef4444';
+        dot.style.boxShadow    = '0 0 8px rgba(239,68,68,0.6)';
+        label.textContent      = '🔴 Disconnected';
+        label.style.color      = '#fca5a5';
+        if (qrBox) qrBox.style.display = 'none';
+      }
+    }
+
+    async function fetchAdminWaStatus() {
+      try {
+        const res = await fetch('/admin/session/status', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        updateAdminWaStatusUI(data.status, data.qr);
+        return data.status;
+      } catch (e) {
+        console.error('[Admin WA] Status fetch error:', e);
+      }
+    }
+
+    function startAdminWaPoll() {
+      if (adminWaPollTimer) return; // already polling
+      adminWaPollTimer = setInterval(async () => {
+        const status = await fetchAdminWaStatus();
+        if (status === 'CONNECTED') stopAdminWaPoll();
+      }, 4000);
+    }
+
+    function stopAdminWaPoll() {
+      if (adminWaPollTimer) {
+        clearInterval(adminWaPollTimer);
+        adminWaPollTimer = null;
+      }
+    }
+
+    async function adminWaConnect() {
+      const btn = document.getElementById('adminWaConnectBtn');
+      if (btn) { btn.textContent = '⏳ Connecting…'; btn.disabled = true; }
+      try {
+        const res = await fetch('/admin/session/login', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        updateAdminWaStatusUI(data.status, data.qr);
+        if (data.status !== 'CONNECTED') startAdminWaPoll();
+      } catch (err) {
+        alert('Failed to connect admin WhatsApp: ' + err.message);
+      } finally {
+        if (btn) { btn.textContent = '⚡ Connect WhatsApp'; btn.disabled = false; }
+      }
+    }
+
+    async function adminWaDisconnect() {
+      if (!confirm('Disconnect the admin WhatsApp session? Notifications will stop until reconnected.')) return;
+      try {
+        const res = await fetch('/admin/session/logout', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        updateAdminWaStatusUI('DISCONNECTED', null);
+        stopAdminWaPoll();
+        alert(data.message || 'Admin WhatsApp disconnected.');
+      } catch (err) {
+        alert('Error disconnecting: ' + err.message);
+      }
+    }
+
+    async function saveAdminWaNumber() {
+      const val = (document.getElementById('adminWaNumber')?.value || '').trim();
+      if (!val) { alert('Please enter a valid WhatsApp number.'); return; }
+      const digits = val.replace(/\D/g, '');
+      if (digits.length < 10) { alert('Number must be at least 10 digits (include country code, e.g. 919876543210).'); return; }
+      try {
+        const res = await fetch('/admin/settings', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'admin_whatsapp_number', value: digits })
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+        alert('✅ Admin WhatsApp number saved! Notifications will be sent to ' + digits);
+      } catch (err) {
+        alert('Failed to save number: ' + err.message);
       }
     }
 

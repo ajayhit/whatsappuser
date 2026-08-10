@@ -32,7 +32,10 @@ export function hasSessionFiles(userId) {
 function normalizeTargetJid(to) {
   let jid = to.trim();
   if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@g.us') && !jid.endsWith('@lid')) {
-    const cleanNumber = jid.replace(/\D/g, '');
+    let cleanNumber = jid.replace(/\D/g, '');
+    if (cleanNumber.length === 10) {
+      cleanNumber = '91' + cleanNumber;
+    }
     jid = `${cleanNumber}@s.whatsapp.net`;
   }
   return jid;

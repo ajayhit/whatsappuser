@@ -1,14 +1,15 @@
 import express from 'express';
 import {
-  createUser, getUserByEmail, getUserById,
+  createUser, getUserByEmail, getUserById, updateUserProfile,
   getActivePlan, getPlansByUser, getOrdersByUser, getWalletTransactions,
   createOrder, verifyPassword, expireOldPlans,
-  getSetting, getBanks,
+  getSetting, setSetting, getBanks,
   updateUserPassword, createPasswordResetToken,
   getValidResetToken, invalidateResetToken,
-  getPlanDetails, subscribeToPlan
+  getPlanDetails, subscribeToPlan, getDb
 } from './db.js';
 import { generateToken, authMiddleware } from './middleware/authMiddleware.js';
+import { getSessionStatus, sendMessageToJid, initSession, waitForSessionState, hasSessionFiles } from './sessionManager.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -264,8 +265,8 @@ router.get('/me', authMiddleware, (req, res) => {
  * POST /auth/orders
  * Submit a payment order (bank transfer)
  */
-router.post('/orders', authMiddleware, upload.single('screenshot'), (req, res) => {
-  const { utr, bank_name, account_name, plan_type, amount: customAmount } = req.body;
+router.post('/orders', authMiddleware, upload.single('screenshot'), async (req, res) => {
+  const { utr, bank_name, account_name, plan_type, amount: customAmount, user_phone } = req.body;
   
   if (req.user.is_blocked === 1) {
     return res.status(403).json({ error: 'Your account is blocked.' });
@@ -273,6 +274,21 @@ router.post('/orders', authMiddleware, upload.single('screenshot'), (req, res) =
 
   if (!utr || !bank_name || !account_name) {
     return res.status(400).json({ error: 'UTR number, bank name, and account name are required' });
+  }
+
+  // Update user phone number if provided or missing in DB
+  const rawUserPhone = user_phone || req.user.phone;
+  if (rawUserPhone) {
+    const cleanPhone = String(rawUserPhone).replace(/\D/g, '');
+    if (cleanPhone.length >= 10 && (!req.user.phone || req.user.phone !== cleanPhone)) {
+      try {
+        const dbConn = getDb();
+        dbConn.prepare("UPDATE users SET phone = ? WHERE id = ?").run(cleanPhone, req.user.id);
+        req.user.phone = cleanPhone;
+      } catch (e) {
+        console.error('[Deposit] Failed to update user phone:', e.message);
+      }
+    }
   }
 
   try {
@@ -302,6 +318,83 @@ router.post('/orders', authMiddleware, upload.single('screenshot'), (req, res) =
       screenshot_path,
       plan_type: planType
     });
+
+    // ─── WhatsApp Notifications (non-blocking) ────────────────────────────
+    try {
+      // Ensure admin session is connected if files exist
+      let adminSessionStatus = getSessionStatus('admin');
+      if (adminSessionStatus.status !== 'CONNECTED' && hasSessionFiles('admin')) {
+        try {
+          initSession('admin').catch(e => console.error('[Deposit Notify AutoInit Error]:', e));
+          await waitForSessionState('admin', ['CONNECTED'], 3000);
+          adminSessionStatus = getSessionStatus('admin');
+        } catch (e) {}
+      }
+
+      if (adminSessionStatus.status === 'CONNECTED') {
+        const user = req.user;
+        const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const hasScreenshot = screenshot_path ? 'Yes 📸' : 'No';
+
+        // 1. Resolve Admin WhatsApp Number
+        let adminNumber = getSetting('admin_whatsapp_number', '');
+        if (!adminNumber && adminSessionStatus.user?.phone) {
+          adminNumber = adminSessionStatus.user.phone;
+        }
+        if (!adminNumber) {
+          try {
+            const dbConn = getDb();
+            const adminUser = dbConn.prepare("SELECT phone FROM users WHERE role = 'admin' AND phone IS NOT NULL AND phone != '' LIMIT 1").get();
+            if (adminUser && adminUser.phone) {
+              adminNumber = adminUser.phone;
+            }
+          } catch (e) {}
+        }
+
+        const adminDigits = String(adminNumber || '').replace(/\D/g, '');
+        if (adminDigits && adminDigits.length >= 10) {
+          const adminMsg =
+            `🔔 *New Deposit Request Received*\n\n` +
+            `👤 User: ${user.name || 'N/A'} (${user.email || 'N/A'})\n` +
+            `📱 Phone: ${user.phone || rawUserPhone || 'N/A'}\n` +
+            `💰 Amount: *₹${orderAmount}*\n` +
+            `🏦 Bank: ${bank_name}\n` +
+            `📋 UTR: ${utr}\n` +
+            `🕐 Time: ${timestamp}\n` +
+            `📸 Screenshot: ${hasScreenshot}\n\n` +
+            `Please review and approve/reject in the Admin Panel.`;
+          await sendMessageToJid('admin', adminDigits, adminMsg);
+          console.log(`[Deposit Notify] Admin notified at ${adminDigits}`);
+        } else {
+          console.warn('[Deposit Notify] Admin WhatsApp number not found — skipping admin notification');
+        }
+
+        // 2. Notify user (if user phone number exists)
+        const activeUserPhone = user.phone || rawUserPhone;
+        const userDigits = activeUserPhone ? String(activeUserPhone).replace(/\D/g, '') : '';
+        if (userDigits && userDigits.length >= 10) {
+          const userMsg =
+            `✅ *Deposit Request Received!*\n\n` +
+            `Hi ${user.name || 'there'},\n` +
+            `We have successfully received your deposit request of *₹${orderAmount}*!\n\n` +
+            `📋 UTR: ${utr}\n` +
+            `🏦 Bank: ${bank_name}\n` +
+            `🕐 Time: ${timestamp}\n\n` +
+            `⏳ Please wait *5 minutes* while our team reviews your payment.\n` +
+            `You will receive a WhatsApp confirmation once your deposit is approved. Thank you! 🙏`;
+          await sendMessageToJid('admin', userDigits, userMsg);
+          console.log(`[Deposit Notify] User #${user.id} notified at ${userDigits}`);
+        } else {
+          console.warn(`[Deposit Notify] User #${user.id} has no valid phone number — skipping user notification`);
+        }
+      } else {
+        console.warn('[Deposit Notify] Admin WA session not connected — skipping notifications');
+      }
+    } catch (notifyErr) {
+      console.error('[Deposit Notify] Notification error (non-fatal):', notifyErr.message);
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     return res.status(201).json({
       message: 'Order submitted successfully. Awaiting admin confirmation.',
       order
@@ -349,6 +442,42 @@ router.get('/orders', authMiddleware, (req, res) => {
     const orders = getOrdersByUser(req.user.id);
     return res.json({ orders });
   } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /auth/profile
+ * Update user/admin profile details (Name, Phone Number)
+ */
+router.post('/profile', authMiddleware, (req, res) => {
+  const { name, phone } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+
+  const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+  if (phone && cleanPhone.length > 0 && cleanPhone.length < 10) {
+    return res.status(400).json({ error: 'Please enter a valid 10+ digit mobile number' });
+  }
+
+  try {
+    const updatedUser = updateUserProfile(req.user.id, {
+      name: name.trim(),
+      phone: cleanPhone
+    });
+
+    // If admin updates phone, sync it with admin_whatsapp_number setting as well
+    if (req.user.role === 'admin' && cleanPhone) {
+      setSetting('admin_whatsapp_number', cleanPhone);
+    }
+
+    return res.json({
+      message: 'Profile updated successfully!',
+      user: updatedUser
+    });
+  } catch (err) {
+    console.error('Update profile error:', err);
     return res.status(500).json({ error: err.message });
   }
 });

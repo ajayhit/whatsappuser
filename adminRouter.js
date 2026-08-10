@@ -6,8 +6,12 @@ import {
   getAllUsers, creditWallet, getUserById,
   getBanks, createBank, updateBank, deleteBank,
   getSetting, setSetting, setUserBlockStatus, createUser, getUserByEmail,
-  deleteUser
+  deleteUser, getOrderById
 } from './db.js';
+import {
+  initSession, getSessionStatus, logoutSession,
+  sendMessageToJid, waitForSessionState, hasSessionFiles
+} from './sessionManager.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -18,6 +22,110 @@ const router = express.Router();
 
 // Apply admin auth to all routes
 router.use(adminMiddleware);
+
+// ─── Admin WhatsApp Session Endpoints ────────────────────────────────────────
+
+/**
+ * POST /admin/session/login
+ * Start or resume the admin WhatsApp session (shows QR if not connected)
+ */
+router.post('/session/login', async (req, res) => {
+  try {
+    initSession('admin').catch(err =>
+      console.error('[Admin WA] initSession error:', err)
+    );
+    const sessionInfo = await waitForSessionState('admin', ['CONNECTED', 'QR'], 1500);
+    return res.json({
+      message:
+        sessionInfo.status === 'CONNECTED'
+          ? 'Admin WhatsApp session is connected'
+          : sessionInfo.status === 'QR'
+          ? 'Scan the QR code with the admin WhatsApp number'
+          : 'Session is initializing — try again in a moment',
+      ...sessionInfo
+    });
+  } catch (err) {
+    console.error('[Admin WA] session/login error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /admin/session/status
+ * Return current admin WhatsApp session status + QR if pending
+ */
+router.get('/session/status', (req, res) => {
+  try {
+    const statusInfo = getSessionStatus('admin');
+    return res.json(statusInfo);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /admin/session/logout
+ * Disconnect and clean up admin WhatsApp session
+ */
+router.post('/session/logout', async (req, res) => {
+  try {
+    const result = await logoutSession('admin');
+    return res.json({ message: 'Admin WhatsApp session disconnected', ...result });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Helper: resolve Admin WhatsApp Number ───────────────────────────────────
+
+function getAdminPhone() {
+  let adminNumber = getSetting('admin_whatsapp_number', '');
+  if (!adminNumber) {
+    const status = getSessionStatus('admin');
+    if (status?.user?.phone) {
+      adminNumber = status.user.phone;
+    }
+  }
+  if (!adminNumber) {
+    try {
+      const db = getDb();
+      const adminUser = db.prepare("SELECT phone FROM users WHERE role = 'admin' AND phone IS NOT NULL AND phone != '' LIMIT 1").get();
+      if (adminUser && adminUser.phone) {
+        adminNumber = adminUser.phone;
+      }
+    } catch (e) {}
+  }
+  return adminNumber;
+}
+
+// ─── Helper: send WhatsApp notification via admin session ─────────────────────
+
+async function sendAdminSessionMsg(phone, message) {
+  try {
+    let status = getSessionStatus('admin');
+    if (status.status !== 'CONNECTED' && hasSessionFiles('admin')) {
+      try {
+        initSession('admin').catch(err => console.error('[AutoConnect Admin WA Error]:', err));
+        await waitForSessionState('admin', ['CONNECTED'], 3000);
+        status = getSessionStatus('admin');
+      } catch (e) {}
+    }
+    if (status.status !== 'CONNECTED') {
+      console.warn('[Admin WA Notify] Admin session not connected — skipping notification');
+      return false;
+    }
+    const digits = String(phone || '').replace(/\D/g, '');
+    if (!digits || digits.length < 10) {
+      console.warn('[Admin WA Notify] Invalid phone number — skipping notification');
+      return false;
+    }
+    await sendMessageToJid('admin', digits, message);
+    return true;
+  } catch (err) {
+    console.error('[Admin WA Notify] Failed to send message:', err.message);
+    return false;
+  }
+}
 
 /**
  * GET /admin/orders
@@ -37,11 +145,57 @@ router.get('/orders', (req, res) => {
 
 /**
  * POST /admin/orders/:id/confirm
- * Confirm payment → credit wallet → activate plan
+ * Confirm payment → credit wallet → activate plan → notify user & admin via WhatsApp
  */
-router.post('/orders/:id/confirm', (req, res) => {
+router.post('/orders/:id/confirm', async (req, res) => {
   try {
-    const result = confirmOrder(parseInt(req.params.id));
+    const orderId = parseInt(req.params.id);
+    const result = confirmOrder(orderId);
+
+    // Send WhatsApp confirmation to BOTH User and Admin (non-blocking)
+    try {
+      const order = getOrderById(orderId);
+      if (order) {
+        const user = getUserById(order.user_id);
+        const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+        // 1. Notify User
+        const userPhone = user?.phone || order.phone;
+        if (userPhone) {
+          const userMsg =
+            `✅ *Payment Confirmed!*\n\n` +
+            `Hi ${user?.name || 'there'},\n` +
+            `Your deposit request of *₹${order.amount}* has been confirmed & approved! 🎉\n\n` +
+            `📋 UTR: ${order.utr || 'N/A'}\n` +
+            `🏦 Bank: ${order.bank_name || 'N/A'}\n` +
+            `🕐 Time: ${timestamp}\n\n` +
+            `Your wallet/plan has been activated. Thank you for your payment! 🙏`;
+          await sendAdminSessionMsg(userPhone, userMsg);
+          console.log(`[Admin WA] Sent deposit confirmation to user #${order.user_id} (${userPhone})`);
+        } else {
+          console.warn(`[Admin WA] User #${order.user_id} has no phone number — skipping user notification`);
+        }
+
+        // 2. Notify Admin
+        const adminPhone = getAdminPhone();
+        if (adminPhone) {
+          const adminMsg =
+            `✅ *Deposit Request Approved*\n\n` +
+            `Order #${order.id} for *₹${order.amount}* has been confirmed.\n` +
+            `👤 User: ${user?.name || 'N/A'} (${user?.email || 'N/A'})\n` +
+            `📱 User Phone: ${userPhone || 'N/A'}\n` +
+            `📋 UTR: ${order.utr || 'N/A'}\n` +
+            `🕐 Time: ${timestamp}`;
+          await sendAdminSessionMsg(adminPhone, adminMsg);
+          console.log(`[Admin WA] Sent deposit confirmation alert to admin (${adminPhone})`);
+        } else {
+          console.warn('[Admin WA] Admin phone number not set — skipping admin alert');
+        }
+      }
+    } catch (notifyErr) {
+      console.error('[Admin WA] Confirm notification failed:', notifyErr.message);
+    }
+
     return res.json({
       message: 'Order confirmed. Plan activated.',
       ...result
@@ -54,12 +208,60 @@ router.post('/orders/:id/confirm', (req, res) => {
 
 /**
  * POST /admin/orders/:id/reject
- * Reject a payment order
+ * Reject a payment order → notify user & admin via WhatsApp
  */
-router.post('/orders/:id/reject', (req, res) => {
+router.post('/orders/:id/reject', async (req, res) => {
   const { notes } = req.body;
   try {
-    const order = rejectOrder(parseInt(req.params.id), notes);
+    const orderId = parseInt(req.params.id);
+    const order = rejectOrder(orderId, notes);
+
+    // Send WhatsApp rejection to BOTH User and Admin (non-blocking)
+    try {
+      const fullOrder = getOrderById(orderId);
+      if (fullOrder) {
+        const user = getUserById(fullOrder.user_id);
+        const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const reasonStr = notes || 'Payment details could not be verified';
+
+        // 1. Notify User
+        const userPhone = user?.phone || fullOrder.phone;
+        if (userPhone) {
+          const userMsg =
+            `❌ *Deposit Request Rejected*\n\n` +
+            `Hi ${user?.name || 'there'},\n` +
+            `Unfortunately, your deposit request of *₹${fullOrder.amount}* could not be verified.\n\n` +
+            `📋 UTR: ${fullOrder.utr || 'N/A'}\n` +
+            `📝 Reason: ${reasonStr}\n` +
+            `🕐 Time: ${timestamp}\n\n` +
+            `Please check your payment details/screenshot and re-submit or contact support.`;
+          await sendAdminSessionMsg(userPhone, userMsg);
+          console.log(`[Admin WA] Sent deposit rejection to user #${fullOrder.user_id} (${userPhone})`);
+        } else {
+          console.warn(`[Admin WA] User #${fullOrder.user_id} has no phone number — skipping user notification`);
+        }
+
+        // 2. Notify Admin
+        const adminPhone = getAdminPhone();
+        if (adminPhone) {
+          const adminMsg =
+            `❌ *Deposit Request Rejected*\n\n` +
+            `Order #${fullOrder.id} for *₹${fullOrder.amount}* has been rejected.\n` +
+            `👤 User: ${user?.name || 'N/A'} (${user?.email || 'N/A'})\n` +
+            `📱 User Phone: ${userPhone || 'N/A'}\n` +
+            `📋 UTR: ${fullOrder.utr || 'N/A'}\n` +
+            `📝 Reason: ${reasonStr}\n` +
+            `🕐 Time: ${timestamp}`;
+          await sendAdminSessionMsg(adminPhone, adminMsg);
+          console.log(`[Admin WA] Sent deposit rejection alert to admin (${adminPhone})`);
+        } else {
+          console.warn('[Admin WA] Admin phone number not set — skipping admin alert');
+        }
+      }
+    } catch (notifyErr) {
+      console.error('[Admin WA] Reject notification failed:', notifyErr.message);
+    }
+
     return res.json({ message: 'Order rejected.', order });
   } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -170,7 +372,8 @@ router.get('/settings', (req, res) => {
       plan_price_28: getSetting('plan_price_28', '199'),
       plan_price_quarter: getSetting('plan_price_quarter', '549'),
       plan_price_half_year: getSetting('plan_price_half_year', '999'),
-      plan_price_year: getSetting('plan_price_year', '1899')
+      plan_price_year: getSetting('plan_price_year', '1899'),
+      admin_whatsapp_number: getSetting('admin_whatsapp_number', '')
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
