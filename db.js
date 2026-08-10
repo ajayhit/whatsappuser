@@ -339,6 +339,17 @@ export function initDb() {
     )
   `);
 
+  // Expiry Notification Logs table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS expiry_notification_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      category TEXT NOT NULL,
+      sent_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
   // Birthday Wishes automation table
   db.exec(`
     CREATE TABLE IF NOT EXISTS birthday_wishes (
@@ -695,6 +706,47 @@ export function expireOldPlans() {
   if (updated.changes > 0) {
     console.log(`[Plan Expiry] Expired ${updated.changes} plan(s).`);
   }
+}
+
+// ─── Expiry Notification Helpers ──────────────────────────────────────────────
+
+export function canSendExpiryNotification(userId, minIntervalMinutes, maxPer24h) {
+  const db = getDb();
+  
+  // 1. Check minimum time interval since last notification sent
+  const lastLog = db.prepare(`
+    SELECT sent_at FROM expiry_notification_logs
+    WHERE user_id = ?
+    ORDER BY id DESC LIMIT 1
+  `).get(userId);
+
+  if (lastLog) {
+    const minutesAgo = (Date.now() - new Date(lastLog.sent_at).getTime()) / (1000 * 60);
+    if (minutesAgo < minIntervalMinutes) {
+      return false;
+    }
+  }
+
+  // 2. Check total sent count in the last 24 hours
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const countRow = db.prepare(`
+    SELECT COUNT(*) as count FROM expiry_notification_logs
+    WHERE user_id = ? AND sent_at >= ?
+  `).get(userId, twentyFourHoursAgo);
+
+  if (countRow && countRow.count >= maxPer24h) {
+    return false;
+  }
+
+  return true;
+}
+
+export function logExpiryNotification(userId, category) {
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO expiry_notification_logs (user_id, category, sent_at)
+    VALUES (?, ?, ?)
+  `).run(userId, category, new Date().toISOString());
 }
 
 // ─── Order Helpers ────────────────────────────────────────────────────────────

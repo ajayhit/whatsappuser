@@ -16,7 +16,8 @@ import {
   incrementCampaignSuccess, incrementCampaignFailure, getCampaignById,
   getContactsByUser,
   getDueBirthdayWishes, markBirthdayWishSent, markBirthdayWishFailed,
-  updatePaymentReminderStatus
+  updatePaymentReminderStatus,
+  getAllUsers, getPlansByUser, canSendExpiryNotification, logExpiryNotification
 } from './db.js';
 
 dotenv.config();
@@ -268,6 +269,9 @@ app.listen(PORT, async () => {
 
   // Start Background Payment Reminders Poller
   startPaymentReminderPoller();
+
+  // Start Background Plan Expiry Poller
+  startPlanExpiryPoller();
 });
 
 // Background reminders polling handler
@@ -644,4 +648,124 @@ function startPaymentReminderPoller() {
       console.error('[Payment Reminder Poller Error]', e);
     }
   }, 10 * 60 * 1000); // Poll every 10 minutes
+}
+
+// ─── Plan Expiry Notification Poller ─────────────────────────────────────────
+
+function startPlanExpiryPoller() {
+  setInterval(async () => {
+    try {
+      // 1. Check if Admin WhatsApp session is connected
+      const adminStatus = getSessionStatus('admin');
+      if (adminStatus.status !== 'CONNECTED') return;
+
+      const users = getAllUsers();
+      if (!users || users.length === 0) return;
+
+      const now = Date.now();
+
+      for (const user of users) {
+        if (user.role === 'admin') continue;
+        if (!user.phone) continue;
+
+        // Get user's latest plan (active or most recent)
+        const plan = getActivePlan(user.id) || getPlansByUser(user.id)?.[0];
+        if (!plan || !plan.expires_at) continue;
+
+        const expiresAtMs = new Date(plan.expires_at).getTime();
+        const diffMs = expiresAtMs - now;
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        let category = null;
+        let minIntervalMinutes = 0;
+        let maxPer24h = 0;
+        let message = '';
+
+        const formattedExpiryDate = new Date(expiresAtMs).toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        });
+
+        // ── FREQUENCY & TIME WINDOW RULES ──────────────────────────────────────
+        if (diffHours > 48 && diffHours <= 72) {
+          // 3 Days Remaining: 2 times a day (every 12 hours)
+          category = '3_days';
+          minIntervalMinutes = 12 * 60; // 720 min
+          maxPer24h = 2;
+          message =
+            `⏳ *Subscription Expiring Soon!*\n\n` +
+            `Hi ${user.name || 'there'},\n` +
+            `Your WhatsApp Automation Plan will expire in *3 Days* (on ${formattedExpiryDate}).\n\n` +
+            `To ensure uninterrupted automated messaging and API access, please renew your subscription.\n\n` +
+            `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
+            `💰 Price: ₹${plan.price || 199}\n\n` +
+            `Log in to your account dashboard to submit deposit or renew plan. Thank you! 🙏`;
+        } else if (diffHours > 24 && diffHours <= 48) {
+          // 2 Days Remaining: 3 times a day (every 8 hours)
+          category = '2_days';
+          minIntervalMinutes = 8 * 60; // 480 min
+          maxPer24h = 3;
+          message =
+            `⚠️ *Subscription Alert: 2 Days Left*\n\n` +
+            `Hi ${user.name || 'there'},\n` +
+            `Your WhatsApp Automation Plan expires in *2 Days* (on ${formattedExpiryDate}).\n\n` +
+            `Please renew your subscription today to keep your WhatsApp automation running smoothly!\n\n` +
+            `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
+            `💰 Price: ₹${plan.price || 199}\n\n` +
+            `Submit your deposit reference in the portal. Thank you! 🙏`;
+        } else if (diffHours >= 0 && diffHours <= 24) {
+          // Due Date / 1 Day Left: 4 times a day (every 6 hours)
+          category = 'due_date';
+          minIntervalMinutes = 6 * 60; // 360 min
+          maxPer24h = 4;
+          message =
+            `🚨 *Subscription Expiring TODAY!*\n\n` +
+            `Hi ${user.name || 'there'},\n` +
+            `Your WhatsApp Automation Plan expires *TODAY* (${formattedExpiryDate}).\n\n` +
+            `⚡ *Action Required*: Renew now to prevent interruption of your automated messages and campaigns!\n\n` +
+            `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
+            `💰 Price: ₹${plan.price || 199}\n\n` +
+            `Please transfer funds and submit deposit UTR in your portal. 🙏`;
+        } else if (diffHours < 0 && diffHours >= -96) {
+          // Expired within last 4 days: 4 times a day (every 6 hours) for up to 4 days post-expiry
+          category = 'expired_4d';
+          minIntervalMinutes = 6 * 60; // 360 min
+          maxPer24h = 4;
+          const daysAgo = Math.floor(Math.abs(diffHours) / 24) || 1;
+          message =
+            `❌ *Subscription Expired*\n\n` +
+            `Hi ${user.name || 'there'},\n` +
+            `Your WhatsApp Automation Plan expired ${daysAgo} day(s) ago (on ${formattedExpiryDate}).\n\n` +
+            `Your WhatsApp automated sessions and campaign APIs are currently paused.\n\n` +
+            `To reactivate all services instantly, please submit your payment deposit in the portal.\n\n` +
+            `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
+            `💰 Price: ₹${plan.price || 199}\n\n` +
+            `Thank you! 🙏`;
+        } else {
+          // Active > 3 days left OR Expired > 4 days ago OR Plan renewed -> DO NOT SEND
+          continue;
+        }
+
+        // Check if notification can be sent based on frequency rules
+        if (!canSendExpiryNotification(user.id, minIntervalMinutes, maxPer24h)) {
+          continue;
+        }
+
+        // Dispatch WhatsApp message via Admin Session
+        try {
+          const digits = String(user.phone).replace(/\D/g, '');
+          if (digits && digits.length >= 10) {
+            await sendMessageToJid('admin', digits, message);
+            logExpiryNotification(user.id, category);
+            console.log(`[Expiry Poller] Sent '${category}' notification to user #${user.id} (${digits})`);
+          }
+        } catch (sendErr) {
+          console.error(`[Expiry Poller] Failed to send to user #${user.id}: ${sendErr.message}`);
+        }
+      }
+    } catch (e) {
+      console.error('[Plan Expiry Poller Error]', e);
+    }
+  }, 10 * 60 * 1000); // Check every 10 minutes
 }
