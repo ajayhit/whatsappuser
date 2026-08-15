@@ -8,7 +8,8 @@ npm-debug.log*
 sessions/
 uploads/
 
-# SQLite temporary files
+# Local SQLite database (Never commit local changes to git)
+database.db
 database.db-shm
 database.db-wal
 

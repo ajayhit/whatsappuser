@@ -18,14 +18,17 @@ export function getDb() {
       fs.mkdirSync(dbDir, { recursive: true });
     }
 
-    // If running on persistent storage (Render disk) and target DB does not exist, copy seed DB
-    const seedDbPath = path.join(__dirname, 'database.db');
+    // If running on persistent storage (Render disk) and target DB does not exist, copy seed DB template
+    const seedDbPath = fs.existsSync(path.join(__dirname, 'database.seed.db'))
+      ? path.join(__dirname, 'database.seed.db')
+      : path.join(__dirname, 'database.db');
+      
     if (DB_PATH !== seedDbPath && (!fs.existsSync(DB_PATH) || fs.statSync(DB_PATH).size === 0) && fs.existsSync(seedDbPath)) {
       try {
         fs.copyFileSync(seedDbPath, DB_PATH);
-        console.log(`[DB] Successfully seeded initial database from ${seedDbPath} to ${DB_PATH}`);
+        console.log(`[DB] Successfully initialized database from template ${seedDbPath} to ${DB_PATH}`);
       } catch (copyErr) {
-        console.error('[DB] Error copying seed database to persistent storage:', copyErr);
+        console.error('[DB] Error copying seed template to persistent storage:', copyErr);
       }
     }
 
