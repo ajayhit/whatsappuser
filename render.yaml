@@ -13,6 +13,8 @@ services:
         value: Asia/Kolkata
       - key: SESSION_DIR
         value: /opt/render/project/.data/sessions
+      - key: DB_PATH
+        value: /opt/render/project/.data/database.db
     disk:
       name: whatsapp-sessions
       mountPath: /opt/render/project/.data

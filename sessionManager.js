@@ -17,6 +17,16 @@ const lastAwaySentMap = new Map();
 
 const sessionsDir = process.env.SESSION_DIR || './sessions';
 
+// Filter out noisy Baileys libsignal Bad MAC decryption logs from clogging stdout/stderr
+const originalConsoleError = console.error;
+console.error = function (...args) {
+  const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+  if (msg.includes('Bad MAC Error') || msg.includes('Failed to decrypt message')) {
+    return; // Ignore harmless libsignal session key desync logs
+  }
+  originalConsoleError.apply(console, args);
+};
+
 /**
  * Synchronously checks whether session credential files exist on disk for a user.
  * Returns true  → session files present (session is restoring or previously authenticated).

@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-  createUser, getUserByEmail, getUserById, updateUserProfile,
+  createUser, getUserByEmail, getUserByPhone, getUserById, updateUserProfile,
   getActivePlan, getPlansByUser, getOrdersByUser, getWalletTransactions,
   createOrder, verifyPassword, expireOldPlans,
   getSetting, setSetting, getBanks,
@@ -151,13 +151,36 @@ const upload = multer({
 });
 
 /**
+ * GET /auth/public-plans
+ * Unauthenticated route to get subscription plan options and prices
+ */
+router.get('/public-plans', (req, res) => {
+  try {
+    const planOptions = [
+      getPlanDetails('demo'),
+      getPlanDetails('plan_28'),
+      getPlanDetails('quarter'),
+      getPlanDetails('half_year'),
+      getPlanDetails('year')
+    ];
+    return res.json({ planOptions });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * POST /auth/register
  * Create a new user account
  */
 router.post('/register', (req, res) => {
   const { name, email, phone, password, captchaId, captchaAnswer } = req.body;
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Name, email, and password are required' });
+  if (!name || !email || !password || !phone) {
+    return res.status(400).json({ error: 'Name, email, phone number, and password are required' });
+  }
+  const phoneDigits = String(phone || '').replace(/\D/g, '');
+  if (!phoneDigits || phoneDigits.length !== 10) {
+    return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
   }
   if (password.length < 6) {
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
@@ -170,7 +193,10 @@ router.post('/register', (req, res) => {
     const existing = getUserByEmail(email);
     if (existing) return res.status(409).json({ error: 'Email already registered' });
 
-    const user = createUser({ name, email, phone, password });
+    const existingPhone = getUserByPhone(phoneDigits);
+    if (existingPhone) return res.status(409).json({ error: 'Phone number already registered. Please use a different number or sign in.' });
+
+    const user = createUser({ name, email, phone: phoneDigits, password });
     const token = generateToken(user);
     return res.status(201).json({ message: 'Account created successfully', token, user });
   } catch (err) {
