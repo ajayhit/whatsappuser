@@ -8,8 +8,7 @@ npm-debug.log*
 sessions/
 uploads/
 
-# SQLite files
-database.db
+# SQLite temporary files
 database.db-shm
 database.db-wal
 

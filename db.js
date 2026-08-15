@@ -17,6 +17,18 @@ export function getDb() {
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
+
+    // If running on persistent storage (Render disk) and target DB does not exist, copy seed DB
+    const seedDbPath = path.join(__dirname, 'database.db');
+    if (DB_PATH !== seedDbPath && (!fs.existsSync(DB_PATH) || fs.statSync(DB_PATH).size === 0) && fs.existsSync(seedDbPath)) {
+      try {
+        fs.copyFileSync(seedDbPath, DB_PATH);
+        console.log(`[DB] Successfully seeded initial database from ${seedDbPath} to ${DB_PATH}`);
+      } catch (copyErr) {
+        console.error('[DB] Error copying seed database to persistent storage:', copyErr);
+      }
+    }
+
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
