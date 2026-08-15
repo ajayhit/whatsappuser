@@ -1,4 +1,5 @@
 import express from 'express';
+import multer from 'multer';
 import { adminMiddleware } from './middleware/authMiddleware.js';
 import { generateToken } from './middleware/authMiddleware.js';
 import {
@@ -6,7 +7,8 @@ import {
   getAllUsers, creditWallet, getUserById,
   getBanks, createBank, updateBank, deleteBank,
   getSetting, setSetting, setUserBlockStatus, createUser, getUserByEmail,
-  deleteUser, getOrderById
+  deleteUser, getOrderById,
+  getDbPath, checkpointDb, closeDb, reloadDb
 } from './db.js';
 import {
   initSession, getSessionStatus, logoutSession,
@@ -19,6 +21,16 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const router = express.Router();
+
+// Configure multer for database restore uploads
+const tempDbDir = path.join(__dirname, 'uploads', 'temp_db');
+if (!fs.existsSync(tempDbDir)) {
+  fs.mkdirSync(tempDbDir, { recursive: true });
+}
+const dbUpload = multer({
+  dest: tempDbDir,
+  limits: { fileSize: 100 * 1024 * 1024 } // 100 MB
+});
 
 // Apply admin auth to all routes
 router.use(adminMiddleware);
@@ -646,6 +658,81 @@ router.delete('/users/:id', (req, res) => {
     return res.json({ message: `User #${userId} ("${user.name}") and all associated data deleted successfully.` });
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Database Sync / Backup & Restore Endpoints ──────────────────────────────
+
+/**
+ * GET /admin/database/backup
+ * Checkpoints WAL and downloads current SQLite database.db file
+ */
+router.get('/database/backup', (req, res) => {
+  try {
+    checkpointDb();
+    const dbPath = getDbPath();
+    if (!fs.existsSync(dbPath)) {
+      return res.status(404).json({ error: 'Database file not found.' });
+    }
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    res.download(dbPath, `chatautomate_backup_${timestamp}.db`);
+  } catch (err) {
+    console.error('[Admin DB Backup] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /admin/database/restore
+ * Upload & restore database from a .db SQLite file
+ */
+router.post('/database/restore', dbUpload.single('db_file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Please select a valid .db SQLite file to upload.' });
+  }
+  const uploadedPath = req.file.path;
+  try {
+    // Validate SQLite Header (first 16 bytes: "SQLite format 3\0")
+    const buffer = Buffer.alloc(16);
+    const fd = fs.openSync(uploadedPath, 'r');
+    fs.readSync(fd, buffer, 0, 16, 0);
+    fs.closeSync(fd);
+
+    const headerString = buffer.toString('utf8');
+    if (!headerString.startsWith('SQLite format 3')) {
+      fs.unlinkSync(uploadedPath);
+      return res.status(400).json({ error: 'The uploaded file is not a valid SQLite database file.' });
+    }
+
+    const targetDbPath = getDbPath();
+    const walPath = `${targetDbPath}-wal`;
+    const shmPath = `${targetDbPath}-shm`;
+
+    // 1. Close current DB connection safely
+    closeDb();
+
+    // 2. Remove stale WAL & SHM files if present
+    if (fs.existsSync(walPath)) {
+      try { fs.unlinkSync(walPath); } catch (e) {}
+    }
+    if (fs.existsSync(shmPath)) {
+      try { fs.unlinkSync(shmPath); } catch (e) {}
+    }
+
+    // 3. Replace target DB file with uploaded file
+    fs.copyFileSync(uploadedPath, targetDbPath);
+    fs.unlinkSync(uploadedPath); // clean up temp file
+
+    // 4. Reopen and reload DB connection
+    reloadDb();
+
+    console.log(`[Admin DB Restore] Database restored successfully from upload`);
+    return res.json({ message: 'Database successfully restored and reloaded! All accounts and data have been updated.' });
+  } catch (err) {
+    console.error('[Admin DB Restore] Error:', err);
+    try { if (fs.existsSync(uploadedPath)) fs.unlinkSync(uploadedPath); } catch (e) {}
+    try { reloadDb(); } catch (e) {}
+    return res.status(500).json({ error: 'Failed to restore database: ' + err.message });
   }
 });
 

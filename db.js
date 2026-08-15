@@ -39,6 +39,37 @@ export function getDb() {
   return db;
 }
 
+export function getDbPath() {
+  return DB_PATH;
+}
+
+export function checkpointDb() {
+  if (db) {
+    try {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+    } catch (e) {
+      console.error('[DB] Checkpoint error:', e);
+    }
+  }
+}
+
+export function closeDb() {
+  if (db) {
+    try {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+      db.close();
+    } catch (e) {
+      console.error('[DB] Error closing database:', e);
+    }
+    db = null;
+  }
+}
+
+export function reloadDb() {
+  closeDb();
+  initDb();
+}
+
 export function initDb() {
   const db = getDb();
 
