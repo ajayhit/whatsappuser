@@ -7,10 +7,11 @@ import apiRouter from './apiRouter.js';
 import authRouter from './authRouter.js';
 import adminRouter from './adminRouter.js';
 import crmRouter from './crmRouter.js';
+import razorpayRouter from './razorpayRouter.js';
 import { restoreAllSessions, getSessionStatus, sendMessageToJid, sendMediaToJid } from './sessionManager.js';
 import {
   initDb, getDb, getUserByEmail, createUser, getUserById,
-  getCatalogByUserId, getServicesByCatalogId,
+  getCatalogByUserId, getAllCatalogs, getServicesByCatalogId,
   getPendingReminders, updateReminderStatus, isContactExcluded, getActivePlan, calculateNextScheduleDate,
   getPendingCampaigns, getPendingRecipients, updateCampaignStatus, updateCampaignRecipientStatus,
   incrementCampaignSuccess, incrementCampaignFailure, getCampaignById,
@@ -50,6 +51,42 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Dynamic XML Sitemap Endpoint for Search Engine SEO
+app.get('/sitemap.xml', (req, res) => {
+  res.header('Content-Type', 'application/xml');
+  try {
+    const catalogs = getAllCatalogs();
+    const today = new Date().toISOString().split('T')[0];
+    const catalogUrls = catalogs.map(c => `
+  <url>
+    <loc>https://chatautomate.in/catalog/view/${c.user_id}</loc>
+    <lastmod>${(c.updated_at || c.created_at || today).split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`).join('');
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://chatautomate.in/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://chatautomate.in/api_documentation.md</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>${catalogUrls}
+</urlset>`;
+    res.send(xml);
+  } catch (err) {
+    console.error('Error generating dynamic sitemap:', err);
+    res.status(500).send('Error generating sitemap');
+  }
+});
+
 // Mount the Auth Router at /auth
 app.use('/auth', authRouter);
 
@@ -62,14 +99,23 @@ app.use('/api', apiRouter);
 // Mount the CRM API endpoints at /api/crm
 app.use('/api/crm', crmRouter);
 
-// Public Digital Catalog View
+// Mount the Razorpay payment endpoints at /razorpay
+app.use('/razorpay', razorpayRouter);
+
+// Public Digital Catalog View with Rich SEO Metadata
 app.get('/catalog/view/:userId', (req, res) => {
   const userId = parseInt(req.params.userId);
   try {
     const catalog = getCatalogByUserId(userId);
     if (!catalog) {
       return res.status(404).send(`
-        <html>
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <title>Catalog Not Found | Chat Automate</title>
+            <meta name="robots" content="noindex, follow">
+          </head>
           <body style="background:#0f172a; color:#f8fafc; font-family:sans-serif; text-align:center; padding-top:5rem;">
             <h2>Catalog not found or not set up yet.</h2>
           </body>
@@ -78,9 +124,13 @@ app.get('/catalog/view/:userId', (req, res) => {
     }
 
     const services = getServicesByCatalogId(catalog.id);
+    const pageTitle = `${catalog.brand_name} | Digital Store & Catalog - Chat Automate`;
+    const pageDesc = (catalog.description || `Browse products, services, and price lists for ${catalog.brand_name} on Chat Automate.`).replace(/"/g, '&quot;');
+    const pageUrl = `https://chatautomate.in/catalog/view/${userId}`;
+    const logoUrl = catalog.logo_path ? `https://chatautomate.in/${catalog.logo_path}` : 'https://chatautomate.in/og-image.png';
 
     const logoHtml = catalog.logo_path 
-      ? `<img class="logo" src="/${catalog.logo_path}" alt="${catalog.brand_name}">`
+      ? `<img class="logo" src="/${catalog.logo_path}" alt="${catalog.brand_name} Logo">`
       : `<div class="logo" style="display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);color:#a5b4fc;font-size:2.5rem;font-weight:800;">${catalog.brand_name.charAt(0).toUpperCase()}</div>`;
 
     const audioHtml = catalog.catalog_audio_path
@@ -115,14 +165,77 @@ app.get('/catalog/view/:userId', (req, res) => {
         }).join('')
       : '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:2rem;">No services listed yet.</div>';
 
+    // JSON-LD ItemList / Offer Catalog Schema for Google Rich Snippets
+    const itemListElement = services.map((s, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "item": {
+        "@type": "Product",
+        "name": s.name,
+        "description": s.description || s.name,
+        "image": s.image_path ? `https://chatautomate.in/${s.image_path}` : logoUrl,
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "INR",
+          "price": s.price,
+          "availability": "https://schema.org/InStock"
+        }
+      }
+    }));
+
+    const jsonLdSchema = JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Store",
+          "@id": pageUrl,
+          "name": catalog.brand_name,
+          "description": pageDesc,
+          "url": pageUrl,
+          "image": logoUrl
+        },
+        {
+          "@type": "ItemList",
+          "name": `${catalog.brand_name} Catalog Services`,
+          "itemListElement": itemListElement
+        }
+      ]
+    });
+
     return res.send(`
       <!DOCTYPE html>
       <html lang="en">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${catalog.brand_name} - Digital Catalog</title>
+        <title>${pageTitle}</title>
+        <meta name="description" content="${pageDesc}">
+        <meta name="robots" content="index, follow, max-image-preview:large">
+        <link rel="canonical" href="${pageUrl}">
+
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="Chat Automate">
+        <meta property="og:title" content="${pageTitle}">
+        <meta property="og:description" content="${pageDesc}">
+        <meta property="og:url" content="${pageUrl}">
+        <meta property="og:image" content="${logoUrl}">
+
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="${pageTitle}">
+        <meta name="twitter:description" content="${pageDesc}">
+        <meta name="twitter:image" content="${logoUrl}">
+
+        <!-- JSON-LD Structured Data Schema -->
+        <script type="application/ld+json">
+        ${jsonLdSchema}
+        </script>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+
         <style>
           :root {
             --bg: #0f172a;
@@ -238,6 +351,15 @@ app.use((err, req, res, next) => {
   }
   console.error('Unhandled server error:', err);
   return res.status(500).json({ error: err.message || 'Internal server error' });
+});
+
+// Process-level error protection for Baileys / libsignal background socket errors
+process.on('uncaughtException', (err) => {
+  console.error('[Background Warning] Uncaught Exception:', err.message || err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Background Warning] Unhandled Rejection:', reason?.message || reason);
 });
 
 // Start the Express server

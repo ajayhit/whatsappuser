@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /catalog/view/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /razorpay/
+Disallow: /uploads/
+
+# XML Sitemap Location
+Sitemap: https://chatautomate.in/sitemap.xml

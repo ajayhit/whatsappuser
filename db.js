@@ -1,15 +1,22 @@
 import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, 'database.db');
+const DB_PATH = process.env.DB_PATH
+  ? path.resolve(process.env.DB_PATH)
+  : path.join(__dirname, 'database.db');
 
 let db;
 
 export function getDb() {
   if (!db) {
+    const dbDir = path.dirname(DB_PATH);
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
     db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
@@ -82,7 +89,9 @@ export function initDb() {
     plan_price_quarter: '549',
     plan_price_half_year: '999',
     plan_price_year: '1899',
-    admin_whatsapp_number: process.env.ADMIN_WHATSAPP_NUMBER || ''
+    admin_whatsapp_number: process.env.ADMIN_WHATSAPP_NUMBER || '',
+    razorpay_key_id: process.env.RAZORPAY_KEY_ID || '',
+    razorpay_key_secret: process.env.RAZORPAY_KEY_SECRET || ''
   };
   for (const [key, val] of Object.entries(defaultPrices)) {
     try {
@@ -502,6 +511,30 @@ export function initDb() {
     db.exec("ALTER TABLE reminders ADD COLUMN send_time TEXT");
   } catch (e) {}
 
+  // Razorpay columns on orders table
+  try {
+    db.exec("ALTER TABLE orders ADD COLUMN razorpay_order_id TEXT");
+  } catch (e) {}
+  try {
+    db.exec("ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT");
+  } catch (e) {}
+  // Seed default Admin user if no admin exists
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@whatsapp.local';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'adminpassword123';
+    const existingAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin' OR email = ?").get(adminEmail);
+    if (!existingAdmin) {
+      const password_hash = bcrypt.hashSync(adminPassword, 10);
+      db.prepare(`
+        INSERT INTO users (name, email, phone, password_hash, role)
+        VALUES (?, ?, ?, ?, 'admin')
+      `).run('System Admin', adminEmail, process.env.ADMIN_WHATSAPP_NUMBER || '', password_hash);
+      console.log(`[DB] Default admin created: ${adminEmail}`);
+    }
+  } catch (err) {
+    console.error('[DB] Error seeding default admin:', err.message);
+  }
+
   console.log('[DB] All tables initialized.');
 }
 
@@ -526,6 +559,17 @@ export function createUser({ name, email, phone, password, role = 'user' }) {
 export function getUserByEmail(email) {
   const db = getDb();
   return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+}
+
+export function getUserByPhone(phone) {
+  const db = getDb();
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits || digits.length < 10) return null;
+  const last10 = digits.slice(-10);
+  return db.prepare(`
+    SELECT * FROM users 
+    WHERE replace(replace(phone, '+', ''), ' ', '') LIKE '%' || ?
+  `).get(last10);
 }
 
 export function getUserById(id) {
@@ -754,10 +798,71 @@ export function logExpiryNotification(userId, category) {
 export function createOrder({ userId, amount, utr, bank_name, account_name, screenshot_path, plan_type }) {
   const db = getDb();
   const result = db.prepare(`
-    INSERT INTO orders (user_id, amount, utr, bank_name, account_name, screenshot_path, plan_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO orders (user_id, amount, utr, bank_name, account_name, screenshot_path, plan_type, payment_method)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'bank_transfer')
   `).run(userId, amount, utr, bank_name, account_name, screenshot_path || null, plan_type || null);
   return db.prepare('SELECT * FROM orders WHERE id = ?').get(result.lastInsertRowid);
+}
+
+/**
+ * Create a pending order record for a Razorpay checkout.
+ * The order starts as 'pending' and is confirmed after payment verification.
+ */
+export function createRazorpayOrder({ userId, amount, razorpayOrderId, planType }) {
+  const db = getDb();
+  const result = db.prepare(`
+    INSERT INTO orders
+      (user_id, amount, utr, bank_name, account_name, plan_type, razorpay_order_id, payment_method)
+    VALUES
+      (?, ?, 'RAZORPAY', 'Razorpay', 'Online Payment', ?, ?, 'razorpay')
+  `).run(userId, amount, planType || 'plan_28', razorpayOrderId);
+  return db.prepare('SELECT * FROM orders WHERE id = ?').get(result.lastInsertRowid);
+}
+
+/**
+ * Confirm a Razorpay order after HMAC signature verification.
+ * Credits wallet, activates the plan, and marks the order as confirmed.
+ */
+export function confirmRazorpayOrder(razorpayOrderId, razorpayPaymentId) {
+  const db = getDb();
+  const order = db.prepare('SELECT * FROM orders WHERE razorpay_order_id = ?').get(razorpayOrderId);
+  if (!order) throw new Error('Razorpay order not found');
+  if (order.status === 'confirmed') throw new Error('Order already confirmed');
+
+  const confirmedAt = new Date().toISOString();
+
+  // Mark order as confirmed and store payment ID
+  db.prepare(`
+    UPDATE orders
+    SET status = 'confirmed', confirmed_at = ?, razorpay_payment_id = ?
+    WHERE razorpay_order_id = ?
+  `).run(confirmedAt, razorpayPaymentId, razorpayOrderId);
+
+  let plan = null;
+  // Auto-activate plan (no wallet credit needed — Razorpay already collected payment)
+  if (order.plan_type && order.plan_type !== 'wallet') {
+    const details = getPlanDetails(order.plan_type);
+    if (details) {
+      try {
+        // Log wallet credit + debit to keep transaction history consistent
+        creditWallet(order.user_id, order.amount, `Razorpay payment received - Order #${order.id}`);
+        debitWallet(order.user_id, details.price, `${details.name} activated via Razorpay - Order #${order.id}`);
+        plan = activatePlan(order.user_id, order.plan_type, details.durationDays, details.price);
+      } catch (err) {
+        console.error(`[Razorpay] Plan auto-activation error: ${err.message}`);
+      }
+    }
+  }
+
+  return { order: db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id), plan };
+}
+
+/**
+ * Look up an order by its Razorpay order_id.
+ */
+export function getRazorpayOrderByRazorpayId(razorpayOrderId) {
+  const db = getDb();
+  return db.prepare('SELECT * FROM orders WHERE razorpay_order_id = ?').get(razorpayOrderId);
 }
 
 export function getOrdersByUser(userId) {
@@ -1064,6 +1169,11 @@ export function deleteUser(userId) {
 export function getCatalogByUserId(userId) {
   const db = getDb();
   return db.prepare('SELECT * FROM digital_catalog WHERE user_id = ?').get(userId);
+}
+
+export function getAllCatalogs() {
+  const db = getDb();
+  return db.prepare('SELECT * FROM digital_catalog').all();
 }
 
 export function getServicesByCatalogId(catalogId) {

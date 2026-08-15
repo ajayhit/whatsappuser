@@ -360,6 +360,156 @@ router.post('/wallet/credit', (req, res) => {
   }
 });
 
+/**
+ * POST /admin/send-message
+ * Send WhatsApp message from Admin session to:
+ * - 'all': All registered users with a phone number
+ * - 'user': Specific user by userId
+ * - 'custom': Custom phone number
+ */
+router.post('/send-message', async (req, res) => {
+  const { targetType, userId, phone, message } = req.body;
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: 'Message content is required' });
+  }
+
+  // Verify Admin WhatsApp session status
+  let status = getSessionStatus('admin');
+  if (status.status !== 'CONNECTED' && hasSessionFiles('admin')) {
+    try {
+      initSession('admin').catch(err => console.error('[AutoConnect Admin WA Error]:', err));
+      await waitForSessionState('admin', ['CONNECTED'], 3000);
+      status = getSessionStatus('admin');
+    } catch (e) {}
+  }
+
+  if (status.status !== 'CONNECTED') {
+    return res.status(400).json({
+      error: 'Admin WhatsApp session is not connected. Please go to Admin WhatsApp tab and connect / scan QR code first.'
+    });
+  }
+
+  try {
+    const msgText = message.trim();
+    const adminPhoneDigits = String(getAdminPhone() || '').replace(/\D/g, '');
+
+    // Helper: filter valid non-admin users with phone numbers
+    function getEligibleUsers(users) {
+      return users.filter(u => {
+        if (u.role === 'admin') return false;
+        if (!u.phone) return false;
+        const uPhoneDigits = String(u.phone).replace(/\D/g, '');
+        if (uPhoneDigits.length < 10) return false;
+        if (adminPhoneDigits && uPhoneDigits.endsWith(adminPhoneDigits.slice(-10))) return false;
+        return true;
+      });
+    }
+
+    // Helper: broadcast to a list of users and return counts
+    async function broadcastToUsers(targetUsers) {
+      let sentCount = 0;
+      let failedCount = 0;
+      for (const user of targetUsers) {
+        try {
+          const success = await sendAdminSessionMsg(user.phone, msgText);
+          if (success) sentCount++;
+          else failedCount++;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (err) {
+          failedCount++;
+        }
+      }
+      return { sentCount, failedCount, total: targetUsers.length };
+    }
+
+    if (targetType === 'all') {
+      const users = getAllUsers();
+      const targetUsers = getEligibleUsers(users);
+
+      if (targetUsers.length === 0) {
+        return res.status(400).json({ error: 'No registered regular users found with valid phone numbers.' });
+      }
+
+      const result = await broadcastToUsers(targetUsers);
+      return res.json({
+        message: `Broadcast to ALL users finished: ${result.sentCount} sent, ${result.failedCount} failed out of ${result.total} user(s).`,
+        ...result
+      });
+
+    } else if (targetType === 'active_users') {
+      // Users who currently have an active plan (plan_status = 'active')
+      const users = getAllUsers();
+      const activeUsers = getEligibleUsers(users.filter(u => u.plan_status === 'active'));
+
+      if (activeUsers.length === 0) {
+        return res.status(400).json({ error: 'No active subscribers with valid phone numbers found.' });
+      }
+
+      const result = await broadcastToUsers(activeUsers);
+      return res.json({
+        message: `Broadcast to ACTIVE users finished: ${result.sentCount} sent, ${result.failedCount} failed out of ${result.total} active subscriber(s).`,
+        ...result
+      });
+
+    } else if (targetType === 'inactive_users') {
+      // Users who do NOT have an active plan (no plan or expired plan)
+      const users = getAllUsers();
+      const inactiveUsers = getEligibleUsers(users.filter(u => u.plan_status !== 'active'));
+
+      if (inactiveUsers.length === 0) {
+        return res.status(400).json({ error: 'No inactive users with valid phone numbers found.' });
+      }
+
+      const result = await broadcastToUsers(inactiveUsers);
+      return res.json({
+        message: `Broadcast to INACTIVE users finished: ${result.sentCount} sent, ${result.failedCount} failed out of ${result.total} inactive user(s).`,
+        ...result
+      });
+
+    } else if (targetType === 'user') {
+      if (!userId) return res.status(400).json({ error: 'Please select a user' });
+      const user = getUserById(parseInt(userId));
+      if (!user) return res.status(404).json({ error: 'Selected user not found' });
+      if (!user.phone || String(user.phone).replace(/\D/g, '').length < 10) {
+        return res.status(400).json({ error: `User ${user.name} does not have a valid phone number recorded.` });
+      }
+
+      const success = await sendAdminSessionMsg(user.phone, msgText);
+      if (!success) {
+        return res.status(500).json({ error: `Failed to send message to ${user.name} (${user.phone}).` });
+      }
+
+      return res.json({
+        message: `Message sent successfully to ${user.name} (${user.phone}).`,
+        sentCount: 1
+      });
+
+    } else if (targetType === 'custom') {
+      const digits = String(phone || '').replace(/\D/g, '');
+      if (!digits || digits.length < 10) {
+        return res.status(400).json({ error: 'Please enter a valid mobile number with country code (e.g. 919509116337)' });
+      }
+
+      const success = await sendAdminSessionMsg(digits, msgText);
+      if (!success) {
+        return res.status(500).json({ error: `Failed to send message to ${digits}.` });
+      }
+
+      return res.json({
+        message: `Message sent successfully to +${digits}.`,
+        sentCount: 1
+      });
+
+    } else {
+      return res.status(400).json({ error: 'Invalid target type. Must be "all", "active_users", "inactive_users", "user", or "custom".' });
+    }
+
+  } catch (err) {
+    console.error('Admin Send Message Error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Settings Endpoints ──────────────────────────────────────────────────────
 
 /**
@@ -373,7 +523,9 @@ router.get('/settings', (req, res) => {
       plan_price_quarter: getSetting('plan_price_quarter', '549'),
       plan_price_half_year: getSetting('plan_price_half_year', '999'),
       plan_price_year: getSetting('plan_price_year', '1899'),
-      admin_whatsapp_number: getSetting('admin_whatsapp_number', '')
+      admin_whatsapp_number: getSetting('admin_whatsapp_number', ''),
+      razorpay_key_id: getSetting('razorpay_key_id', ''),
+      razorpay_key_secret: getSetting('razorpay_key_secret', '')
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
