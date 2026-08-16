@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
@@ -9,20 +10,39 @@ const DB_PATH = process.env.DB_PATH
   ? path.resolve(process.env.DB_PATH)
   : path.join(__dirname, 'database.db');
 
-let db;
+let sqliteDb = null;
+let pgPool = null;
+
+export function isPg() {
+  return !!(process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '');
+}
+
+export function getPgPool() {
+  if (!pgPool && isPg()) {
+    const databaseUrl = process.env.DATABASE_URL.trim();
+    const isLocalhost = databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1');
+    pgPool = new pg.Pool({
+      connectionString: databaseUrl,
+      ssl: isLocalhost ? false : { rejectUnauthorized: false }
+    });
+  }
+  return pgPool;
+}
 
 export function getDb() {
-  if (!db) {
+  if (isPg()) {
+    return getPgPool();
+  }
+  if (!sqliteDb) {
     const dbDir = path.dirname(DB_PATH);
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
 
-    // If running on persistent storage (Render disk) and target DB does not exist, copy seed DB template
     const seedDbPath = fs.existsSync(path.join(__dirname, 'database.seed.db'))
       ? path.join(__dirname, 'database.seed.db')
       : path.join(__dirname, 'database.db');
-      
+
     if (DB_PATH !== seedDbPath && (!fs.existsSync(DB_PATH) || fs.statSync(DB_PATH).size === 0) && fs.existsSync(seedDbPath)) {
       try {
         fs.copyFileSync(seedDbPath, DB_PATH);
@@ -32,11 +52,11 @@ export function getDb() {
       }
     }
 
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
+    sqliteDb = new Database(DB_PATH);
+    sqliteDb.pragma('journal_mode = WAL');
+    sqliteDb.pragma('foreign_keys = ON');
   }
-  return db;
+  return sqliteDb;
 }
 
 export function getDbPath() {
@@ -44,9 +64,9 @@ export function getDbPath() {
 }
 
 export function checkpointDb() {
-  if (db) {
+  if (sqliteDb && !isPg()) {
     try {
-      db.pragma('wal_checkpoint(TRUNCATE)');
+      sqliteDb.pragma('wal_checkpoint(TRUNCATE)');
     } catch (e) {
       console.error('[DB] Checkpoint error:', e);
     }
@@ -54,26 +74,469 @@ export function checkpointDb() {
 }
 
 export function closeDb() {
-  if (db) {
+  if (isPg() && pgPool) {
+    pgPool.end().catch(e => console.error('[DB] Error closing PG pool:', e));
+    pgPool = null;
+  } else if (sqliteDb) {
     try {
-      db.pragma('wal_checkpoint(TRUNCATE)');
-      db.close();
+      sqliteDb.pragma('wal_checkpoint(TRUNCATE)');
+      sqliteDb.close();
     } catch (e) {
       console.error('[DB] Error closing database:', e);
     }
-    db = null;
+    sqliteDb = null;
   }
 }
 
-export function reloadDb() {
+export async function reloadDb() {
   closeDb();
-  initDb();
+  await initDb();
 }
 
-export function initDb() {
+function transformPgQuery(sql, params) {
+  let text = sql;
+  let values = [];
+
+  // Convert SQLite functions to PostgreSQL functions
+  text = text.replace(/datetime\('now'\)/gi, 'NOW()');
+  text = text.replace(/datetime\('now',\s*'localtime'\)/gi, 'NOW()');
+
+  if (Array.isArray(params)) {
+    let idx = 1;
+    text = text.replace(/\?/g, () => `$${idx++}`);
+    values = [...params];
+  } else if (params && typeof params === 'object') {
+    let idx = 1;
+    text = text.replace(/@([a-zA-Z0-9_]+)/g, (match, key) => {
+      values.push(params[key] !== undefined ? params[key] : null);
+      return `$${idx++}`;
+    });
+  }
+
+  if (text.toUpperCase().includes('INSERT OR IGNORE INTO')) {
+    text = text.replace(/INSERT OR IGNORE INTO/gi, 'INSERT INTO');
+    if (!text.toUpperCase().includes('ON CONFLICT')) {
+      text += ' ON CONFLICT DO NOTHING';
+    }
+  }
+
+  return { text, values };
+}
+
+export async function queryOne(sql, params = []) {
+  if (isPg()) {
+    const { text, values } = transformPgQuery(sql, params);
+    const res = await getPgPool().query(text, values);
+    return res.rows[0] || null;
+  } else {
+    const db = getDb();
+    if (Array.isArray(params)) {
+      return db.prepare(sql).get(...params);
+    } else if (params && typeof params === 'object') {
+      return db.prepare(sql).get(params);
+    }
+    return db.prepare(sql).get();
+  }
+}
+
+export async function queryAll(sql, params = []) {
+  if (isPg()) {
+    const { text, values } = transformPgQuery(sql, params);
+    const res = await getPgPool().query(text, values);
+    return res.rows;
+  } else {
+    const db = getDb();
+    if (Array.isArray(params)) {
+      return db.prepare(sql).all(...params);
+    } else if (params && typeof params === 'object') {
+      return db.prepare(sql).all(params);
+    }
+    return db.prepare(sql).all();
+  }
+}
+
+export async function execute(sql, params = []) {
+  if (isPg()) {
+    let { text, values } = transformPgQuery(sql, params);
+    if (text.trim().toUpperCase().startsWith('INSERT') && !text.toUpperCase().includes('RETURNING')) {
+      text += ' RETURNING id';
+    }
+    const res = await getPgPool().query(text, values);
+    return {
+      changes: res.rowCount,
+      lastInsertRowid: res.rows[0]?.id || null,
+      rows: res.rows
+    };
+  } else {
+    const db = getDb();
+    let info;
+    if (Array.isArray(params)) {
+      info = db.prepare(sql).run(...params);
+    } else if (params && typeof params === 'object') {
+      info = db.prepare(sql).run(params);
+    } else {
+      info = db.prepare(sql).run();
+    }
+    return { changes: info.changes, lastInsertRowid: info.lastInsertRowid };
+  }
+}
+
+export async function initDb() {
+  if (isPg()) {
+    const pool = getPgPool();
+    const client = await pool.connect();
+    try {
+      console.log('[DB] Initializing PostgreSQL schema...');
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          phone TEXT,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'user',
+          wallet_balance DOUBLE PRECISION NOT NULL DEFAULT 0,
+          is_blocked INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS banks (
+          id SERIAL PRIMARY KEY,
+          bank_name TEXT NOT NULL,
+          account_number TEXT NOT NULL,
+          ifsc TEXT NOT NULL,
+          account_holder TEXT NOT NULL,
+          is_active INTEGER NOT NULL DEFAULT 1
+        );
+
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS plans (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          status TEXT NOT NULL DEFAULT 'pending',
+          started_at TIMESTAMP WITH TIME ZONE,
+          expires_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+          plan_type TEXT NOT NULL DEFAULT 'plan_28',
+          duration_days INTEGER NOT NULL DEFAULT 28,
+          price DOUBLE PRECISION NOT NULL DEFAULT 199
+        );
+
+        CREATE TABLE IF NOT EXISTS orders (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          amount DOUBLE PRECISION NOT NULL DEFAULT 149,
+          utr TEXT NOT NULL,
+          bank_name TEXT NOT NULL,
+          account_name TEXT NOT NULL,
+          screenshot_path TEXT,
+          status TEXT NOT NULL DEFAULT 'pending',
+          notes TEXT,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+          confirmed_at TIMESTAMP WITH TIME ZONE,
+          plan_type TEXT,
+          payment_method TEXT DEFAULT 'bank_transfer',
+          razorpay_order_id TEXT,
+          razorpay_payment_id TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS wallet_transactions (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          type TEXT NOT NULL,
+          amount DOUBLE PRECISION NOT NULL,
+          description TEXT,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS password_resets (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          token TEXT NOT NULL,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          used INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS paytm_account (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          paytm_userid TEXT,
+          paytm_password TEXT,
+          number TEXT,
+          session_name TEXT,
+          token_name TEXT,
+          qr_details TEXT,
+          login_status TEXT NOT NULL DEFAULT 'NOT_CONFIGURED',
+          otp_requested_at TIMESTAMP WITH TIME ZONE,
+          last_login_at TIMESTAMP WITH TIME ZONE,
+          last_refresh_at TIMESTAMP WITH TIME ZONE,
+          updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS digital_catalog (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+          brand_name TEXT NOT NULL,
+          logo_path TEXT,
+          description TEXT,
+          catalog_audio_path TEXT,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS catalog_services (
+          id SERIAL PRIMARY KEY,
+          catalog_id INTEGER NOT NULL REFERENCES digital_catalog(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          description TEXT,
+          price DOUBLE PRECISION NOT NULL,
+          image_path TEXT,
+          audio_path TEXT,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS contacts (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          mobile TEXT NOT NULL,
+          shop_name TEXT,
+          is_excluded INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+          email TEXT,
+          birthday TEXT,
+          UNIQUE(user_id, mobile)
+        );
+
+        CREATE TABLE IF NOT EXISTS contact_groups (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          description TEXT,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS contact_group_members (
+          id SERIAL PRIMARY KEY,
+          group_id INTEGER NOT NULL REFERENCES contact_groups(id) ON DELETE CASCADE,
+          contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+          UNIQUE(group_id, contact_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS auto_replies (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          keyword TEXT NOT NULL,
+          match_type TEXT NOT NULL DEFAULT 'contains',
+          reply_text TEXT,
+          media_path TEXT,
+          media_type TEXT,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS reminders (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+          recipient_mobile TEXT NOT NULL,
+          recipient_name TEXT,
+          shop_name TEXT,
+          message_template TEXT NOT NULL,
+          scheduled_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          sent_at TIMESTAMP WITH TIME ZONE,
+          error_message TEXT,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+          repeat_option TEXT DEFAULT 'once',
+          selected_days TEXT,
+          send_time TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS message_templates (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title TEXT NOT NULL,
+          content TEXT NOT NULL,
+          category TEXT DEFAULT 'General',
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS automation_settings (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+          welcome_active INTEGER NOT NULL DEFAULT 0,
+          welcome_text TEXT,
+          welcome_media_path TEXT,
+          welcome_media_type TEXT,
+          away_active INTEGER NOT NULL DEFAULT 0,
+          away_text TEXT,
+          away_schedule_type TEXT DEFAULT 'always',
+          away_start_time TEXT,
+          away_end_time TEXT,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE
+        );
+
+        CREATE TABLE IF NOT EXISTS campaigns (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          message_text TEXT NOT NULL,
+          media_path TEXT,
+          media_type TEXT,
+          scheduled_at TIMESTAMP WITH TIME ZONE,
+          status TEXT NOT NULL DEFAULT 'pending',
+          total_contacts INTEGER DEFAULT 0,
+          successful_deliveries INTEGER DEFAULT 0,
+          failed_deliveries INTEGER DEFAULT 0,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS campaign_recipients (
+          id SERIAL PRIMARY KEY,
+          campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+          contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+          mobile TEXT NOT NULL,
+          name TEXT,
+          shop_name TEXT,
+          status TEXT NOT NULL DEFAULT 'pending',
+          error_message TEXT,
+          sent_at TIMESTAMP WITH TIME ZONE
+        );
+
+        CREATE TABLE IF NOT EXISTS expiry_notification_logs (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          category TEXT NOT NULL,
+          sent_at TIMESTAMP WITH TIME ZONE NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS birthday_wishes (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+          recipient_name TEXT NOT NULL,
+          recipient_phone TEXT NOT NULL,
+          birthday_date TEXT NOT NULL,
+          birth_year TEXT,
+          message_text TEXT NOT NULL,
+          media_path TEXT,
+          media_type TEXT,
+          send_time TEXT DEFAULT '09:00',
+          active INTEGER NOT NULL DEFAULT 1,
+          last_sent_year INTEGER,
+          status TEXT NOT NULL DEFAULT 'pending',
+          last_error TEXT,
+          last_sent_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS payment_reminders (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+          recipient_name TEXT NOT NULL,
+          recipient_phone TEXT NOT NULL,
+          amount DOUBLE PRECISION,
+          currency TEXT DEFAULT 'INR',
+          due_date TEXT NOT NULL,
+          message_text TEXT NOT NULL,
+          media_path TEXT,
+          media_type TEXT,
+          remind_days_before INTEGER DEFAULT 1,
+          status TEXT DEFAULT 'pending',
+          active INTEGER NOT NULL DEFAULT 1,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS order_notifications (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+          recipient_name TEXT NOT NULL,
+          recipient_phone TEXT NOT NULL,
+          order_id TEXT NOT NULL,
+          order_status TEXT NOT NULL DEFAULT 'placed',
+          product_name TEXT,
+          amount DOUBLE PRECISION,
+          currency TEXT DEFAULT 'INR',
+          message_text TEXT NOT NULL,
+          media_path TEXT,
+          media_type TEXT,
+          send_immediately INTEGER DEFAULT 1,
+          scheduled_at TIMESTAMP WITH TIME ZONE,
+          sent_at TIMESTAMP WITH TIME ZONE,
+          status TEXT DEFAULT 'pending',
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS followup_automations (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          trigger_event TEXT NOT NULL DEFAULT 'no_response',
+          delay_days INTEGER NOT NULL DEFAULT 3,
+          message_text TEXT NOT NULL,
+          media_path TEXT,
+          media_type TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          apply_to TEXT DEFAULT 'all',
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS followup_sent_log (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          automation_id INTEGER NOT NULL REFERENCES followup_automations(id) ON DELETE CASCADE,
+          contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+          status TEXT NOT NULL DEFAULT 'sent',
+          error_message TEXT,
+          sent_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      const defaultPrices = {
+        plan_price: '199',
+        plan_price_demo: '0',
+        plan_price_28: '199',
+        plan_price_quarter: '549',
+        plan_price_half_year: '999',
+        plan_price_year: '1899',
+        admin_whatsapp_number: process.env.ADMIN_WHATSAPP_NUMBER || '',
+        razorpay_key_id: process.env.RAZORPAY_KEY_ID || '',
+        razorpay_key_secret: process.env.RAZORPAY_KEY_SECRET || ''
+      };
+      for (const [key, val] of Object.entries(defaultPrices)) {
+        await client.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING', [key, val]);
+      }
+
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@whatsapp.local';
+      const adminPassword = process.env.ADMIN_PASSWORD || 'adminpassword123';
+      const adminCheck = await client.query("SELECT id FROM users WHERE role = 'admin' OR email = $1", [adminEmail]);
+      if (adminCheck.rows.length === 0) {
+        const password_hash = bcrypt.hashSync(adminPassword, 10);
+        await client.query(`
+          INSERT INTO users (name, email, phone, password_hash, role)
+          VALUES ('System Admin', $1, $2, $3, 'admin')
+        `, [adminEmail, process.env.ADMIN_WHATSAPP_NUMBER || '', password_hash]);
+        console.log(`[DB] Default admin created in PG: ${adminEmail}`);
+      }
+
+      console.log('[DB] All PostgreSQL tables initialized.');
+    } finally {
+      client.release();
+    }
+    return;
+  }
+
+  // SQLite Initialization
   const db = getDb();
 
-  // Users table
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,26 +551,18 @@ export function initDb() {
     )
   `);
 
-  // Ensure is_blocked column exists if table was created in previous versions
   try {
     db.exec("ALTER TABLE users ADD COLUMN is_blocked INTEGER NOT NULL DEFAULT 0");
-    console.log('[DB] Added is_blocked column to users table');
-  } catch (err) {
-    // Column already exists, ignore
-  }
+  } catch (err) {}
 
-  // Backfill older databases where role may be NULL/blank or missing a valid value.
   try {
     db.prepare(`
       UPDATE users
       SET role = 'user'
       WHERE role IS NULL OR TRIM(role) = '' OR role NOT IN ('user', 'admin')
     `).run();
-  } catch (err) {
-    // Older incompatible schemas will still be handled by SELECT fallbacks below.
-  }
+  } catch (err) {}
 
-  // Banks table
   db.exec(`
     CREATE TABLE IF NOT EXISTS banks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,7 +574,6 @@ export function initDb() {
     )
   `);
 
-  // Settings table
   db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
@@ -127,7 +581,6 @@ export function initDb() {
     )
   `);
 
-  // Seed default settings
   const defaultPrices = {
     plan_price: '199',
     plan_price_demo: '0',
@@ -142,12 +595,9 @@ export function initDb() {
   for (const [key, val] of Object.entries(defaultPrices)) {
     try {
       db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').run(key, val);
-    } catch (e) {
-      console.error(`Error seeding setting ${key}:`, e);
-    }
+    } catch (e) {}
   }
 
-  // Plans table
   db.exec(`
     CREATE TABLE IF NOT EXISTS plans (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -160,7 +610,6 @@ export function initDb() {
     )
   `);
 
-  // Orders table
   db.exec(`
     CREATE TABLE IF NOT EXISTS orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -178,7 +627,6 @@ export function initDb() {
     )
   `);
 
-  // Wallet transactions table
   db.exec(`
     CREATE TABLE IF NOT EXISTS wallet_transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -191,7 +639,6 @@ export function initDb() {
     )
   `);
 
-  // Password reset tokens table
   db.exec(`
     CREATE TABLE IF NOT EXISTS password_resets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -221,7 +668,6 @@ export function initDb() {
     )
   `);
 
-  // Digital Catalog table
   db.exec(`
     CREATE TABLE IF NOT EXISTS digital_catalog (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -235,7 +681,6 @@ export function initDb() {
     )
   `);
 
-  // Catalog Services table
   db.exec(`
     CREATE TABLE IF NOT EXISTS catalog_services (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -250,7 +695,6 @@ export function initDb() {
     )
   `);
 
-  // Contacts table (Name, Mobile, Shop Name) + is_excluded
   db.exec(`
     CREATE TABLE IF NOT EXISTS contacts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -265,7 +709,6 @@ export function initDb() {
     )
   `);
 
-  // Contact Groups table
   db.exec(`
     CREATE TABLE IF NOT EXISTS contact_groups (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -277,7 +720,6 @@ export function initDb() {
     )
   `);
 
-  // Contact Group Members junction table
   db.exec(`
     CREATE TABLE IF NOT EXISTS contact_group_members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -290,7 +732,6 @@ export function initDb() {
     )
   `);
 
-  // Auto Replies table
   db.exec(`
     CREATE TABLE IF NOT EXISTS auto_replies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -306,7 +747,6 @@ export function initDb() {
     )
   `);
 
-  // Reminders table
   db.exec(`
     CREATE TABLE IF NOT EXISTS reminders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -326,7 +766,6 @@ export function initDb() {
     )
   `);
 
-  // Message Templates table
   db.exec(`
     CREATE TABLE IF NOT EXISTS message_templates (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -339,7 +778,6 @@ export function initDb() {
     )
   `);
 
-  // Automation Settings table
   db.exec(`
     CREATE TABLE IF NOT EXISTS automation_settings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -358,7 +796,6 @@ export function initDb() {
     )
   `);
 
-  // Campaigns table
   db.exec(`
     CREATE TABLE IF NOT EXISTS campaigns (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -368,7 +805,7 @@ export function initDb() {
       media_path TEXT,
       media_type TEXT,
       scheduled_at TEXT, 
-      status TEXT NOT NULL DEFAULT 'pending', -- pending, running, paused, completed, failed
+      status TEXT NOT NULL DEFAULT 'pending',
       total_contacts INTEGER DEFAULT 0,
       successful_deliveries INTEGER DEFAULT 0,
       failed_deliveries INTEGER DEFAULT 0,
@@ -377,7 +814,6 @@ export function initDb() {
     )
   `);
 
-  // Campaign Recipients table
   db.exec(`
     CREATE TABLE IF NOT EXISTS campaign_recipients (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -386,7 +822,7 @@ export function initDb() {
       mobile TEXT NOT NULL,
       name TEXT,
       shop_name TEXT,
-      status TEXT NOT NULL DEFAULT 'pending', -- pending, sent, failed
+      status TEXT NOT NULL DEFAULT 'pending',
       error_message TEXT,
       sent_at TEXT,
       FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -394,7 +830,6 @@ export function initDb() {
     )
   `);
 
-  // Expiry Notification Logs table
   db.exec(`
     CREATE TABLE IF NOT EXISTS expiry_notification_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -405,7 +840,6 @@ export function initDb() {
     )
   `);
 
-  // Birthday Wishes automation table
   db.exec(`
     CREATE TABLE IF NOT EXISTS birthday_wishes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -413,21 +847,20 @@ export function initDb() {
       contact_id INTEGER,
       recipient_name TEXT NOT NULL,
       recipient_phone TEXT NOT NULL,
-      birthday_date TEXT NOT NULL,   -- MM-DD format for yearly recurrence
-      birth_year TEXT,               -- Optional full birth year
+      birthday_date TEXT NOT NULL,
+      birth_year TEXT,
       message_text TEXT NOT NULL,
       media_path TEXT,
       media_type TEXT,
-      send_time TEXT DEFAULT '09:00', -- HH:MM to send on birthday
+      send_time TEXT DEFAULT '09:00',
       active INTEGER NOT NULL DEFAULT 1,
-      last_sent_year INTEGER,        -- Year last sent to avoid duplicates
+      last_sent_year INTEGER,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
     )
   `);
 
-  // Payment Reminders automation table
   db.exec(`
     CREATE TABLE IF NOT EXISTS payment_reminders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -437,12 +870,12 @@ export function initDb() {
       recipient_phone TEXT NOT NULL,
       amount REAL,
       currency TEXT DEFAULT 'INR',
-      due_date TEXT NOT NULL,         -- ISO date of payment due
+      due_date TEXT NOT NULL,
       message_text TEXT NOT NULL,
       media_path TEXT,
       media_type TEXT,
       remind_days_before INTEGER DEFAULT 1,
-      status TEXT DEFAULT 'pending',  -- pending, sent, paid, cancelled
+      status TEXT DEFAULT 'pending',
       active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -450,7 +883,6 @@ export function initDb() {
     )
   `);
 
-  // Order Notifications automation table
   db.exec(`
     CREATE TABLE IF NOT EXISTS order_notifications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -459,7 +891,7 @@ export function initDb() {
       recipient_name TEXT NOT NULL,
       recipient_phone TEXT NOT NULL,
       order_id TEXT NOT NULL,
-      order_status TEXT NOT NULL DEFAULT 'placed', -- placed, confirmed, shipped, out_for_delivery, delivered, cancelled
+      order_status TEXT NOT NULL DEFAULT 'placed',
       product_name TEXT,
       amount REAL,
       currency TEXT DEFAULT 'INR',
@@ -469,62 +901,30 @@ export function initDb() {
       send_immediately INTEGER DEFAULT 1,
       scheduled_at TEXT,
       sent_at TEXT,
-      status TEXT DEFAULT 'pending',  -- pending, sent, failed
+      status TEXT DEFAULT 'pending',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
     )
   `);
 
-  // Follow-up Automation table
   db.exec(`
     CREATE TABLE IF NOT EXISTS followup_automations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
       name TEXT NOT NULL,
-      trigger_event TEXT NOT NULL DEFAULT 'no_response', -- no_response, after_purchase, after_reminder
+      trigger_event TEXT NOT NULL DEFAULT 'no_response',
       delay_days INTEGER NOT NULL DEFAULT 3,
       message_text TEXT NOT NULL,
       media_path TEXT,
       media_type TEXT,
       active INTEGER NOT NULL DEFAULT 1,
-      apply_to TEXT DEFAULT 'all',    -- all, group (future: group_id)
+      apply_to TEXT DEFAULT 'all',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
 
-  // Ensure table columns exist for plans and orders
-  try {
-    db.exec("ALTER TABLE plans ADD COLUMN plan_type TEXT NOT NULL DEFAULT 'plan_28'");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE plans ADD COLUMN duration_days INTEGER NOT NULL DEFAULT 28");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE plans ADD COLUMN price REAL NOT NULL DEFAULT 199");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE orders ADD COLUMN plan_type TEXT");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE contacts ADD COLUMN email TEXT");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE contacts ADD COLUMN birthday TEXT");
-  } catch (e) {}
-  // Birthday wish delivery status tracking
-  try {
-    db.exec("ALTER TABLE birthday_wishes ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE birthday_wishes ADD COLUMN last_error TEXT");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE birthday_wishes ADD COLUMN last_sent_at TEXT");
-  } catch (e) {}
-
-  // Follow-up sent log table — tracks which contacts received which automation
   db.exec(`
     CREATE TABLE IF NOT EXISTS followup_sent_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -539,32 +939,23 @@ export function initDb() {
     )
   `);
 
-  try {
-    db.exec("ALTER TABLE followup_sent_log ADD COLUMN status TEXT NOT NULL DEFAULT 'sent'");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE followup_sent_log ADD COLUMN error_message TEXT");
-  } catch (e) {}
+  try { db.exec("ALTER TABLE plans ADD COLUMN plan_type TEXT NOT NULL DEFAULT 'plan_28'"); } catch (e) {}
+  try { db.exec("ALTER TABLE plans ADD COLUMN duration_days INTEGER NOT NULL DEFAULT 28"); } catch (e) {}
+  try { db.exec("ALTER TABLE plans ADD COLUMN price REAL NOT NULL DEFAULT 199"); } catch (e) {}
+  try { db.exec("ALTER TABLE orders ADD COLUMN plan_type TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE contacts ADD COLUMN email TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE contacts ADD COLUMN birthday TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE birthday_wishes ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'"); } catch (e) {}
+  try { db.exec("ALTER TABLE birthday_wishes ADD COLUMN last_error TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE birthday_wishes ADD COLUMN last_sent_at TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE followup_sent_log ADD COLUMN status TEXT NOT NULL DEFAULT 'sent'"); } catch (e) {}
+  try { db.exec("ALTER TABLE followup_sent_log ADD COLUMN error_message TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE reminders ADD COLUMN repeat_option TEXT DEFAULT 'once'"); } catch (e) {}
+  try { db.exec("ALTER TABLE reminders ADD COLUMN selected_days TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE reminders ADD COLUMN send_time TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE orders ADD COLUMN razorpay_order_id TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT"); } catch (e) {}
 
-  // Reminders table extra columns for day-of-week / recurring schedule
-  try {
-    db.exec("ALTER TABLE reminders ADD COLUMN repeat_option TEXT DEFAULT 'once'");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE reminders ADD COLUMN selected_days TEXT");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE reminders ADD COLUMN send_time TEXT");
-  } catch (e) {}
-
-  // Razorpay columns on orders table
-  try {
-    db.exec("ALTER TABLE orders ADD COLUMN razorpay_order_id TEXT");
-  } catch (e) {}
-  try {
-    db.exec("ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT");
-  } catch (e) {}
-  // Seed default Admin user if no admin exists
   try {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@whatsapp.local';
     const adminPassword = process.env.ADMIN_PASSWORD || 'adminpassword123';
@@ -581,7 +972,7 @@ export function initDb() {
     console.error('[DB] Error seeding default admin:', err.message);
   }
 
-  console.log('[DB] All tables initialized.');
+  console.log('[DB] All SQLite tables initialized.');
 }
 
 // ─── User Helpers ────────────────────────────────────────────────────────────
@@ -590,37 +981,32 @@ function normalizeRole(role) {
   return role === 'admin' ? 'admin' : 'user';
 }
 
-export function createUser({ name, email, phone, password, role = 'user' }) {
-  const db = getDb();
+export async function createUser({ name, email, phone, password, role = 'user' }) {
   const password_hash = bcrypt.hashSync(password, 10);
   const normalizedRole = normalizeRole(role);
-  const stmt = db.prepare(`
+  const res = await execute(`
     INSERT INTO users (name, email, phone, password_hash, role)
-    VALUES (@name, @email, @phone, @password_hash, @role)
-  `);
-  const result = stmt.run({ name, email, phone: phone || '', password_hash, role: normalizedRole });
-  return getUserById(result.lastInsertRowid);
+    VALUES (?, ?, ?, ?, ?)
+  `, [name, email, phone || '', password_hash, normalizedRole]);
+  return await getUserById(res.lastInsertRowid);
 }
 
-export function getUserByEmail(email) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+export async function getUserByEmail(email) {
+  return await queryOne('SELECT * FROM users WHERE email = ?', [email]);
 }
 
-export function getUserByPhone(phone) {
-  const db = getDb();
+export async function getUserByPhone(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
   if (!digits || digits.length < 10) return null;
   const last10 = digits.slice(-10);
-  return db.prepare(`
+  return await queryOne(`
     SELECT * FROM users 
     WHERE replace(replace(phone, '+', ''), ' ', '') LIKE '%' || ?
-  `).get(last10);
+  `, [last10]);
 }
 
-export function getUserById(id) {
-  const db = getDb();
-  return db.prepare(`
+export async function getUserById(id) {
+  return await queryOne(`
     SELECT
       id,
       name,
@@ -632,18 +1018,16 @@ export function getUserById(id) {
       created_at
     FROM users
     WHERE id = ?
-  `).get(id);
+  `, [id]);
 }
 
-export function updateUserProfile(userId, { name, phone }) {
-  const db = getDb();
-  db.prepare('UPDATE users SET name = ?, phone = ? WHERE id = ?').run(name, phone || '', userId);
-  return getUserById(userId);
+export async function updateUserProfile(userId, { name, phone }) {
+  await execute('UPDATE users SET name = ?, phone = ? WHERE id = ?', [name, phone || '', userId]);
+  return await getUserById(userId);
 }
 
-export function getAllUsers() {
-  const db = getDb();
-  return db.prepare(`
+export async function getAllUsers() {
+  return await queryAll(`
     SELECT u.id, u.name, u.email, u.phone,
            CASE WHEN u.role = 'admin' THEN 'admin' ELSE 'user' END AS role,
            u.wallet_balance, u.is_blocked, u.created_at,
@@ -651,87 +1035,76 @@ export function getAllUsers() {
     FROM users u
     LEFT JOIN plans p ON p.user_id = u.id AND p.status = 'active'
     ORDER BY u.created_at DESC
-  `).all();
+  `);
 }
 
-export function setUserBlockStatus(userId, isBlocked) {
-  const db = getDb();
-  db.prepare('UPDATE users SET is_blocked = ? WHERE id = ?').run(isBlocked ? 1 : 0, userId);
-  return getUserById(userId);
+export async function setUserBlockStatus(userId, isBlocked) {
+  await execute('UPDATE users SET is_blocked = ? WHERE id = ?', [isBlocked ? 1 : 0, userId]);
+  return await getUserById(userId);
 }
 
-export function creditWallet(userId, amount, description) {
-  const db = getDb();
-  db.prepare('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?').run(amount, userId);
-  db.prepare(`
+export async function creditWallet(userId, amount, description) {
+  await execute('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [amount, userId]);
+  await execute(`
     INSERT INTO wallet_transactions (user_id, type, amount, description)
     VALUES (?, 'credit', ?, ?)
-  `).run(userId, amount, description);
+  `, [userId, amount, description]);
 }
 
-export function debitWallet(userId, amount, description) {
-  const db = getDb();
-  const user = db.prepare('SELECT wallet_balance FROM users WHERE id = ?').get(userId);
-  if (user.wallet_balance < amount) throw new Error('Insufficient wallet balance');
-  db.prepare('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?').run(amount, userId);
-  db.prepare(`
+export async function debitWallet(userId, amount, description) {
+  const user = await queryOne('SELECT wallet_balance FROM users WHERE id = ?', [userId]);
+  if (!user || user.wallet_balance < amount) throw new Error('Insufficient wallet balance');
+  await execute('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [amount, userId]);
+  await execute(`
     INSERT INTO wallet_transactions (user_id, type, amount, description)
     VALUES (?, 'debit', ?, ?)
-  `).run(userId, amount, description);
+  `, [userId, amount, description]);
 }
 
-export function getWalletTransactions(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getWalletTransactions(userId) {
+  return await queryAll(`
     SELECT * FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC
-  `).all(userId);
+  `, [userId]);
 }
 
 // ─── Plan Helpers ─────────────────────────────────────────────────────────────
 
-export function getActivePlan(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getActivePlan(userId) {
+  return await queryOne(`
     SELECT * FROM plans WHERE user_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1
-  `).get(userId);
+  `, [userId]);
 }
 
-export function getPlansByUser(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getPlansByUser(userId) {
+  return await queryAll(`
     SELECT * FROM plans WHERE user_id = ? ORDER BY created_at DESC
-  `).all(userId);
+  `, [userId]);
 }
 
-export function activatePlan(userId, planType = 'plan_28', durationDays = 28, price = 199) {
-  const db = getDb();
-
-  const activePlan = getActivePlan(userId);
+export async function activatePlan(userId, planType = 'plan_28', durationDays = 28, price = 199) {
+  const activePlan = await getActivePlan(userId);
   const startedAt = new Date().toISOString();
   let expiresAt;
 
   const additionalTime = durationDays * 24 * 60 * 60 * 1000;
 
   if (activePlan && new Date(activePlan.expires_at) > new Date()) {
-    // Add durationDays to the existing expiration date
     expiresAt = new Date(new Date(activePlan.expires_at).getTime() + additionalTime).toISOString();
   } else {
-    // Set to durationDays from now
     expiresAt = new Date(Date.now() + additionalTime).toISOString();
   }
 
-  // Expire any previous active plans
-  db.prepare(`UPDATE plans SET status = 'expired' WHERE user_id = ? AND status = 'active'`).run(userId);
+  await execute(`UPDATE plans SET status = 'expired' WHERE user_id = ? AND status = 'active'`, [userId]);
 
-  const result = db.prepare(`
+  const res = await execute(`
     INSERT INTO plans (user_id, status, started_at, expires_at, plan_type, duration_days, price)
     VALUES (?, 'active', ?, ?, ?, ?, ?)
-  `).run(userId, startedAt, expiresAt, planType, durationDays, price);
+  `, [userId, startedAt, expiresAt, planType, durationDays, price]);
 
-  return db.prepare('SELECT * FROM plans WHERE id = ?').get(result.lastInsertRowid);
+  return await queryOne('SELECT * FROM plans WHERE id = ?', [res.lastInsertRowid]);
 }
 
-export function getPlanDetails(planType) {
+export async function getPlanDetails(planType) {
   const prices = {
     demo: { name: 'Demo Plan', durationDays: 10, settingKey: 'plan_price_demo', defaultPrice: 0 },
     plan_28: { name: 'Monthly Plan', durationDays: 28, settingKey: 'plan_price_28', defaultPrice: 199 },
@@ -743,7 +1116,7 @@ export function getPlanDetails(planType) {
   const plan = prices[planType];
   if (!plan) return null;
 
-  const priceStr = getSetting(plan.settingKey, String(plan.defaultPrice));
+  const priceStr = await getSetting(plan.settingKey, String(plan.defaultPrice));
   const price = parseFloat(priceStr);
 
   return {
@@ -754,61 +1127,51 @@ export function getPlanDetails(planType) {
   };
 }
 
-export function subscribeToPlan(userId, planType) {
-  const db = getDb();
-  
-  const planDetails = getPlanDetails(planType);
+export async function subscribeToPlan(userId, planType) {
+  const planDetails = await getPlanDetails(planType);
   if (!planDetails) throw new Error('Invalid plan type');
 
-  // Enforce Demo Plan only once per user
   if (planType === 'demo') {
-    const hasDemo = db.prepare(`
+    const hasDemo = await queryOne(`
       SELECT COUNT(*) as count FROM plans 
       WHERE user_id = ? AND plan_type = 'demo'
-    `).get(userId).count;
-    if (hasDemo > 0) {
+    `, [userId]);
+    if (hasDemo && parseInt(hasDemo.count) > 0) {
       throw new Error('You have already claimed the Demo Plan. It can only be claimed once.');
     }
   }
 
-  // Debit wallet (if price is > 0)
   if (planDetails.price > 0) {
-    const user = getUserById(userId);
+    const user = await getUserById(userId);
     if (user.wallet_balance < planDetails.price) {
       throw new Error(`Insufficient wallet balance. You need ₹${planDetails.price} but only have ₹${user.wallet_balance.toFixed(2)}.`);
     }
-    debitWallet(userId, planDetails.price, `Subscribed to ${planDetails.name} (${planDetails.durationDays} Days)`);
+    await debitWallet(userId, planDetails.price, `Subscribed to ${planDetails.name} (${planDetails.durationDays} Days)`);
   }
 
-  // Activate plan
-  const plan = activatePlan(userId, planType, planDetails.durationDays, planDetails.price);
-
+  const plan = await activatePlan(userId, planType, planDetails.durationDays, planDetails.price);
   return plan;
 }
 
-export function expireOldPlans() {
-  const db = getDb();
+export async function expireOldPlans() {
   const now = new Date().toISOString();
-  const updated = db.prepare(`
+  const res = await execute(`
     UPDATE plans SET status = 'expired'
     WHERE status = 'active' AND expires_at < ?
-  `).run(now);
-  if (updated.changes > 0) {
-    console.log(`[Plan Expiry] Expired ${updated.changes} plan(s).`);
+  `, [now]);
+  if (res.changes > 0) {
+    console.log(`[Plan Expiry] Expired ${res.changes} plan(s).`);
   }
 }
 
 // ─── Expiry Notification Helpers ──────────────────────────────────────────────
 
-export function canSendExpiryNotification(userId, minIntervalMinutes, maxPer24h) {
-  const db = getDb();
-  
-  // 1. Check minimum time interval since last notification sent
-  const lastLog = db.prepare(`
+export async function canSendExpiryNotification(userId, minIntervalMinutes, maxPer24h) {
+  const lastLog = await queryOne(`
     SELECT sent_at FROM expiry_notification_logs
     WHERE user_id = ?
     ORDER BY id DESC LIMIT 1
-  `).get(userId);
+  `, [userId]);
 
   if (lastLog) {
     const minutesAgo = (Date.now() - new Date(lastLog.sent_at).getTime()) / (1000 * 60);
@@ -817,177 +1180,147 @@ export function canSendExpiryNotification(userId, minIntervalMinutes, maxPer24h)
     }
   }
 
-  // 2. Check total sent count in the last 24 hours
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const countRow = db.prepare(`
+  const countRow = await queryOne(`
     SELECT COUNT(*) as count FROM expiry_notification_logs
     WHERE user_id = ? AND sent_at >= ?
-  `).get(userId, twentyFourHoursAgo);
+  `, [userId, twentyFourHoursAgo]);
 
-  if (countRow && countRow.count >= maxPer24h) {
+  if (countRow && parseInt(countRow.count) >= maxPer24h) {
     return false;
   }
 
   return true;
 }
 
-export function logExpiryNotification(userId, category) {
-  const db = getDb();
-  db.prepare(`
+export async function logExpiryNotification(userId, category) {
+  await execute(`
     INSERT INTO expiry_notification_logs (user_id, category, sent_at)
     VALUES (?, ?, ?)
-  `).run(userId, category, new Date().toISOString());
+  `, [userId, category, new Date().toISOString()]);
 }
 
 // ─── Order Helpers ────────────────────────────────────────────────────────────
 
-export function createOrder({ userId, amount, utr, bank_name, account_name, screenshot_path, plan_type }) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createOrder({ userId, amount, utr, bank_name, account_name, screenshot_path, plan_type }) {
+  const res = await execute(`
     INSERT INTO orders (user_id, amount, utr, bank_name, account_name, screenshot_path, plan_type, payment_method)
     VALUES (?, ?, ?, ?, ?, ?, ?, 'bank_transfer')
-  `).run(userId, amount, utr, bank_name, account_name, screenshot_path || null, plan_type || null);
-  return db.prepare('SELECT * FROM orders WHERE id = ?').get(result.lastInsertRowid);
+  `, [userId, amount, utr, bank_name, account_name, screenshot_path || null, plan_type || null]);
+  return await queryOne('SELECT * FROM orders WHERE id = ?', [res.lastInsertRowid]);
 }
 
-/**
- * Create a pending order record for a Razorpay checkout.
- * The order starts as 'pending' and is confirmed after payment verification.
- */
-export function createRazorpayOrder({ userId, amount, razorpayOrderId, planType }) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createRazorpayOrder({ userId, amount, razorpayOrderId, planType }) {
+  const res = await execute(`
     INSERT INTO orders
       (user_id, amount, utr, bank_name, account_name, plan_type, razorpay_order_id, payment_method)
     VALUES
       (?, ?, 'RAZORPAY', 'Razorpay', 'Online Payment', ?, ?, 'razorpay')
-  `).run(userId, amount, planType || 'plan_28', razorpayOrderId);
-  return db.prepare('SELECT * FROM orders WHERE id = ?').get(result.lastInsertRowid);
+  `, [userId, amount, planType || 'plan_28', razorpayOrderId]);
+  return await queryOne('SELECT * FROM orders WHERE id = ?', [res.lastInsertRowid]);
 }
 
-/**
- * Confirm a Razorpay order after HMAC signature verification.
- * Credits wallet, activates the plan, and marks the order as confirmed.
- */
-export function confirmRazorpayOrder(razorpayOrderId, razorpayPaymentId) {
-  const db = getDb();
-  const order = db.prepare('SELECT * FROM orders WHERE razorpay_order_id = ?').get(razorpayOrderId);
+export async function confirmRazorpayOrder(razorpayOrderId, razorpayPaymentId) {
+  const order = await queryOne('SELECT * FROM orders WHERE razorpay_order_id = ?', [razorpayOrderId]);
   if (!order) throw new Error('Razorpay order not found');
   if (order.status === 'confirmed') throw new Error('Order already confirmed');
 
   const confirmedAt = new Date().toISOString();
 
-  // Mark order as confirmed and store payment ID
-  db.prepare(`
+  await execute(`
     UPDATE orders
     SET status = 'confirmed', confirmed_at = ?, razorpay_payment_id = ?
     WHERE razorpay_order_id = ?
-  `).run(confirmedAt, razorpayPaymentId, razorpayOrderId);
+  `, [confirmedAt, razorpayPaymentId, razorpayOrderId]);
 
   let plan = null;
-  // Auto-activate plan (no wallet credit needed — Razorpay already collected payment)
   if (order.plan_type && order.plan_type !== 'wallet') {
-    const details = getPlanDetails(order.plan_type);
+    const details = await getPlanDetails(order.plan_type);
     if (details) {
       try {
-        // Log wallet credit + debit to keep transaction history consistent
-        creditWallet(order.user_id, order.amount, `Razorpay payment received - Order #${order.id}`);
-        debitWallet(order.user_id, details.price, `${details.name} activated via Razorpay - Order #${order.id}`);
-        plan = activatePlan(order.user_id, order.plan_type, details.durationDays, details.price);
+        await creditWallet(order.user_id, order.amount, `Razorpay payment received - Order #${order.id}`);
+        await debitWallet(order.user_id, details.price, `${details.name} activated via Razorpay - Order #${order.id}`);
+        plan = await activatePlan(order.user_id, order.plan_type, details.durationDays, details.price);
       } catch (err) {
         console.error(`[Razorpay] Plan auto-activation error: ${err.message}`);
       }
     }
   }
 
-  return { order: db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id), plan };
+  return { order: await queryOne('SELECT * FROM orders WHERE id = ?', [order.id]), plan };
 }
 
-/**
- * Look up an order by its Razorpay order_id.
- */
-export function getRazorpayOrderByRazorpayId(razorpayOrderId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM orders WHERE razorpay_order_id = ?').get(razorpayOrderId);
+export async function getRazorpayOrderByRazorpayId(razorpayOrderId) {
+  return await queryOne('SELECT * FROM orders WHERE razorpay_order_id = ?', [razorpayOrderId]);
 }
 
-export function getOrdersByUser(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getOrdersByUser(userId) {
+  return await queryAll(`
     SELECT o.*, u.name as user_name, u.email as user_email
     FROM orders o
     JOIN users u ON u.id = o.user_id
     WHERE o.user_id = ?
     ORDER BY o.created_at DESC
-  `).all(userId);
+  `, [userId]);
 }
 
-export function getAllOrders() {
-  const db = getDb();
-  return db.prepare(`
+export async function getAllOrders() {
+  return await queryAll(`
     SELECT o.*, u.name as user_name, u.email as user_email
     FROM orders o
     JOIN users u ON u.id = o.user_id
     ORDER BY o.created_at DESC
-  `).all();
+  `);
 }
 
-export function getOrderById(orderId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getOrderById(orderId) {
+  return await queryOne(`
     SELECT o.*, u.name as user_name, u.email as user_email, u.phone as user_phone
     FROM orders o
     JOIN users u ON u.id = o.user_id
     WHERE o.id = ?
-  `).get(orderId);
+  `, [orderId]);
 }
 
-export function confirmOrder(orderId) {
-  const db = getDb();
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+export async function confirmOrder(orderId) {
+  const order = await queryOne('SELECT * FROM orders WHERE id = ?', [orderId]);
   if (!order) throw new Error('Order not found');
   if (order.status !== 'pending') throw new Error(`Order is already ${order.status}`);
 
   const confirmedAt = new Date().toISOString();
 
-  // Update order status
-  db.prepare(`
+  await execute(`
     UPDATE orders SET status = 'confirmed', confirmed_at = ? WHERE id = ?
-  `).run(confirmedAt, orderId);
+  `, [confirmedAt, orderId]);
 
-  // Credit wallet with the order amount (what user paid)
-  creditWallet(order.user_id, order.amount, `Plan deposit confirmed - Order #${orderId}`);
+  await creditWallet(order.user_id, order.amount, `Plan deposit confirmed - Order #${orderId}`);
 
   let plan = null;
-  // If order is tied to a subscription plan, purchase it automatically
   if (order.plan_type && order.plan_type !== 'wallet') {
-    const details = getPlanDetails(order.plan_type);
+    const details = await getPlanDetails(order.plan_type);
     if (details) {
       try {
-        // Debit wallet for the plan fee
-        debitWallet(order.user_id, details.price, `₹${details.price} / ${details.name} activated - Order #${orderId}`);
-        // Activate plan
-        plan = activatePlan(order.user_id, order.plan_type, details.durationDays, details.price);
+        await debitWallet(order.user_id, details.price, `₹${details.price} / ${details.name} activated - Order #${orderId}`);
+        plan = await activatePlan(order.user_id, order.plan_type, details.durationDays, details.price);
       } catch (err) {
         console.error(`Auto-activation failed on confirmOrder: ${err.message}`);
       }
     }
   }
 
-  return { order: db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId), plan };
+  return { order: await queryOne('SELECT * FROM orders WHERE id = ?', [orderId]), plan };
 }
 
-export function rejectOrder(orderId, notes) {
-  const db = getDb();
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+export async function rejectOrder(orderId, notes) {
+  const order = await queryOne('SELECT * FROM orders WHERE id = ?', [orderId]);
   if (!order) throw new Error('Order not found');
   if (order.status !== 'pending') throw new Error(`Order is already ${order.status}`);
 
-  db.prepare(`
+  await execute(`
     UPDATE orders SET status = 'rejected', notes = ? WHERE id = ?
-  `).run(notes || 'Rejected by admin', orderId);
+  `, [notes || 'Rejected by admin', orderId]);
 
-  return db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+  return await queryOne('SELECT * FROM orders WHERE id = ?', [orderId]);
 }
 
 export function verifyPassword(plaintext, hash) {
@@ -996,71 +1329,74 @@ export function verifyPassword(plaintext, hash) {
 
 // ─── Settings Helpers ─────────────────────────────────────────────────────────
 
-export function getSetting(key, defaultValue = '') {
-  const db = getDb();
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+export async function getSetting(key, defaultValue = '') {
+  const row = await queryOne('SELECT value FROM settings WHERE key = ?', [key]);
   return row ? row.value : defaultValue;
 }
 
-export function setSetting(key, value) {
-  const db = getDb();
-  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, String(value));
+export async function setSetting(key, value) {
+  if (isPg()) {
+    await execute('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', [key, String(value)]);
+  } else {
+    await execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, String(value)]);
+  }
   return { key, value };
 }
 
 // ─── Bank Helpers ─────────────────────────────────────────────────────────────
 
-export function getBanks(onlyActive = false) {
-  const db = getDb();
+export async function getBanks(onlyActive = false) {
   if (onlyActive) {
-    return db.prepare('SELECT * FROM banks WHERE is_active = 1 ORDER BY id ASC').all();
+    return await queryAll('SELECT * FROM banks WHERE is_active = 1 ORDER BY id ASC');
   }
-  return db.prepare('SELECT * FROM banks ORDER BY id ASC').all();
+  return await queryAll('SELECT * FROM banks ORDER BY id ASC');
 }
 
-export function createBank({ bank_name, account_number, ifsc, account_holder }) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createBank({ bank_name, account_number, ifsc, account_holder }) {
+  const res = await execute(`
     INSERT INTO banks (bank_name, account_number, ifsc, account_holder)
     VALUES (?, ?, ?, ?)
-  `).run(bank_name, account_number, ifsc, account_holder);
-  return db.prepare('SELECT * FROM banks WHERE id = ?').get(result.lastInsertRowid);
+  `, [bank_name, account_number, ifsc, account_holder]);
+  return await queryOne('SELECT * FROM banks WHERE id = ?', [res.lastInsertRowid]);
 }
 
-export function updateBank(id, { bank_name, account_number, ifsc, account_holder, is_active }) {
-  const db = getDb();
-  db.prepare(`
+export async function updateBank(id, { bank_name, account_number, ifsc, account_holder, is_active }) {
+  await execute(`
     UPDATE banks
     SET bank_name = ?, account_number = ?, ifsc = ?, account_holder = ?, is_active = ?
     WHERE id = ?
-  `).run(bank_name, account_number, ifsc, account_holder, is_active ? 1 : 0, id);
-  return db.prepare('SELECT * FROM banks WHERE id = ?').get(id);
+  `, [bank_name, account_number, ifsc, account_holder, is_active ? 1 : 0, id]);
+  return await queryOne('SELECT * FROM banks WHERE id = ?', [id]);
 }
 
-export function deleteBank(id) {
-  const db = getDb();
-  db.prepare('DELETE FROM banks WHERE id = ?').run(id);
+export async function deleteBank(id) {
+  await execute('DELETE FROM banks WHERE id = ?', [id]);
   return { id, deleted: true };
 }
 
-function ensurePaytmAccount() {
-  const db = getDb();
-  db.prepare(`
-    INSERT OR IGNORE INTO paytm_account (id, login_status)
-    VALUES (1, 'NOT_CONFIGURED')
-  `).run();
+async function ensurePaytmAccount() {
+  if (isPg()) {
+    await execute(`
+      INSERT INTO paytm_account (id, login_status)
+      VALUES (1, 'NOT_CONFIGURED')
+      ON CONFLICT (id) DO NOTHING
+    `);
+  } else {
+    await execute(`
+      INSERT OR IGNORE INTO paytm_account (id, login_status)
+      VALUES (1, 'NOT_CONFIGURED')
+    `);
+  }
 }
 
-export function getPaytmAccount() {
-  const db = getDb();
-  ensurePaytmAccount();
-  return db.prepare('SELECT * FROM paytm_account WHERE id = 1').get();
+export async function getPaytmAccount() {
+  await ensurePaytmAccount();
+  return await queryOne('SELECT * FROM paytm_account WHERE id = 1');
 }
 
-export function startPaytmLogin({ paytm_userid, paytm_password }) {
-  const db = getDb();
-  ensurePaytmAccount();
-  const current = getPaytmAccount();
+export async function startPaytmLogin({ paytm_userid, paytm_password }) {
+  await ensurePaytmAccount();
+  const current = await getPaytmAccount();
   if (current.login_status === 'LOGGED_IN') {
     return { alreadyLoggedIn: true, account: current };
   }
@@ -1069,7 +1405,7 @@ export function startPaytmLogin({ paytm_userid, paytm_password }) {
   const sessionName = current.session_name || `paytm_session_${Date.now()}`;
   const tokenName = current.token_name || `paytm_token_${Date.now()}`;
 
-  db.prepare(`
+  await execute(`
     UPDATE paytm_account
     SET paytm_userid = ?,
         paytm_password = ?,
@@ -1077,22 +1413,21 @@ export function startPaytmLogin({ paytm_userid, paytm_password }) {
         token_name = ?,
         login_status = 'OTP_REQUIRED',
         otp_requested_at = ?,
-        updated_at = datetime('now')
+        updated_at = NOW()
     WHERE id = 1
-  `).run(paytm_userid, paytm_password, sessionName, tokenName, now);
+  `, [paytm_userid, paytm_password, sessionName, tokenName, now]);
 
-  return { alreadyLoggedIn: false, account: getPaytmAccount() };
+  return { alreadyLoggedIn: false, account: await getPaytmAccount() };
 }
 
-export function completePaytmOtpLogin({ otp, number, session_name, token_name, qr_details }) {
-  const db = getDb();
-  ensurePaytmAccount();
+export async function completePaytmOtpLogin({ otp, number, session_name, token_name, qr_details }) {
+  await ensurePaytmAccount();
   if (!otp) throw new Error('OTP is required');
 
-  const current = getPaytmAccount();
+  const current = await getPaytmAccount();
   const now = new Date().toISOString();
 
-  db.prepare(`
+  await execute(`
     UPDATE paytm_account
     SET number = ?,
         session_name = ?,
@@ -1101,165 +1436,145 @@ export function completePaytmOtpLogin({ otp, number, session_name, token_name, q
         login_status = 'LOGGED_IN',
         last_login_at = ?,
         last_refresh_at = ?,
-        updated_at = datetime('now')
+        updated_at = NOW()
     WHERE id = 1
-  `).run(
+  `, [
     number || current.number || current.paytm_userid || '',
     session_name || current.session_name || `paytm_session_${Date.now()}`,
     token_name || current.token_name || `paytm_token_${Date.now()}`,
     qr_details || current.qr_details || '',
     now,
     now
-  );
+  ]);
 
-  return getPaytmAccount();
+  return await getPaytmAccount();
 }
 
-export function refreshPaytmAccount() {
-  const db = getDb();
-  ensurePaytmAccount();
-  db.prepare(`
+export async function refreshPaytmAccount() {
+  await ensurePaytmAccount();
+  await execute(`
     UPDATE paytm_account
     SET last_refresh_at = ?,
-        updated_at = datetime('now')
+        updated_at = NOW()
     WHERE id = 1
-  `).run(new Date().toISOString());
-  return getPaytmAccount();
+  `, [new Date().toISOString()]);
+  return await getPaytmAccount();
 }
 
-export function logoutPaytmAccount() {
-  const db = getDb();
-  ensurePaytmAccount();
-  db.prepare(`
+export async function logoutPaytmAccount() {
+  await ensurePaytmAccount();
+  await execute(`
     UPDATE paytm_account
     SET login_status = 'LOGGED_OUT',
-        updated_at = datetime('now')
+        updated_at = NOW()
     WHERE id = 1
-  `).run();
-  return getPaytmAccount();
+  `);
+  return await getPaytmAccount();
 }
 
 // ─── Password Management Helpers ──────────────────────────────────────────────
 
-export function updateUserPassword(userId, newPassword) {
-  const db = getDb();
+export async function updateUserPassword(userId, newPassword) {
   const password_hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(password_hash, userId);
+  await execute('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, userId]);
   return true;
 }
 
-export function createPasswordResetToken(userId) {
-  const db = getDb();
-  // Invalidate any existing unused tokens for this user
-  db.prepare('UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0').run(userId);
+export async function createPasswordResetToken(userId) {
+  await execute('UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0', [userId]);
   
-  // Generate a 6-digit OTP code
   const token = String(Math.floor(100000 + Math.random() * 900000));
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
   
-  db.prepare(`
+  await execute(`
     INSERT INTO password_resets (user_id, token, expires_at)
     VALUES (?, ?, ?)
-  `).run(userId, token, expiresAt);
+  `, [userId, token, expiresAt]);
   
   return { token, expiresAt };
 }
 
-export function getValidResetToken(email, token) {
-  const db = getDb();
+export async function getValidResetToken(email, token) {
   const now = new Date().toISOString();
-  return db.prepare(`
+  return await queryOne(`
     SELECT pr.*, u.email, u.name FROM password_resets pr
     JOIN users u ON u.id = pr.user_id
     WHERE u.email = ? AND pr.token = ? AND pr.used = 0 AND pr.expires_at > ?
     ORDER BY pr.created_at DESC LIMIT 1
-  `).get(email, token, now);
+  `, [email, token, now]);
 }
 
-export function invalidateResetToken(tokenId) {
-  const db = getDb();
-  db.prepare('UPDATE password_resets SET used = 1 WHERE id = ?').run(tokenId);
+export async function invalidateResetToken(tokenId) {
+  await execute('UPDATE password_resets SET used = 1 WHERE id = ?', [tokenId]);
 }
 
-export function deleteUser(userId) {
-  const db = getDb();
-  
-  const deleteStatements = [
-    db.prepare('DELETE FROM password_resets WHERE user_id = ?'),
-    db.prepare('DELETE FROM wallet_transactions WHERE user_id = ?'),
-    db.prepare('DELETE FROM plans WHERE user_id = ?'),
-    db.prepare('DELETE FROM orders WHERE user_id = ?'),
-    db.prepare('DELETE FROM reminders WHERE user_id = ?'),
-    db.prepare('DELETE FROM message_templates WHERE user_id = ?'),
-    db.prepare('DELETE FROM automation_settings WHERE user_id = ?'),
-    db.prepare('DELETE FROM campaigns WHERE user_id = ?'),
-    db.prepare('DELETE FROM auto_replies WHERE user_id = ?'),
-    db.prepare('DELETE FROM contacts WHERE user_id = ?'),
-    db.prepare('DELETE FROM digital_catalog WHERE user_id = ?'),
-    db.prepare('DELETE FROM users WHERE id = ?')
+export async function deleteUser(userId) {
+  const deleteQueries = [
+    ['DELETE FROM password_resets WHERE user_id = ?', [userId]],
+    ['DELETE FROM wallet_transactions WHERE user_id = ?', [userId]],
+    ['DELETE FROM plans WHERE user_id = ?', [userId]],
+    ['DELETE FROM orders WHERE user_id = ?', [userId]],
+    ['DELETE FROM reminders WHERE user_id = ?', [userId]],
+    ['DELETE FROM message_templates WHERE user_id = ?', [userId]],
+    ['DELETE FROM automation_settings WHERE user_id = ?', [userId]],
+    ['DELETE FROM campaigns WHERE user_id = ?', [userId]],
+    ['DELETE FROM auto_replies WHERE user_id = ?', [userId]],
+    ['DELETE FROM contacts WHERE user_id = ?', [userId]],
+    ['DELETE FROM digital_catalog WHERE user_id = ?', [userId]],
+    ['DELETE FROM users WHERE id = ?', [userId]]
   ];
 
-  const transaction = db.transaction((id) => {
-    for (const stmt of deleteStatements) {
-      stmt.run(id);
-    }
-  });
+  for (const [sql, params] of deleteQueries) {
+    await execute(sql, params);
+  }
 
-  transaction(userId);
   return { id: userId, deleted: true };
 }
 
 // ─── CRM Helpers ─────────────────────────────────────────────────────────────
 
-// Digital Catalog Helpers
-export function getCatalogByUserId(userId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM digital_catalog WHERE user_id = ?').get(userId);
+export async function getCatalogByUserId(userId) {
+  return await queryOne('SELECT * FROM digital_catalog WHERE user_id = ?', [userId]);
 }
 
-export function getAllCatalogs() {
-  const db = getDb();
-  return db.prepare('SELECT * FROM digital_catalog').all();
+export async function getAllCatalogs() {
+  return await queryAll('SELECT * FROM digital_catalog');
 }
 
-export function getServicesByCatalogId(catalogId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM catalog_services WHERE catalog_id = ? ORDER BY created_at ASC').all(catalogId);
+export async function getServicesByCatalogId(catalogId) {
+  return await queryAll('SELECT * FROM catalog_services WHERE catalog_id = ? ORDER BY created_at ASC', [catalogId]);
 }
 
-export function upsertCatalog(userId, { brand_name, logo_path, description, catalog_audio_path }) {
-  const db = getDb();
-  const existing = getCatalogByUserId(userId);
+export async function upsertCatalog(userId, { brand_name, logo_path, description, catalog_audio_path }) {
+  const existing = await getCatalogByUserId(userId);
   if (existing) {
-    db.prepare(`
+    await execute(`
       UPDATE digital_catalog
       SET brand_name = ?,
           logo_path = COALESCE(?, logo_path),
           description = ?,
           catalog_audio_path = COALESCE(?, catalog_audio_path)
       WHERE user_id = ?
-    `).run(brand_name, logo_path || null, description || '', catalog_audio_path || null, userId);
+    `, [brand_name, logo_path || null, description || '', catalog_audio_path || null, userId]);
   } else {
-    db.prepare(`
+    await execute(`
       INSERT INTO digital_catalog (user_id, brand_name, logo_path, description, catalog_audio_path)
       VALUES (?, ?, ?, ?, ?)
-    `).run(userId, brand_name, logo_path || null, description || '', catalog_audio_path || null);
+    `, [userId, brand_name, logo_path || null, description || '', catalog_audio_path || null]);
   }
-  return getCatalogByUserId(userId);
+  return await getCatalogByUserId(userId);
 }
 
-export function createService(catalogId, { name, description, price, image_path, audio_path }) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createService(catalogId, { name, description, price, image_path, audio_path }) {
+  const res = await execute(`
     INSERT INTO catalog_services (catalog_id, name, description, price, image_path, audio_path)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(catalogId, name, description || '', price, image_path || null, audio_path || null);
-  return db.prepare('SELECT * FROM catalog_services WHERE id = ?').get(result.lastInsertRowid);
+  `, [catalogId, name, description || '', price, image_path || null, audio_path || null]);
+  return await queryOne('SELECT * FROM catalog_services WHERE id = ?', [res.lastInsertRowid]);
 }
 
-export function updateService(serviceId, catalogId, { name, description, price, image_path, audio_path }) {
-  const db = getDb();
-  db.prepare(`
+export async function updateService(serviceId, catalogId, { name, description, price, image_path, audio_path }) {
+  await execute(`
     UPDATE catalog_services
     SET name = ?,
         description = ?,
@@ -1267,63 +1582,63 @@ export function updateService(serviceId, catalogId, { name, description, price, 
         image_path = COALESCE(?, image_path),
         audio_path = COALESCE(?, audio_path)
     WHERE id = ? AND catalog_id = ?
-  `).run(name, description || '', price, image_path || null, audio_path || null, serviceId, catalogId);
-  return db.prepare('SELECT * FROM catalog_services WHERE id = ?').get(serviceId);
+  `, [name, description || '', price, image_path || null, audio_path || null, serviceId, catalogId]);
+  return await queryOne('SELECT * FROM catalog_services WHERE id = ?', [serviceId]);
 }
 
-export function deleteService(serviceId, catalogId) {
-  const db = getDb();
-  db.prepare('DELETE FROM catalog_services WHERE id = ? AND catalog_id = ?').run(serviceId, catalogId);
+export async function deleteService(serviceId, catalogId) {
+  await execute('DELETE FROM catalog_services WHERE id = ? AND catalog_id = ?', [serviceId, catalogId]);
   return { id: serviceId, deleted: true };
 }
 
-// Contacts Directory Helpers
-export function getContactsByUser(userId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM contacts WHERE user_id = ? ORDER BY name ASC').all(userId);
+export async function getContactsByUser(userId) {
+  return await queryAll('SELECT * FROM contacts WHERE user_id = ? ORDER BY name ASC', [userId]);
 }
 
-export function upsertContact({ user_id, name, mobile, shop_name, is_excluded = 0 }) {
-  const db = getDb();
-  db.prepare(`
-    INSERT INTO contacts (user_id, name, mobile, shop_name, is_excluded)
-    VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(user_id, mobile) DO UPDATE SET
-      name = excluded.name,
-      shop_name = COALESCE(excluded.shop_name, shop_name),
-      is_excluded = COALESCE(excluded.is_excluded, is_excluded)
-  `).run(user_id, name, mobile, shop_name || null, is_excluded);
-  return db.prepare('SELECT * FROM contacts WHERE user_id = ? AND mobile = ?').get(user_id, mobile);
+export async function upsertContact({ user_id, name, mobile, shop_name, is_excluded = 0 }) {
+  if (isPg()) {
+    await execute(`
+      INSERT INTO contacts (user_id, name, mobile, shop_name, is_excluded)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT (user_id, mobile) DO UPDATE SET
+        name = EXCLUDED.name,
+        shop_name = COALESCE(EXCLUDED.shop_name, contacts.shop_name),
+        is_excluded = COALESCE(EXCLUDED.is_excluded, contacts.is_excluded)
+    `, [user_id, name, mobile, shop_name || null, is_excluded]);
+  } else {
+    await execute(`
+      INSERT INTO contacts (user_id, name, mobile, shop_name, is_excluded)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, mobile) DO UPDATE SET
+        name = excluded.name,
+        shop_name = COALESCE(excluded.shop_name, shop_name),
+        is_excluded = COALESCE(excluded.is_excluded, is_excluded)
+    `, [user_id, name, mobile, shop_name || null, is_excluded]);
+  }
+  return await queryOne('SELECT * FROM contacts WHERE user_id = ? AND mobile = ?', [user_id, mobile]);
 }
 
-export function getContactByMobile(userId, mobile) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM contacts WHERE user_id = ? AND mobile = ?').get(userId, mobile);
+export async function getContactByMobile(userId, mobile) {
+  return await queryOne('SELECT * FROM contacts WHERE user_id = ? AND mobile = ?', [userId, mobile]);
 }
 
-export function deleteContact(contactId, userId) {
-  const db = getDb();
-  db.prepare('DELETE FROM contacts WHERE id = ? AND user_id = ?').run(contactId, userId);
+export async function deleteContact(contactId, userId) {
+  await execute('DELETE FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
   return { id: contactId, deleted: true };
 }
 
-export function toggleContactExclude(contactId, userId, isExcluded) {
-  const db = getDb();
-  db.prepare('UPDATE contacts SET is_excluded = ? WHERE id = ? AND user_id = ?').run(isExcluded ? 1 : 0, contactId, userId);
-  return db.prepare('SELECT * FROM contacts WHERE id = ?').get(contactId);
+export async function toggleContactExclude(contactId, userId, isExcluded) {
+  await execute('UPDATE contacts SET is_excluded = ? WHERE id = ? AND user_id = ?', [isExcluded ? 1 : 0, contactId, userId]);
+  return await queryOne('SELECT * FROM contacts WHERE id = ?', [contactId]);
 }
 
-export function isContactExcluded(userId, mobile) {
-  const db = getDb();
-  const row = db.prepare('SELECT is_excluded FROM contacts WHERE user_id = ? AND mobile = ?').get(userId, mobile);
-  return row ? row.is_excluded === 1 : false;
+export async function isContactExcluded(userId, mobile) {
+  const row = await queryOne('SELECT is_excluded FROM contacts WHERE user_id = ? AND mobile = ?', [userId, mobile]);
+  return row ? parseInt(row.is_excluded) === 1 : false;
 }
 
-// ─── Contact Groups Helpers ───────────────────────────────────────────────────
-
-export function getContactGroupsByUser(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getContactGroupsByUser(userId) {
+  return await queryAll(`
     SELECT cg.*,
       COUNT(DISTINCT cgm.contact_id) as member_count
     FROM contact_groups cg
@@ -1331,93 +1646,78 @@ export function getContactGroupsByUser(userId) {
     WHERE cg.user_id = ?
     GROUP BY cg.id
     ORDER BY cg.created_at DESC
-  `).all(userId);
+  `, [userId]);
 }
 
-export function getContactGroupById(groupId, userId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM contact_groups WHERE id = ? AND user_id = ?').get(groupId, userId);
+export async function getContactGroupById(groupId, userId) {
+  return await queryOne('SELECT * FROM contact_groups WHERE id = ? AND user_id = ?', [groupId, userId]);
 }
 
-export function createContactGroup(userId, { name, description }) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createContactGroup(userId, { name, description }) {
+  const res = await execute(`
     INSERT INTO contact_groups (user_id, name, description)
     VALUES (?, ?, ?)
-  `).run(userId, name.trim(), description ? description.trim() : '');
-  return db.prepare(`
+  `, [userId, name.trim(), description ? description.trim() : '']);
+  return await queryOne(`
     SELECT cg.*, COUNT(DISTINCT cgm.contact_id) as member_count
     FROM contact_groups cg
     LEFT JOIN contact_group_members cgm ON cgm.group_id = cg.id
     WHERE cg.id = ?
     GROUP BY cg.id
-  `).get(result.lastInsertRowid);
+  `, [res.lastInsertRowid]);
 }
 
-export function updateContactGroup(groupId, userId, { name, description }) {
-  const db = getDb();
-  db.prepare(`
+export async function updateContactGroup(groupId, userId, { name, description }) {
+  await execute(`
     UPDATE contact_groups
     SET name = ?, description = ?
     WHERE id = ? AND user_id = ?
-  `).run(name.trim(), description ? description.trim() : '', groupId, userId);
-  return getContactGroupById(groupId, userId);
+  `, [name.trim(), description ? description.trim() : '', groupId, userId]);
+  return await getContactGroupById(groupId, userId);
 }
 
-export function deleteContactGroup(groupId, userId) {
-  const db = getDb();
-  db.prepare('DELETE FROM contact_groups WHERE id = ? AND user_id = ?').run(groupId, userId);
+export async function deleteContactGroup(groupId, userId) {
+  await execute('DELETE FROM contact_groups WHERE id = ? AND user_id = ?', [groupId, userId]);
   return { id: groupId, deleted: true };
 }
 
-export function getContactGroupMembers(groupId, userId) {
-  const db = getDb();
-  // Verify group belongs to user first
-  const group = getContactGroupById(groupId, userId);
+export async function getContactGroupMembers(groupId, userId) {
+  const group = await getContactGroupById(groupId, userId);
   if (!group) return null;
-  return db.prepare(`
+  return await queryAll(`
     SELECT c.*, cgm.id as membership_id
     FROM contact_group_members cgm
     JOIN contacts c ON c.id = cgm.contact_id
     WHERE cgm.group_id = ?
     ORDER BY c.name ASC
-  `).all(groupId);
+  `, [groupId]);
 }
 
-export function addContactsToGroup(groupId, userId, contactIds) {
-  const db = getDb();
-  const group = getContactGroupById(groupId, userId);
+export async function addContactsToGroup(groupId, userId, contactIds) {
+  const group = await getContactGroupById(groupId, userId);
   if (!group) throw new Error('Group not found');
 
-  const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO contact_group_members (group_id, contact_id)
-    VALUES (?, ?)
-  `);
-
-  const addTx = db.transaction((ids) => {
-    let added = 0;
-    for (const contactId of ids) {
-      const result = insertStmt.run(groupId, contactId);
-      if (result.changes > 0) added++;
-    }
-    return added;
-  });
-
-  const added = addTx(contactIds);
+  let added = 0;
+  for (const contactId of contactIds) {
+    const res = await execute(`
+      INSERT INTO contact_group_members (group_id, contact_id)
+      VALUES (?, ?)
+      ON CONFLICT DO NOTHING
+    `, [groupId, contactId]);
+    if (res.changes > 0) added++;
+  }
   return { added, groupId };
 }
 
-export function removeContactFromGroup(groupId, contactId, userId) {
-  const db = getDb();
-  const group = getContactGroupById(groupId, userId);
+export async function removeContactFromGroup(groupId, contactId, userId) {
+  const group = await getContactGroupById(groupId, userId);
   if (!group) throw new Error('Group not found');
-  db.prepare('DELETE FROM contact_group_members WHERE group_id = ? AND contact_id = ?').run(groupId, contactId);
+  await execute('DELETE FROM contact_group_members WHERE group_id = ? AND contact_id = ?', [groupId, contactId]);
   return { groupId, contactId, removed: true };
 }
 
-export function getContactsNotInGroup(groupId, userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getContactsNotInGroup(groupId, userId) {
+  return await queryAll(`
     SELECT c.*
     FROM contacts c
     WHERE c.user_id = ?
@@ -1425,51 +1725,43 @@ export function getContactsNotInGroup(groupId, userId) {
         SELECT contact_id FROM contact_group_members WHERE group_id = ?
       )
     ORDER BY c.name ASC
-  `).all(userId, groupId);
+  `, [userId, groupId]);
 }
 
-// Auto Reply Helpers
-export function getAutoRepliesByUser(userId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM auto_replies WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+export async function getAutoRepliesByUser(userId) {
+  return await queryAll('SELECT * FROM auto_replies WHERE user_id = ? ORDER BY created_at DESC', [userId]);
 }
 
-export function createAutoReply({ user_id, keyword, match_type = 'contains', reply_text, media_path, media_type }) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createAutoReply({ user_id, keyword, match_type = 'contains', reply_text, media_path, media_type }) {
+  const res = await execute(`
     INSERT INTO auto_replies (user_id, keyword, match_type, reply_text, media_path, media_type)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(user_id, keyword, match_type, reply_text || null, media_path || null, media_type || null);
-  return db.prepare('SELECT * FROM auto_replies WHERE id = ?').get(result.lastInsertRowid);
+  `, [user_id, keyword, match_type, reply_text || null, media_path || null, media_type || null]);
+  return await queryOne('SELECT * FROM auto_replies WHERE id = ?', [res.lastInsertRowid]);
 }
 
-export function deleteAutoReply(replyId, userId) {
-  const db = getDb();
-  db.prepare('DELETE FROM auto_replies WHERE id = ? AND user_id = ?').run(replyId, userId);
+export async function deleteAutoReply(replyId, userId) {
+  await execute('DELETE FROM auto_replies WHERE id = ? AND user_id = ?', [replyId, userId]);
   return { id: replyId, deleted: true };
 }
 
-export function toggleAutoReplyActive(replyId, userId, isActive) {
-  const db = getDb();
-  db.prepare('UPDATE auto_replies SET is_active = ? WHERE id = ? AND user_id = ?').run(isActive ? 1 : 0, replyId, userId);
-  return db.prepare('SELECT * FROM auto_replies WHERE id = ?').get(replyId);
+export async function toggleAutoReplyActive(replyId, userId, isActive) {
+  await execute('UPDATE auto_replies SET is_active = ? WHERE id = ? AND user_id = ?', [isActive ? 1 : 0, replyId, userId]);
+  return await queryOne('SELECT * FROM auto_replies WHERE id = ?', [replyId]);
 }
 
-// Scheduled Reminders Helpers
-export function getRemindersByUser(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getRemindersByUser(userId) {
+  return await queryAll(`
     SELECT r.*, c.name as contact_name
     FROM reminders r
     LEFT JOIN contacts c ON c.id = r.contact_id
     WHERE r.user_id = ?
     ORDER BY r.scheduled_at DESC
-  `).all(userId);
+  `, [userId]);
 }
 
 export function calculateNextScheduleDate(selectedDays, sendTimeStr, fromDate = new Date()) {
   const dayNameMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-  
   let targetHour = 9, targetMin = 0;
   if (sendTimeStr && sendTimeStr.includes(':')) {
     const parts = sendTimeStr.split(':').map(Number);
@@ -1485,11 +1777,7 @@ export function calculateNextScheduleDate(selectedDays, sendTimeStr, fromDate = 
   }
 
   const isAllDays = dayList.length === 0 || dayList.includes('all');
-  
-  // IST offset is UTC + 5h 30m (330 minutes)
   const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
-
-  // Convert fromDate to IST Date representation
   const fromIst = new Date(fromDate.getTime() + IST_OFFSET_MS);
 
   const startYear = fromIst.getUTCFullYear();
@@ -1497,111 +1785,90 @@ export function calculateNextScheduleDate(selectedDays, sendTimeStr, fromDate = 
   const startDate = fromIst.getUTCDate();
 
   for (let offsetDays = 0; offsetDays <= 7; offsetDays++) {
-    // candidate in IST (expressed in UTC components)
     const candidateIstMs = Date.UTC(startYear, startMonth, startDate + offsetDays, targetHour, targetMin, 0, 0);
-    // convert back to actual UTC Date timestamp
     const candidateUtcMs = candidateIstMs - IST_OFFSET_MS;
 
-    if (candidateUtcMs <= fromDate.getTime()) {
-      continue;
-    }
+    if (candidateUtcMs <= fromDate.getTime()) continue;
 
     const candidateIstDate = new Date(candidateIstMs);
     const candidateDayOfWeek = candidateIstDate.getUTCDay();
 
-    if (isAllDays) {
-      return new Date(candidateUtcMs).toISOString();
-    }
+    if (isAllDays) return new Date(candidateUtcMs).toISOString();
 
     const matchesDay = dayList.some(dayStr => {
       const targetDayNum = dayNameMap[dayStr];
       return targetDayNum !== undefined && targetDayNum === candidateDayOfWeek;
     });
 
-    if (matchesDay) {
-      return new Date(candidateUtcMs).toISOString();
-    }
+    if (matchesDay) return new Date(candidateUtcMs).toISOString();
   }
 
   const fallbackIstMs = Date.UTC(startYear, startMonth, startDate + 1, targetHour, targetMin, 0, 0);
   return new Date(fallbackIstMs - IST_OFFSET_MS).toISOString();
 }
 
-export function createReminder({ user_id, contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, repeat_option, selected_days, send_time }) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createReminder({ user_id, contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, repeat_option, selected_days, send_time }) {
+  const res = await execute(`
     INSERT INTO reminders (user_id, contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, repeat_option, selected_days, send_time, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-  `).run(user_id, contact_id || null, recipient_mobile, recipient_name || null, shop_name || null, message_template, scheduled_at, repeat_option || 'once', selected_days || null, send_time || null);
-  return db.prepare('SELECT * FROM reminders WHERE id = ?').get(result.lastInsertRowid);
+  `, [user_id, contact_id || null, recipient_mobile, recipient_name || null, shop_name || null, message_template, scheduled_at, repeat_option || 'once', selected_days || null, send_time || null]);
+  return await queryOne('SELECT * FROM reminders WHERE id = ?', [res.lastInsertRowid]);
 }
 
-export function deleteReminder(reminderId, userId) {
-  const db = getDb();
-  db.prepare('DELETE FROM reminders WHERE id = ? AND user_id = ?').run(reminderId, userId);
+export async function deleteReminder(reminderId, userId) {
+  await execute('DELETE FROM reminders WHERE id = ? AND user_id = ?', [reminderId, userId]);
   return { id: reminderId, deleted: true };
 }
 
-export function getPendingReminders() {
-  const db = getDb();
+export async function getPendingReminders() {
   const now = new Date().toISOString();
-  return db.prepare(`
+  return await queryAll(`
     SELECT r.*, u.id as user_id, u.name as user_name
     FROM reminders r
     JOIN users u ON u.id = r.user_id
     WHERE r.status = 'pending' AND r.scheduled_at <= ?
-  `).all(now);
+  `, [now]);
 }
 
-export function updateReminderStatus(reminderId, status, errorMsg = null) {
-  const db = getDb();
-  db.prepare(`
+export async function updateReminderStatus(reminderId, status, errorMsg = null) {
+  await execute(`
     UPDATE reminders
     SET status = ?,
-        sent_at = CASE WHEN ? = 'sent' THEN datetime('now') ELSE sent_at END,
-        error_message = ?,
-        created_at = created_at
+        sent_at = CASE WHEN ? = 'sent' THEN NOW() ELSE sent_at END,
+        error_message = ?
     WHERE id = ?
-  `).run(status, status, errorMsg || null, reminderId);
+  `, [status, status, errorMsg || null, reminderId]);
 }
 
-// ─── Message Templates Helpers ────────────────────────────────────────────────
-export function getTemplatesByUser(userId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM message_templates WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+export async function getTemplatesByUser(userId) {
+  return await queryAll('SELECT * FROM message_templates WHERE user_id = ? ORDER BY created_at DESC', [userId]);
 }
 
-export function createTemplate({ user_id, title, content, category }) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createTemplate({ user_id, title, content, category }) {
+  const res = await execute(`
     INSERT INTO message_templates (user_id, title, content, category)
     VALUES (?, ?, ?, ?)
-  `).run(user_id, title, content, category || 'General');
-  return db.prepare('SELECT * FROM message_templates WHERE id = ?').get(result.lastInsertRowid);
+  `, [user_id, title, content, category || 'General']);
+  return await queryOne('SELECT * FROM message_templates WHERE id = ?', [res.lastInsertRowid]);
 }
 
-export function updateTemplate(templateId, userId, { title, content, category }) {
-  const db = getDb();
-  db.prepare(`
+export async function updateTemplate(templateId, userId, { title, content, category }) {
+  await execute(`
     UPDATE message_templates
     SET title = ?, content = ?, category = ?
     WHERE id = ? AND user_id = ?
-  `).run(title, content, category || 'General', templateId, userId);
-  return db.prepare('SELECT * FROM message_templates WHERE id = ? AND user_id = ?').get(templateId, userId);
+  `, [title, content, category || 'General', templateId, userId]);
+  return await queryOne('SELECT * FROM message_templates WHERE id = ? AND user_id = ?', [templateId, userId]);
 }
 
-export function deleteTemplate(templateId, userId) {
-  const db = getDb();
-  db.prepare('DELETE FROM message_templates WHERE id = ? AND user_id = ?').run(templateId, userId);
+export async function deleteTemplate(templateId, userId) {
+  await execute('DELETE FROM message_templates WHERE id = ? AND user_id = ?', [templateId, userId]);
   return { id: templateId, deleted: true };
 }
 
-// ─── Automation Settings Helpers (Welcome & Away Messages) ───────────────────
-export function getAutomationSettings(userId) {
-  const db = getDb();
-  const settings = db.prepare('SELECT * FROM automation_settings WHERE user_id = ?').get(userId);
+export async function getAutomationSettings(userId) {
+  const settings = await queryOne('SELECT * FROM automation_settings WHERE user_id = ?', [userId]);
   if (!settings) {
-    // Default settings
     return {
       user_id: userId,
       welcome_active: 0,
@@ -1618,11 +1885,10 @@ export function getAutomationSettings(userId) {
   return settings;
 }
 
-export function upsertAutomationSettings(userId, settings) {
-  const db = getDb();
-  const existing = db.prepare('SELECT id FROM automation_settings WHERE user_id = ?').get(userId);
+export async function upsertAutomationSettings(userId, settings) {
+  const existing = await queryOne('SELECT id FROM automation_settings WHERE user_id = ?', [userId]);
   if (existing) {
-    db.prepare(`
+    await execute(`
       UPDATE automation_settings
       SET welcome_active = COALESCE(@welcome_active, welcome_active),
           welcome_text = COALESCE(@welcome_text, welcome_text),
@@ -1633,9 +1899,9 @@ export function upsertAutomationSettings(userId, settings) {
           away_schedule_type = COALESCE(@away_schedule_type, away_schedule_type),
           away_start_time = COALESCE(@away_start_time, away_start_time),
           away_end_time = COALESCE(@away_end_time, away_end_time),
-          updated_at = datetime('now')
+          updated_at = NOW()
       WHERE user_id = @user_id
-    `).run({
+    `, {
       user_id: userId,
       welcome_active: settings.welcome_active ?? null,
       welcome_text: settings.welcome_text ?? null,
@@ -1648,7 +1914,7 @@ export function upsertAutomationSettings(userId, settings) {
       away_end_time: settings.away_end_time ?? null
     });
   } else {
-    db.prepare(`
+    await execute(`
       INSERT INTO automation_settings (
         user_id, welcome_active, welcome_text, welcome_media_path, welcome_media_type,
         away_active, away_text, away_schedule_type, away_start_time, away_end_time
@@ -1656,7 +1922,7 @@ export function upsertAutomationSettings(userId, settings) {
         @user_id, @welcome_active, @welcome_text, @welcome_media_path, @welcome_media_type,
         @away_active, @away_text, @away_schedule_type, @away_start_time, @away_end_time
       )
-    `).run({
+    `, {
       user_id: userId,
       welcome_active: settings.welcome_active ?? 0,
       welcome_text: settings.welcome_text || 'Hello {Name}! Welcome to {ShopName}. How can we assist you today?',
@@ -1669,119 +1935,94 @@ export function upsertAutomationSettings(userId, settings) {
       away_end_time: settings.away_end_time || '09:00'
     });
   }
-  return getAutomationSettings(userId);
+  return await getAutomationSettings(userId);
 }
 
-// ─── Campaigns Helpers ───────────────────────────────────────────────────────
-
-export function getCampaignsByUser(userId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM campaigns WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+export async function getCampaignsByUser(userId) {
+  return await queryAll('SELECT * FROM campaigns WHERE user_id = ? ORDER BY created_at DESC', [userId]);
 }
 
-export function getCampaignRecipients(campaignId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM campaign_recipients WHERE campaign_id = ?').all(campaignId);
+export async function getCampaignRecipients(campaignId) {
+  return await queryAll('SELECT * FROM campaign_recipients WHERE campaign_id = ?', [campaignId]);
 }
 
-export function getCampaignById(campaignId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignId);
+export async function getCampaignById(campaignId) {
+  return await queryOne('SELECT * FROM campaigns WHERE id = ?', [campaignId]);
 }
 
-export function createCampaign(userId, { name, message_text, media_path, media_type, scheduled_at, contacts }) {
-  const db = getDb();
-  let campaignId;
+export async function createCampaign(userId, { name, message_text, media_path, media_type, scheduled_at, contacts }) {
+  const res = await execute(`
+    INSERT INTO campaigns (user_id, name, message_text, media_path, media_type, scheduled_at, total_contacts, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+  `, [userId, name, message_text, media_path, media_type, scheduled_at || null, contacts.length]);
   
-  const createTx = db.transaction(() => {
-    // Insert Campaign
-    const result = db.prepare(`
-      INSERT INTO campaigns (user_id, name, message_text, media_path, media_type, scheduled_at, total_contacts, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-    `).run(userId, name, message_text, media_path, media_type, scheduled_at || null, contacts.length);
-    
-    campaignId = result.lastInsertRowid;
+  const campaignId = res.lastInsertRowid;
 
-    // Insert Recipients
-    const stmt = db.prepare(`
+  for (const c of contacts) {
+    await execute(`
       INSERT INTO campaign_recipients (campaign_id, contact_id, mobile, name, shop_name)
       VALUES (?, ?, ?, ?, ?)
-    `);
+    `, [campaignId, c.id || null, c.mobile, c.name, c.shop_name]);
+  }
 
-    for (const c of contacts) {
-      stmt.run(campaignId, c.id || null, c.mobile, c.name, c.shop_name);
-    }
-  });
-
-  createTx();
-  return db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignId);
+  return await queryOne('SELECT * FROM campaigns WHERE id = ?', [campaignId]);
 }
 
-export function updateCampaignStatus(campaignId, status) {
-  const db = getDb();
-  db.prepare('UPDATE campaigns SET status = ? WHERE id = ?').run(status, campaignId);
-  return db.prepare('SELECT * FROM campaigns WHERE id = ?').get(campaignId);
+export async function updateCampaignStatus(campaignId, status) {
+  await execute('UPDATE campaigns SET status = ? WHERE id = ?', [status, campaignId]);
+  return await queryOne('SELECT * FROM campaigns WHERE id = ?', [campaignId]);
 }
 
-export function updateCampaignRecipientStatus(recipientId, status, errorMsg = null) {
-  const db = getDb();
-  db.prepare(`
+export async function updateCampaignRecipientStatus(recipientId, status, errorMsg = null) {
+  await execute(`
     UPDATE campaign_recipients 
-    SET status = ?, error_message = ?, sent_at = datetime('now') 
+    SET status = ?, error_message = ?, sent_at = NOW() 
     WHERE id = ?
-  `).run(status, errorMsg, recipientId);
+  `, [status, errorMsg, recipientId]);
 }
 
-export function incrementCampaignSuccess(campaignId) {
-  const db = getDb();
-  db.prepare('UPDATE campaigns SET successful_deliveries = successful_deliveries + 1 WHERE id = ?').run(campaignId);
+export async function incrementCampaignSuccess(campaignId) {
+  await execute('UPDATE campaigns SET successful_deliveries = successful_deliveries + 1 WHERE id = ?', [campaignId]);
 }
 
-export function incrementCampaignFailure(campaignId) {
-  const db = getDb();
-  db.prepare('UPDATE campaigns SET failed_deliveries = failed_deliveries + 1 WHERE id = ?').run(campaignId);
+export async function incrementCampaignFailure(campaignId) {
+  await execute('UPDATE campaigns SET failed_deliveries = failed_deliveries + 1 WHERE id = ?', [campaignId]);
 }
 
-export function getPendingCampaigns() {
-  const db = getDb();
-  // Fetch campaigns that are 'pending' and their scheduled time is past, OR they are currently 'running'
-  return db.prepare(`
+export async function getPendingCampaigns() {
+  const now = new Date().toISOString();
+  return await queryAll(`
     SELECT * FROM campaigns 
     WHERE status = 'running' 
-       OR (status = 'pending' AND (scheduled_at IS NULL OR scheduled_at <= datetime('now', 'localtime')))
-  `).all();
+       OR (status = 'pending' AND (scheduled_at IS NULL OR scheduled_at <= ?))
+  `, [now]);
 }
 
-export function getPendingRecipients(campaignId, limit = 50) {
-  const db = getDb();
-  return db.prepare(`
+export async function getPendingRecipients(campaignId, limit = 50) {
+  return await queryAll(`
     SELECT * FROM campaign_recipients 
     WHERE campaign_id = ? AND status = 'pending'
     LIMIT ?
-  `).all(campaignId, limit);
+  `, [campaignId, limit]);
 }
 
-// ─── Birthday Wishes Helpers ──────────────────────────────────────────────────
-
-export function getBirthdayWishesByUser(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getBirthdayWishesByUser(userId) {
+  return await queryAll(`
     SELECT bw.*, c.name AS contact_name
     FROM birthday_wishes bw
     LEFT JOIN contacts c ON c.id = bw.contact_id
     WHERE bw.user_id = ?
     ORDER BY bw.birthday_date ASC
-  `).all(userId);
+  `, [userId]);
 }
 
-export function createBirthdayWish(userId, data) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createBirthdayWish(userId, data) {
+  const res = await execute(`
     INSERT INTO birthday_wishes (user_id, contact_id, recipient_name, recipient_phone,
       birthday_date, birth_year, message_text, media_path, media_type, send_time, active)
     VALUES (@user_id, @contact_id, @recipient_name, @recipient_phone,
       @birthday_date, @birth_year, @message_text, @media_path, @media_type, @send_time, 1)
-  `).run({
+  `, {
     user_id: userId,
     contact_id: data.contact_id || null,
     recipient_name: data.recipient_name,
@@ -1793,12 +2034,11 @@ export function createBirthdayWish(userId, data) {
     media_type: data.media_type || null,
     send_time: data.send_time || '09:00'
   });
-  return db.prepare('SELECT * FROM birthday_wishes WHERE id = ?').get(result.lastInsertRowid);
+  return await queryOne('SELECT * FROM birthday_wishes WHERE id = ?', [res.lastInsertRowid]);
 }
 
-export function updateBirthdayWish(id, userId, data) {
-  const db = getDb();
-  db.prepare(`
+export async function updateBirthdayWish(id, userId, data) {
+  await execute(`
     UPDATE birthday_wishes SET
       recipient_name = COALESCE(@recipient_name, recipient_name),
       recipient_phone = COALESCE(@recipient_phone, recipient_phone),
@@ -1808,73 +2048,65 @@ export function updateBirthdayWish(id, userId, data) {
       send_time = COALESCE(@send_time, send_time),
       active = COALESCE(@active, active)
     WHERE id = @id AND user_id = @user_id
-  `).run({ id, user_id: userId, ...data, birth_year: data.birth_year || null });
-  return db.prepare('SELECT * FROM birthday_wishes WHERE id = ?').get(id);
+  `, { id, user_id: userId, ...data, birth_year: data.birth_year || null });
+  return await queryOne('SELECT * FROM birthday_wishes WHERE id = ?', [id]);
 }
 
-export function deleteBirthdayWish(id, userId) {
-  const db = getDb();
-  return db.prepare('DELETE FROM birthday_wishes WHERE id = ? AND user_id = ?').run(id, userId);
+export async function deleteBirthdayWish(id, userId) {
+  await execute('DELETE FROM birthday_wishes WHERE id = ? AND user_id = ?', [id, userId]);
+  return { id, deleted: true };
 }
 
-export function getDueBirthdayWishes() {
-  const db = getDb();
+export async function getDueBirthdayWishes() {
   const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
   const istNow = new Date(Date.now() + IST_OFFSET_MS);
   const month  = String(istNow.getUTCMonth() + 1).padStart(2, '0');
   const day    = String(istNow.getUTCDate()).padStart(2, '0');
   const mmdd   = `${month}-${day}`;
   const currentYear = istNow.getUTCFullYear();
-  return db.prepare(`
+  return await queryAll(`
     SELECT bw.*, u.id AS owner_user_id
     FROM birthday_wishes bw
     JOIN users u ON u.id = bw.user_id
     WHERE bw.active = 1
       AND bw.birthday_date = ?
       AND (bw.last_sent_year IS NULL OR bw.last_sent_year < ?)
-  `).all(mmdd, currentYear);
+  `, [mmdd, currentYear]);
 }
 
-
-export function markBirthdayWishSent(id, year) {
-  const db = getDb();
-  db.prepare(`
+export async function markBirthdayWishSent(id, year) {
+  await execute(`
     UPDATE birthday_wishes
-    SET last_sent_year = ?, status = 'sent', last_error = NULL, last_sent_at = datetime('now')
+    SET last_sent_year = ?, status = 'sent', last_error = NULL, last_sent_at = NOW()
     WHERE id = ?
-  `).run(year, id);
+  `, [year, id]);
 }
 
-export function markBirthdayWishFailed(id, errorMessage) {
-  const db = getDb();
-  db.prepare(`
+export async function markBirthdayWishFailed(id, errorMessage) {
+  await execute(`
     UPDATE birthday_wishes
     SET status = 'failed', last_error = ?
     WHERE id = ?
-  `).run(errorMessage || 'Unknown error', id);
+  `, [errorMessage || 'Unknown error', id]);
 }
 
-// ─── Payment Reminder Helpers ─────────────────────────────────────────────────
-
-export function getPaymentRemindersByUser(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getPaymentRemindersByUser(userId) {
+  return await queryAll(`
     SELECT pr.*, c.name AS contact_name
     FROM payment_reminders pr
     LEFT JOIN contacts c ON c.id = pr.contact_id
     WHERE pr.user_id = ?
     ORDER BY pr.due_date ASC
-  `).all(userId);
+  `, [userId]);
 }
 
-export function createPaymentReminder(userId, data) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createPaymentReminder(userId, data) {
+  const res = await execute(`
     INSERT INTO payment_reminders (user_id, contact_id, recipient_name, recipient_phone,
       amount, currency, due_date, message_text, media_path, media_type, remind_days_before, status, active)
     VALUES (@user_id, @contact_id, @recipient_name, @recipient_phone,
       @amount, @currency, @due_date, @message_text, @media_path, @media_type, @remind_days_before, 'pending', 1)
-  `).run({
+  `, {
     user_id: userId,
     contact_id: data.contact_id || null,
     recipient_name: data.recipient_name,
@@ -1887,43 +2119,38 @@ export function createPaymentReminder(userId, data) {
     media_type: data.media_type || null,
     remind_days_before: data.remind_days_before || 1
   });
-  return db.prepare('SELECT * FROM payment_reminders WHERE id = ?').get(result.lastInsertRowid);
+  return await queryOne('SELECT * FROM payment_reminders WHERE id = ?', [res.lastInsertRowid]);
 }
 
-export function updatePaymentReminderStatus(id, userId, status) {
-  const db = getDb();
-  db.prepare('UPDATE payment_reminders SET status = ? WHERE id = ? AND user_id = ?').run(status, id, userId);
-  return db.prepare('SELECT * FROM payment_reminders WHERE id = ?').get(id);
+export async function updatePaymentReminderStatus(id, userId, status) {
+  await execute('UPDATE payment_reminders SET status = ? WHERE id = ? AND user_id = ?', [status, id, userId]);
+  return await queryOne('SELECT * FROM payment_reminders WHERE id = ?', [id]);
 }
 
-export function deletePaymentReminder(id, userId) {
-  const db = getDb();
-  return db.prepare('DELETE FROM payment_reminders WHERE id = ? AND user_id = ?').run(id, userId);
+export async function deletePaymentReminder(id, userId) {
+  await execute('DELETE FROM payment_reminders WHERE id = ? AND user_id = ?', [id, userId]);
+  return { id, deleted: true };
 }
 
-// ─── Order Notification Helpers ───────────────────────────────────────────────
-
-export function getOrderNotificationsByUser(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getOrderNotificationsByUser(userId) {
+  return await queryAll(`
     SELECT orn.*, c.name AS contact_name
     FROM order_notifications orn
     LEFT JOIN contacts c ON c.id = orn.contact_id
     WHERE orn.user_id = ?
     ORDER BY orn.created_at DESC
-  `).all(userId);
+  `, [userId]);
 }
 
-export function createOrderNotification(userId, data) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createOrderNotification(userId, data) {
+  const res = await execute(`
     INSERT INTO order_notifications (user_id, contact_id, recipient_name, recipient_phone,
       order_id, order_status, product_name, amount, currency, message_text,
       media_path, media_type, send_immediately, scheduled_at, status)
     VALUES (@user_id, @contact_id, @recipient_name, @recipient_phone,
       @order_id, @order_status, @product_name, @amount, @currency, @message_text,
       @media_path, @media_type, @send_immediately, @scheduled_at, 'pending')
-  `).run({
+  `, {
     user_id: userId,
     contact_id: data.contact_id || null,
     recipient_name: data.recipient_name,
@@ -1939,35 +2166,30 @@ export function createOrderNotification(userId, data) {
     send_immediately: data.send_immediately !== false ? 1 : 0,
     scheduled_at: data.scheduled_at || null
   });
-  return db.prepare('SELECT * FROM order_notifications WHERE id = ?').get(result.lastInsertRowid);
+  return await queryOne('SELECT * FROM order_notifications WHERE id = ?', [res.lastInsertRowid]);
 }
 
-export function updateOrderNotificationStatus(id, userId, status, sentAt) {
-  const db = getDb();
-  db.prepare('UPDATE order_notifications SET status = ?, sent_at = ? WHERE id = ? AND user_id = ?')
-    .run(status, sentAt || null, id, userId);
-  return db.prepare('SELECT * FROM order_notifications WHERE id = ?').get(id);
+export async function updateOrderNotificationStatus(id, userId, status, sentAt) {
+  await execute('UPDATE order_notifications SET status = ?, sent_at = ? WHERE id = ? AND user_id = ?', [status, sentAt || null, id, userId]);
+  return await queryOne('SELECT * FROM order_notifications WHERE id = ?', [id]);
 }
 
-export function deleteOrderNotification(id, userId) {
-  const db = getDb();
-  return db.prepare('DELETE FROM order_notifications WHERE id = ? AND user_id = ?').run(id, userId);
+export async function deleteOrderNotification(id, userId) {
+  await execute('DELETE FROM order_notifications WHERE id = ? AND user_id = ?', [id, userId]);
+  return { id, deleted: true };
 }
 
-export function getPendingOrderNotifications() {
-  const db = getDb();
-  return db.prepare(`
+export async function getPendingOrderNotifications() {
+  const now = new Date().toISOString();
+  return await queryAll(`
     SELECT * FROM order_notifications
     WHERE status = 'pending'
-      AND (send_immediately = 1 OR (scheduled_at IS NOT NULL AND scheduled_at <= datetime('now', 'localtime')))
-  `).all();
+      AND (send_immediately = 1 OR (scheduled_at IS NOT NULL AND scheduled_at <= ?))
+  `, [now]);
 }
 
-// ─── Follow-up Automation Helpers ─────────────────────────────────────────────
-
-export function getFollowupAutomationsByUser(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getFollowupAutomationsByUser(userId) {
+  return await queryAll(`
     SELECT fa.*,
       COUNT(CASE WHEN fsl.status = 'sent' THEN 1 END) AS sent_count,
       COUNT(CASE WHEN fsl.status = 'failed' THEN 1 END) AS failed_count,
@@ -1977,17 +2199,16 @@ export function getFollowupAutomationsByUser(userId) {
     WHERE fa.user_id = ?
     GROUP BY fa.id
     ORDER BY fa.created_at DESC
-  `).all(userId);
+  `, [userId]);
 }
 
-export function createFollowupAutomation(userId, data) {
-  const db = getDb();
-  const result = db.prepare(`
+export async function createFollowupAutomation(userId, data) {
+  const res = await execute(`
     INSERT INTO followup_automations (user_id, name, trigger_event, delay_days,
       message_text, media_path, media_type, active, apply_to)
     VALUES (@user_id, @name, @trigger_event, @delay_days,
       @message_text, @media_path, @media_type, 1, @apply_to)
-  `).run({
+  `, {
     user_id: userId,
     name: data.name,
     trigger_event: data.trigger_event || 'no_response',
@@ -1997,12 +2218,11 @@ export function createFollowupAutomation(userId, data) {
     media_type: data.media_type || null,
     apply_to: data.apply_to || 'all'
   });
-  return db.prepare('SELECT * FROM followup_automations WHERE id = ?').get(result.lastInsertRowid);
+  return await queryOne('SELECT * FROM followup_automations WHERE id = ?', [res.lastInsertRowid]);
 }
 
-export function updateFollowupAutomation(id, userId, data) {
-  const db = getDb();
-  db.prepare(`
+export async function updateFollowupAutomation(id, userId, data) {
+  await execute(`
     UPDATE followup_automations SET
       name = COALESCE(@name, name),
       trigger_event = COALESCE(@trigger_event, trigger_event),
@@ -2011,20 +2231,19 @@ export function updateFollowupAutomation(id, userId, data) {
       active = COALESCE(@active, active),
       apply_to = COALESCE(@apply_to, apply_to)
     WHERE id = @id AND user_id = @user_id
-  `).run({ id, user_id: userId, name: data.name || null, trigger_event: data.trigger_event || null,
+  `, { id, user_id: userId, name: data.name || null, trigger_event: data.trigger_event || null,
     delay_days: data.delay_days || null, message_text: data.message_text || null,
     active: data.active ?? null, apply_to: data.apply_to || null });
-  return db.prepare('SELECT * FROM followup_automations WHERE id = ?').get(id);
+  return await queryOne('SELECT * FROM followup_automations WHERE id = ?', [id]);
 }
 
-export function deleteFollowupAutomation(id, userId) {
-  const db = getDb();
-  return db.prepare('DELETE FROM followup_automations WHERE id = ? AND user_id = ?').run(id, userId);
+export async function deleteFollowupAutomation(id, userId) {
+  await execute('DELETE FROM followup_automations WHERE id = ? AND user_id = ?', [id, userId]);
+  return { id, deleted: true };
 }
 
-export function getFollowupLogsByUser(userId) {
-  const db = getDb();
-  return db.prepare(`
+export async function getFollowupLogsByUser(userId) {
+  return await queryAll(`
     SELECT fsl.*, fa.name AS automation_name, c.name AS contact_name, c.mobile AS contact_mobile
     FROM followup_sent_log fsl
     JOIN followup_automations fa ON fa.id = fsl.automation_id
@@ -2032,10 +2251,10 @@ export function getFollowupLogsByUser(userId) {
     WHERE fsl.user_id = ?
     ORDER BY fsl.sent_at DESC
     LIMIT 50
-  `).all(userId);
+  `, [userId]);
 }
 
-export function deleteFollowupLog(id, userId) {
-  const db = getDb();
-  return db.prepare('DELETE FROM followup_sent_log WHERE id = ? AND user_id = ?').run(id, userId);
+export async function deleteFollowupLog(id, userId) {
+  await execute('DELETE FROM followup_sent_log WHERE id = ? AND user_id = ?', [id, userId]);
+  return { id, deleted: true };
 }

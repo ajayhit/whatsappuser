@@ -154,15 +154,15 @@ const upload = multer({
  * GET /auth/public-plans
  * Unauthenticated route to get subscription plan options and prices
  */
-router.get('/public-plans', (req, res) => {
+router.get('/public-plans', async (req, res) => {
   try {
-    const planOptions = [
+    const planOptions = await Promise.all([
       getPlanDetails('demo'),
       getPlanDetails('plan_28'),
       getPlanDetails('quarter'),
       getPlanDetails('half_year'),
       getPlanDetails('year')
-    ];
+    ]);
     return res.json({ planOptions });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -173,7 +173,7 @@ router.get('/public-plans', (req, res) => {
  * POST /auth/register
  * Create a new user account
  */
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   const { name, email, phone, password, captchaId, captchaAnswer } = req.body;
   if (!name || !email || !password || !phone) {
     return res.status(400).json({ error: 'Name, email, phone number, and password are required' });
@@ -190,13 +190,13 @@ router.post('/register', (req, res) => {
   }
 
   try {
-    const existing = getUserByEmail(email);
+    const existing = await getUserByEmail(email);
     if (existing) return res.status(409).json({ error: 'Email already registered' });
 
-    const existingPhone = getUserByPhone(phoneDigits);
+    const existingPhone = await getUserByPhone(phoneDigits);
     if (existingPhone) return res.status(409).json({ error: 'Phone number already registered. Please use a different number or sign in.' });
 
-    const user = createUser({ name, email, phone: phoneDigits, password });
+    const user = await createUser({ name, email, phone: phoneDigits, password });
     const token = generateToken(user);
     return res.status(201).json({ message: 'Account created successfully', token, user });
   } catch (err) {
@@ -209,14 +209,14 @@ router.post('/register', (req, res) => {
  * POST /auth/login
  * Login and get JWT token
  */
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
   try {
-    const userRow = getUserByEmail(email);
+    const userRow = await getUserByEmail(email);
     if (!userRow) return res.status(401).json({ error: 'Invalid email or password' });
 
     // Check block status immediately
@@ -227,13 +227,13 @@ router.post('/login', (req, res) => {
     const valid = verifyPassword(password, userRow.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
 
-    const user = getUserById(userRow.id);
+    const user = await getUserById(userRow.id);
     const token = generateToken(user);
 
     // Expire old plans on login
-    try { expireOldPlans(); } catch (e) {}
+    try { await expireOldPlans(); } catch (e) {}
 
-    const plan = getActivePlan(user.id);
+    const plan = await getActivePlan(user.id);
     return res.json({ message: 'Login successful', token, user, plan: plan || null });
   } catch (err) {
     console.error('Login error:', err);
@@ -245,32 +245,32 @@ router.post('/login', (req, res) => {
  * GET /auth/me
  * Get current user info, plan, wallet, orders, dynamic banks, plan_price
  */
-router.get('/me', authMiddleware, (req, res) => {
+router.get('/me', authMiddleware, async (req, res) => {
   try {
     // Check block status
     if (req.user.is_blocked === 1) {
       return res.status(403).json({ error: 'Your account is blocked.' });
     }
  
-    expireOldPlans();
-    const user = getUserById(req.user.id);
-    const plan = getActivePlan(req.user.id);
-    const plans = getPlansByUser(req.user.id);
-    const orders = getOrdersByUser(req.user.id);
-    const transactions = getWalletTransactions(req.user.id);
+    await expireOldPlans();
+    const user = await getUserById(req.user.id);
+    const plan = await getActivePlan(req.user.id);
+    const plans = await getPlansByUser(req.user.id);
+    const orders = await getOrdersByUser(req.user.id);
+    const transactions = await getWalletTransactions(req.user.id);
  
     // Dynamic settings & active banks
-    const planPrice = parseFloat(getSetting('plan_price_28', '199'));
-    const banks = getBanks(true); // only active banks
+    const planPrice = parseFloat(await getSetting('plan_price_28', '199'));
+    const banks = await getBanks(true); // only active banks
 
     // Get all subscription options
-    const planOptions = [
+    const planOptions = await Promise.all([
       getPlanDetails('demo'),
       getPlanDetails('plan_28'),
       getPlanDetails('quarter'),
       getPlanDetails('half_year'),
       getPlanDetails('year')
-    ];
+    ]);
  
     return res.json({
       user,
@@ -327,7 +327,7 @@ router.post('/orders', authMiddleware, upload.single('screenshot'), async (req, 
         return res.status(400).json({ error: 'Recharge amount must be greater than 0.' });
       }
     } else {
-      const details = getPlanDetails(planType);
+      const details = await getPlanDetails(planType);
       if (!details) {
         return res.status(400).json({ error: 'Invalid plan type selected.' });
       }
@@ -335,7 +335,7 @@ router.post('/orders', authMiddleware, upload.single('screenshot'), async (req, 
     }
 
     const screenshot_path = req.file ? req.file.filename : null;
-    const order = createOrder({
+    const order = await createOrder({
       userId: req.user.id,
       amount: orderAmount,
       utr,
@@ -363,7 +363,7 @@ router.post('/orders', authMiddleware, upload.single('screenshot'), async (req, 
         const hasScreenshot = screenshot_path ? 'Yes 📸' : 'No';
 
         // 1. Resolve Admin WhatsApp Number
-        let adminNumber = getSetting('admin_whatsapp_number', '');
+        let adminNumber = await getSetting('admin_whatsapp_number', '');
         if (!adminNumber && adminSessionStatus.user?.phone) {
           adminNumber = adminSessionStatus.user.phone;
         }
@@ -435,7 +435,7 @@ router.post('/orders', authMiddleware, upload.single('screenshot'), async (req, 
  * POST /auth/subscribe
  * Subscribe to a plan using wallet balance (or claim demo for free)
  */
-router.post('/subscribe', authMiddleware, (req, res) => {
+router.post('/subscribe', authMiddleware, async (req, res) => {
   const { planType } = req.body;
   if (req.user.is_blocked === 1) {
     return res.status(403).json({ error: 'Your account is blocked.' });
@@ -444,8 +444,8 @@ router.post('/subscribe', authMiddleware, (req, res) => {
     return res.status(400).json({ error: 'planType is required' });
   }
   try {
-    const plan = subscribeToPlan(req.user.id, planType);
-    const user = getUserById(req.user.id);
+    const plan = await subscribeToPlan(req.user.id, planType);
+    const user = await getUserById(req.user.id);
     return res.json({
       message: `Successfully subscribed to plan: ${planType}`,
       plan,
@@ -460,12 +460,12 @@ router.post('/subscribe', authMiddleware, (req, res) => {
  * GET /auth/orders
  * Get current user's orders
  */
-router.get('/orders', authMiddleware, (req, res) => {
+router.get('/orders', authMiddleware, async (req, res) => {
   if (req.user.is_blocked === 1) {
     return res.status(403).json({ error: 'Your account is blocked.' });
   }
   try {
-    const orders = getOrdersByUser(req.user.id);
+    const orders = await getOrdersByUser(req.user.id);
     return res.json({ orders });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -476,7 +476,7 @@ router.get('/orders', authMiddleware, (req, res) => {
  * POST /auth/profile
  * Update user/admin profile details (Name, Phone Number)
  */
-router.post('/profile', authMiddleware, (req, res) => {
+router.post('/profile', authMiddleware, async (req, res) => {
   const { name, phone } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Name is required' });
@@ -488,14 +488,14 @@ router.post('/profile', authMiddleware, (req, res) => {
   }
 
   try {
-    const updatedUser = updateUserProfile(req.user.id, {
+    const updatedUser = await updateUserProfile(req.user.id, {
       name: name.trim(),
       phone: cleanPhone
     });
 
     // If admin updates phone, sync it with admin_whatsapp_number setting as well
     if (req.user.role === 'admin' && cleanPhone) {
-      setSetting('admin_whatsapp_number', cleanPhone);
+      await setSetting('admin_whatsapp_number', cleanPhone);
     }
 
     return res.json({
@@ -512,7 +512,7 @@ router.post('/profile', authMiddleware, (req, res) => {
  * POST /auth/change-password
  * Change password (authenticated user)
  */
-router.post('/change-password', authMiddleware, (req, res) => {
+router.post('/change-password', authMiddleware, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {
     return res.status(400).json({ error: 'Current password and new password are required' });
@@ -523,7 +523,7 @@ router.post('/change-password', authMiddleware, (req, res) => {
 
   try {
     // Get full user row with password_hash
-    const userRow = getUserByEmail(req.user.email);
+    const userRow = await getUserByEmail(req.user.email);
     if (!userRow) return res.status(404).json({ error: 'User not found' });
 
     const valid = verifyPassword(currentPassword, userRow.password_hash);
@@ -531,7 +531,7 @@ router.post('/change-password', authMiddleware, (req, res) => {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
 
-    updateUserPassword(req.user.id, newPassword);
+    await updateUserPassword(req.user.id, newPassword);
     return res.json({ message: 'Password changed successfully!' });
   } catch (err) {
     console.error('Change password error:', err);
@@ -543,14 +543,14 @@ router.post('/change-password', authMiddleware, (req, res) => {
  * POST /auth/forgot-password
  * Generate a password reset OTP token
  */
-router.post('/forgot-password', (req, res) => {
+router.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
   }
 
   try {
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(email);
     if (!user) {
       // Don't reveal whether the email exists
       return res.json({ 
@@ -559,7 +559,7 @@ router.post('/forgot-password', (req, res) => {
       });
     }
 
-    const { token, expiresAt } = createPasswordResetToken(user.id);
+    const { token, expiresAt } = await createPasswordResetToken(user.id);
     
     // Since there's no email service configured, return the OTP directly
     // In production, this should be sent via email/SMS
@@ -580,7 +580,7 @@ router.post('/forgot-password', (req, res) => {
  * POST /auth/reset-password
  * Reset password using OTP token
  */
-router.post('/reset-password', (req, res) => {
+router.post('/reset-password', async (req, res) => {
   const { email, otp, newPassword } = req.body;
   if (!email || !otp || !newPassword) {
     return res.status(400).json({ error: 'Email, OTP code, and new password are required' });
@@ -590,14 +590,14 @@ router.post('/reset-password', (req, res) => {
   }
 
   try {
-    const resetRecord = getValidResetToken(email, otp);
+    const resetRecord = await getValidResetToken(email, otp);
     if (!resetRecord) {
       return res.status(400).json({ error: 'Invalid or expired reset code. Please request a new one.' });
     }
 
     // Update password and invalidate token
-    updateUserPassword(resetRecord.user_id, newPassword);
-    invalidateResetToken(resetRecord.id);
+    await updateUserPassword(resetRecord.user_id, newPassword);
+    await invalidateResetToken(resetRecord.id);
 
     return res.json({ message: 'Password has been reset successfully! You can now sign in.' });
   } catch (err) {

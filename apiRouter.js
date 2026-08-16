@@ -119,8 +119,8 @@ router.post('/message/send', async (req, res) => {
   try {
     let finalMessage = message || '';
     if (finalMessage) {
-      const contact = getContactByMobile(req.user.id, recipientPhone);
-      const user = getUserById(req.user.id);
+      const contact = await getContactByMobile(req.user.id, recipientPhone);
+      const user = await getUserById(req.user.id);
       const nameVal = contact?.name || '';
       const shopVal = contact?.shop_name || '';
       const mobileVal = contact?.mobile || recipientPhone;

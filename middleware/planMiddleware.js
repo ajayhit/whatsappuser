@@ -1,6 +1,6 @@
 import { getActivePlan, expireOldPlans } from '../db.js';
 
-export function planMiddleware(req, res, next) {
+export async function planMiddleware(req, res, next) {
   // Check if account is blocked by Admin
   if (req.user && req.user.is_blocked === 1) {
     return res.status(403).json({
@@ -13,9 +13,9 @@ export function planMiddleware(req, res, next) {
   if (req.user?.role === 'admin') return next();
 
   // Run expiry sweep first
-  try { expireOldPlans(); } catch (e) {}
+  try { await expireOldPlans(); } catch (e) {}
 
-  const plan = getActivePlan(req.user.id);
+  const plan = await getActivePlan(req.user.id);
 
   if (!plan) {
     return res.status(403).json({

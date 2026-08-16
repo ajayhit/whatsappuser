@@ -90,8 +90,8 @@ router.post('/session/logout', async (req, res) => {
 
 // ─── Helper: resolve Admin WhatsApp Number ───────────────────────────────────
 
-function getAdminPhone() {
-  let adminNumber = getSetting('admin_whatsapp_number', '');
+async function getAdminPhone() {
+  let adminNumber = await getSetting('admin_whatsapp_number', '');
   if (!adminNumber) {
     const status = getSessionStatus('admin');
     if (status?.user?.phone) {
@@ -100,8 +100,7 @@ function getAdminPhone() {
   }
   if (!adminNumber) {
     try {
-      const db = getDb();
-      const adminUser = db.prepare("SELECT phone FROM users WHERE role = 'admin' AND phone IS NOT NULL AND phone != '' LIMIT 1").get();
+      const adminUser = await queryOne("SELECT phone FROM users WHERE role = 'admin' AND phone IS NOT NULL AND phone != '' LIMIT 1");
       if (adminUser && adminUser.phone) {
         adminNumber = adminUser.phone;
       }
@@ -143,9 +142,9 @@ async function sendAdminSessionMsg(phone, message) {
  * GET /admin/orders
  * List all orders (filter by status via ?status=pending)
  */
-router.get('/orders', (req, res) => {
+router.get('/orders', async (req, res) => {
   try {
-    let orders = getAllOrders();
+    let orders = await getAllOrders();
     if (req.query.status) {
       orders = orders.filter(o => o.status === req.query.status);
     }
@@ -162,13 +161,13 @@ router.get('/orders', (req, res) => {
 router.post('/orders/:id/confirm', async (req, res) => {
   try {
     const orderId = parseInt(req.params.id);
-    const result = confirmOrder(orderId);
+    const result = await confirmOrder(orderId);
 
     // Send WhatsApp confirmation to BOTH User and Admin (non-blocking)
     try {
-      const order = getOrderById(orderId);
+      const order = await getOrderById(orderId);
       if (order) {
-        const user = getUserById(order.user_id);
+        const user = await getUserById(order.user_id);
         const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
         // 1. Notify User
@@ -189,7 +188,7 @@ router.post('/orders/:id/confirm', async (req, res) => {
         }
 
         // 2. Notify Admin
-        const adminPhone = getAdminPhone();
+        const adminPhone = await getAdminPhone();
         if (adminPhone) {
           const adminMsg =
             `✅ *Deposit Request Approved*\n\n` +
@@ -226,13 +225,13 @@ router.post('/orders/:id/reject', async (req, res) => {
   const { notes } = req.body;
   try {
     const orderId = parseInt(req.params.id);
-    const order = rejectOrder(orderId, notes);
+    const order = await rejectOrder(orderId, notes);
 
     // Send WhatsApp rejection to BOTH User and Admin (non-blocking)
     try {
-      const fullOrder = getOrderById(orderId);
+      const fullOrder = await getOrderById(orderId);
       if (fullOrder) {
-        const user = getUserById(fullOrder.user_id);
+        const user = await getUserById(fullOrder.user_id);
         const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
         const reasonStr = notes || 'Payment details could not be verified';
 
@@ -254,7 +253,7 @@ router.post('/orders/:id/reject', async (req, res) => {
         }
 
         // 2. Notify Admin
-        const adminPhone = getAdminPhone();
+        const adminPhone = await getAdminPhone();
         if (adminPhone) {
           const adminMsg =
             `❌ *Deposit Request Rejected*\n\n` +
@@ -284,9 +283,9 @@ router.post('/orders/:id/reject', async (req, res) => {
  * GET /admin/users
  * List all users with plan status
  */
-router.get('/users', (req, res) => {
+router.get('/users', async (req, res) => {
   try {
-    const users = getAllUsers();
+    const users = await getAllUsers();
     return res.json({ users });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -297,16 +296,16 @@ router.get('/users', (req, res) => {
  * POST /admin/users
  * Admin creates user manually
  */
-router.post('/users', (req, res) => {
+router.post('/users', async (req, res) => {
   const { name, email, phone, password, role } = req.body;
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Name, email, and password are required' });
   }
   try {
-    const existing = getUserByEmail(email);
+    const existing = await getUserByEmail(email);
     if (existing) return res.status(409).json({ error: 'Email already registered' });
 
-    const user = createUser({ name, email, phone, password, role: role || 'user' });
+    const user = await createUser({ name, email, phone, password, role: role || 'user' });
     return res.status(201).json({ message: 'User created successfully', user });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -317,11 +316,11 @@ router.post('/users', (req, res) => {
  * POST /admin/users/:id/block
  * Toggle user block status
  */
-router.post('/users/:id/block', (req, res) => {
+router.post('/users/:id/block', async (req, res) => {
   const userId = parseInt(req.params.id);
   const { is_blocked } = req.body; // boolean or 0/1
   try {
-    const user = setUserBlockStatus(userId, is_blocked);
+    const user = await setUserBlockStatus(userId, is_blocked);
     return res.json({
       message: `User block status set to ${is_blocked ? 'BLOCKED' : 'ALLOWED'}`,
       user
@@ -335,10 +334,10 @@ router.post('/users/:id/block', (req, res) => {
  * POST /admin/users/:id/generate-token
  * Generate a JWT token for a specific user (admin only)
  */
-router.post('/users/:id/generate-token', (req, res) => {
+router.post('/users/:id/generate-token', async (req, res) => {
   const userId = parseInt(req.params.id);
   try {
-    const user = getUserById(userId);
+    const user = await getUserById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
     const token = generateToken(user);
     return res.json({
@@ -358,14 +357,14 @@ router.post('/users/:id/generate-token', (req, res) => {
  * POST /admin/wallet/credit
  * Manually credit a user's wallet
  */
-router.post('/wallet/credit', (req, res) => {
+router.post('/wallet/credit', async (req, res) => {
   const { userId, amount, description } = req.body;
   if (!userId || !amount) {
     return res.status(400).json({ error: 'userId and amount are required' });
   }
   try {
-    creditWallet(parseInt(userId), parseFloat(amount), description || 'Admin credit');
-    const user = getUserById(parseInt(userId));
+    await creditWallet(parseInt(userId), parseFloat(amount), description || 'Admin credit');
+    const user = await getUserById(parseInt(userId));
     return res.json({ message: `Wallet credited ₹${amount} for user ${userId}`, user });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -403,7 +402,7 @@ router.post('/send-message', async (req, res) => {
 
   try {
     const msgText = message.trim();
-    const adminPhoneDigits = String(getAdminPhone() || '').replace(/\D/g, '');
+    const adminPhoneDigits = String((await getAdminPhone()) || '').replace(/\D/g, '');
 
     // Helper: filter valid non-admin users with phone numbers
     function getEligibleUsers(users) {
@@ -435,7 +434,7 @@ router.post('/send-message', async (req, res) => {
     }
 
     if (targetType === 'all') {
-      const users = getAllUsers();
+      const users = await getAllUsers();
       const targetUsers = getEligibleUsers(users);
 
       if (targetUsers.length === 0) {
@@ -450,7 +449,7 @@ router.post('/send-message', async (req, res) => {
 
     } else if (targetType === 'active_users') {
       // Users who currently have an active plan (plan_status = 'active')
-      const users = getAllUsers();
+      const users = await getAllUsers();
       const activeUsers = getEligibleUsers(users.filter(u => u.plan_status === 'active'));
 
       if (activeUsers.length === 0) {
@@ -465,7 +464,7 @@ router.post('/send-message', async (req, res) => {
 
     } else if (targetType === 'inactive_users') {
       // Users who do NOT have an active plan (no plan or expired plan)
-      const users = getAllUsers();
+      const users = await getAllUsers();
       const inactiveUsers = getEligibleUsers(users.filter(u => u.plan_status !== 'active'));
 
       if (inactiveUsers.length === 0) {
@@ -480,7 +479,7 @@ router.post('/send-message', async (req, res) => {
 
     } else if (targetType === 'user') {
       if (!userId) return res.status(400).json({ error: 'Please select a user' });
-      const user = getUserById(parseInt(userId));
+      const user = await getUserById(parseInt(userId));
       if (!user) return res.status(404).json({ error: 'Selected user not found' });
       if (!user.phone || String(user.phone).replace(/\D/g, '').length < 10) {
         return res.status(400).json({ error: `User ${user.name} does not have a valid phone number recorded.` });
@@ -528,16 +527,16 @@ router.post('/send-message', async (req, res) => {
  * GET /admin/settings
  * Fetch all setting values
  */
-router.get('/settings', (req, res) => {
+router.get('/settings', async (req, res) => {
   try {
     return res.json({
-      plan_price_28: getSetting('plan_price_28', '199'),
-      plan_price_quarter: getSetting('plan_price_quarter', '549'),
-      plan_price_half_year: getSetting('plan_price_half_year', '999'),
-      plan_price_year: getSetting('plan_price_year', '1899'),
-      admin_whatsapp_number: getSetting('admin_whatsapp_number', ''),
-      razorpay_key_id: getSetting('razorpay_key_id', ''),
-      razorpay_key_secret: getSetting('razorpay_key_secret', '')
+      plan_price_28: await getSetting('plan_price_28', '199'),
+      plan_price_quarter: await getSetting('plan_price_quarter', '549'),
+      plan_price_half_year: await getSetting('plan_price_half_year', '999'),
+      plan_price_year: await getSetting('plan_price_year', '1899'),
+      admin_whatsapp_number: await getSetting('admin_whatsapp_number', ''),
+      razorpay_key_id: await getSetting('razorpay_key_id', ''),
+      razorpay_key_secret: await getSetting('razorpay_key_secret', '')
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -548,13 +547,13 @@ router.get('/settings', (req, res) => {
  * POST /admin/settings
  * Set a setting value (e.g. key: 'plan_price', value: '199')
  */
-router.post('/settings', (req, res) => {
+router.post('/settings', async (req, res) => {
   const { key, value } = req.body;
   if (!key || value === undefined) {
     return res.status(400).json({ error: 'key and value are required' });
   }
   try {
-    const result = setSetting(key, value);
+    const result = await setSetting(key, value);
     return res.json({ message: `Setting "${key}" updated successfully.`, ...result });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -567,9 +566,9 @@ router.post('/settings', (req, res) => {
  * GET /admin/banks
  * Fetch all banks
  */
-router.get('/banks', (req, res) => {
+router.get('/banks', async (req, res) => {
   try {
-    const banks = getBanks(false); // return all (active and inactive)
+    const banks = await getBanks(false); // return all (active and inactive)
     return res.json({ banks });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -580,13 +579,13 @@ router.get('/banks', (req, res) => {
  * POST /admin/banks
  * Add a bank account
  */
-router.post('/banks', (req, res) => {
+router.post('/banks', async (req, res) => {
   const { bank_name, account_number, ifsc, account_holder } = req.body;
   if (!bank_name || !account_number || !ifsc || !account_holder) {
     return res.status(400).json({ error: 'bank_name, account_number, ifsc, and account_holder are required' });
   }
   try {
-    const bank = createBank({ bank_name, account_number, ifsc, account_holder });
+    const bank = await createBank({ bank_name, account_number, ifsc, account_holder });
     return res.status(201).json({ message: 'Bank account created successfully.', bank });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -597,14 +596,14 @@ router.post('/banks', (req, res) => {
  * PUT /admin/banks/:id
  * Edit a bank account details
  */
-router.put('/banks/:id', (req, res) => {
+router.put('/banks/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   const { bank_name, account_number, ifsc, account_holder, is_active } = req.body;
   if (!bank_name || !account_number || !ifsc || !account_holder) {
     return res.status(400).json({ error: 'bank_name, account_number, ifsc, and account_holder are required' });
   }
   try {
-    const bank = updateBank(id, { bank_name, account_number, ifsc, account_holder, is_active });
+    const bank = await updateBank(id, { bank_name, account_number, ifsc, account_holder, is_active });
     return res.json({ message: 'Bank account updated successfully.', bank });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -615,10 +614,10 @@ router.put('/banks/:id', (req, res) => {
  * DELETE /admin/banks/:id
  * Hard delete a bank account
  */
-router.delete('/banks/:id', (req, res) => {
+router.delete('/banks/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   try {
-    const result = deleteBank(id);
+    const result = await deleteBank(id);
     return res.json({ message: 'Bank account deleted successfully.', ...result });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -629,7 +628,7 @@ router.delete('/banks/:id', (req, res) => {
  * DELETE /admin/users/:id
  * Delete a user and all their associated data (plans, orders, transactions, reset codes, sessions)
  */
-router.delete('/users/:id', (req, res) => {
+router.delete('/users/:id', async (req, res) => {
   const userId = parseInt(req.params.id);
   
   // Prevent admin from deleting themselves
@@ -638,11 +637,11 @@ router.delete('/users/:id', (req, res) => {
   }
 
   try {
-    const user = getUserById(userId);
+    const user = await getUserById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     // Delete database records
-    deleteUser(userId);
+    await deleteUser(userId);
 
     // Clean up session folder on disk
     try {

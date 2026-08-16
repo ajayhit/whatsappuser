@@ -10,9 +10,9 @@ import { getSessionStatus, sendMessageToJid, initSession, waitForSessionState, h
 
 const router = express.Router();
 
-function getRazorpayInstance() {
-  const key_id = getSetting('razorpay_key_id', process.env.RAZORPAY_KEY_ID || '');
-  const key_secret = getSetting('razorpay_key_secret', process.env.RAZORPAY_KEY_SECRET || '');
+async function getRazorpayInstance() {
+  const key_id = await getSetting('razorpay_key_id', process.env.RAZORPAY_KEY_ID || '');
+  const key_secret = await getSetting('razorpay_key_secret', process.env.RAZORPAY_KEY_SECRET || '');
 
   if (!key_id || !key_secret) {
     return null;
@@ -29,9 +29,9 @@ function getRazorpayInstance() {
  * GET /razorpay/config
  * Returns public Razorpay key_id and enabled status
  */
-router.get('/config', authMiddleware, (req, res) => {
-  const key_id = getSetting('razorpay_key_id', process.env.RAZORPAY_KEY_ID || '');
-  const key_secret = getSetting('razorpay_key_secret', process.env.RAZORPAY_KEY_SECRET || '');
+router.get('/config', authMiddleware, async (req, res) => {
+  const key_id = await getSetting('razorpay_key_id', process.env.RAZORPAY_KEY_ID || '');
+  const key_secret = await getSetting('razorpay_key_secret', process.env.RAZORPAY_KEY_SECRET || '');
 
   return res.json({
     enabled: Boolean(key_id && key_secret),
@@ -51,7 +51,7 @@ router.post('/create-order', authMiddleware, async (req, res) => {
   const { plan_type, amount: customAmount } = req.body;
   const planType = plan_type || 'plan_28';
 
-  const rzp = getRazorpayInstance();
+  const rzp = await getRazorpayInstance();
   if (!rzp) {
     return res.status(400).json({
       error: 'Razorpay payment gateway is not configured by the admin yet.'
@@ -67,7 +67,7 @@ router.post('/create-order', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: 'Recharge amount must be greater than 0.' });
       }
     } else {
-      const details = getPlanDetails(planType);
+      const details = await getPlanDetails(planType);
       if (!details) {
         return res.status(400).json({ error: 'Invalid plan type selected.' });
       }
@@ -93,7 +93,7 @@ router.post('/create-order', authMiddleware, async (req, res) => {
     const razorpayOrder = await rzp.instance.orders.create(options);
 
     // Record order in SQLite
-    const orderRecord = createRazorpayOrder({
+    const orderRecord = await createRazorpayOrder({
       userId: req.user.id,
       amount: orderAmount,
       razorpayOrderId: razorpayOrder.id,
@@ -135,7 +135,7 @@ router.post('/verify-payment', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'Missing required payment verification parameters.' });
   }
 
-  const rzp = getRazorpayInstance();
+  const rzp = await getRazorpayInstance();
   if (!rzp) {
     return res.status(400).json({ error: 'Razorpay payment gateway is not configured.' });
   }
@@ -154,7 +154,7 @@ router.post('/verify-payment', authMiddleware, async (req, res) => {
     }
 
     // 2. Confirm order & activate plan in SQLite
-    const result = confirmRazorpayOrder(razorpay_order_id, razorpay_payment_id);
+    const result = await confirmRazorpayOrder(razorpay_order_id, razorpay_payment_id);
 
     // 3. Send WhatsApp Notification (non-blocking)
     try {
@@ -168,12 +168,12 @@ router.post('/verify-payment', authMiddleware, async (req, res) => {
       }
 
       if (adminSessionStatus.status === 'CONNECTED') {
-        const user = getUserById(req.user.id);
+        const user = await getUserById(req.user.id);
         const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
         const amount = result.order?.amount || 0;
 
         // Admin alert
-        let adminNumber = getSetting('admin_whatsapp_number', '');
+        let adminNumber = await getSetting('admin_whatsapp_number', '');
         if (!adminNumber && adminSessionStatus.user?.phone) {
           adminNumber = adminSessionStatus.user.phone;
         }

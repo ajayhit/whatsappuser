@@ -10,7 +10,7 @@ import crmRouter from './crmRouter.js';
 import razorpayRouter from './razorpayRouter.js';
 import { restoreAllSessions, getSessionStatus, sendMessageToJid, sendMediaToJid } from './sessionManager.js';
 import {
-  initDb, getDb, getUserByEmail, createUser, getUserById,
+  initDb, getDb, queryAll, queryOne, execute, getUserByEmail, createUser, getUserById,
   getCatalogByUserId, getAllCatalogs, getServicesByCatalogId,
   getPendingReminders, updateReminderStatus, isContactExcluded, getActivePlan, calculateNextScheduleDate,
   getPendingCampaigns, getPendingRecipients, updateCampaignStatus, updateCampaignRecipientStatus,
@@ -28,8 +28,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize SQLite database
-initDb();
+// Initialize database
+initDb().catch(err => { console.error('[DB Init Error]', err); process.exit(1); });
 
 // Enable CORS and JSON body parser
 app.use(cors());
@@ -52,10 +52,10 @@ app.get('/health', (req, res) => {
 });
 
 // Dynamic XML Sitemap Endpoint for Search Engine SEO
-app.get('/sitemap.xml', (req, res) => {
+app.get('/sitemap.xml', async (req, res) => {
   res.header('Content-Type', 'application/xml');
   try {
-    const catalogs = getAllCatalogs();
+    const catalogs = await getAllCatalogs();
     const today = new Date().toISOString().split('T')[0];
     const catalogUrls = catalogs.map(c => `
   <url>
@@ -103,10 +103,10 @@ app.use('/api/crm', crmRouter);
 app.use('/razorpay', razorpayRouter);
 
 // Public Digital Catalog View with Rich SEO Metadata
-app.get('/catalog/view/:userId', (req, res) => {
+app.get('/catalog/view/:userId', async (req, res) => {
   const userId = parseInt(req.params.userId);
   try {
-    const catalog = getCatalogByUserId(userId);
+    const catalog = await getCatalogByUserId(userId);
     if (!catalog) {
       return res.status(404).send(`
         <!DOCTYPE html>
@@ -123,7 +123,7 @@ app.get('/catalog/view/:userId', (req, res) => {
       `);
     }
 
-    const services = getServicesByCatalogId(catalog.id);
+    const services = await getServicesByCatalogId(catalog.id);
     const pageTitle = `${catalog.brand_name} | Digital Store & Catalog - Chat Automate`;
     const pageDesc = (catalog.description || `Browse products, services, and price lists for ${catalog.brand_name} on Chat Automate.`).replace(/"/g, '&quot;');
     const pageUrl = `https://chatautomate.in/catalog/view/${userId}`;
@@ -400,7 +400,7 @@ app.listen(PORT, async () => {
 function startRemindersPoller() {
   setInterval(async () => {
     try {
-      const pending = getPendingReminders();
+      const pending = await getPendingReminders();
       if (pending.length === 0) return;
 
       console.log(`[Reminders Poller] Found ${pending.length} pending reminders to process.`);
@@ -408,13 +408,13 @@ function startRemindersPoller() {
       for (const rem of pending) {
         try {
           // 1. Check user subscription status
-          const plan = getActivePlan(rem.user_id);
+          const plan = await getActivePlan(rem.user_id);
           if (!plan || new Date(plan.expires_at) < new Date()) {
             throw new Error('User subscription is inactive or expired');
           }
 
           // 2. Check if recipient contact is blocked
-          const isExcluded = isContactExcluded(rem.user_id, rem.recipient_mobile);
+          const isExcluded = await isContactExcluded(rem.user_id, rem.recipient_mobile);
           if (isExcluded) {
             throw new Error('Recipient contact is excluded/blocked');
           }
@@ -427,7 +427,7 @@ function startRemindersPoller() {
 
           // 4. Resolve placeholders — supports both {Name} and [Name] style
           let text = rem.message_template;
-          const user = getUserById(rem.user_id);
+          const user = await getUserById(rem.user_id);
           const emailVal = user?.email || '';
           text = text.replace(/\{name\}/gi, rem.recipient_name || '');
           text = text.replace(/\[name\]/gi, rem.recipient_name || '');
@@ -446,19 +446,18 @@ function startRemindersPoller() {
           // 6. Update status or reschedule if recurring
           if (rem.repeat_option === 'weekly' && rem.selected_days) {
             const nextScheduledAt = calculateNextScheduleDate(rem.selected_days, rem.send_time || '09:00');
-            getDb().prepare(`
-              UPDATE reminders
-              SET scheduled_at = ?, sent_at = datetime('now'), status = 'pending', error_message = NULL
-              WHERE id = ?
-            `).run(nextScheduledAt, rem.id);
+            await execute(
+              "UPDATE reminders SET scheduled_at = $1, sent_at = NOW(), status = 'pending', error_message = NULL WHERE id = $2",
+              [nextScheduledAt, rem.id]
+            );
             console.log(`[Reminders Poller] Sent recurring reminder #${rem.id} to ${rem.recipient_mobile}. Rescheduled for ${nextScheduledAt}`);
           } else {
-            updateReminderStatus(rem.id, 'sent');
+            await updateReminderStatus(rem.id, 'sent');
             console.log(`[Reminders Poller] Successfully sent reminder #${rem.id} to ${rem.recipient_mobile}`);
           }
         } catch (err) {
           console.error(`[Reminders Poller Failed] Reminder #${rem.id} failed: ${err.message}`);
-          updateReminderStatus(rem.id, 'failed', err.message);
+          await updateReminderStatus(rem.id, 'failed', err.message);
         }
       }
     } catch (e) {
@@ -471,45 +470,45 @@ function startRemindersPoller() {
 function startCampaignsPoller() {
   setInterval(async () => {
     try {
-      const campaigns = getPendingCampaigns();
+      const campaigns = await getPendingCampaigns();
       if (campaigns.length === 0) return;
 
       for (const campaign of campaigns) {
         // If it was pending and it's time to run, mark it as running
         if (campaign.status === 'pending') {
-          updateCampaignStatus(campaign.id, 'running');
+          await updateCampaignStatus(campaign.id, 'running');
         }
 
         // Double check status in case user paused it
-        const currentCampaign = getCampaignById(campaign.id);
+        const currentCampaign = await getCampaignById(campaign.id);
         if (currentCampaign.status !== 'running') continue;
 
         // Fetch up to 50 pending recipients per cycle to prevent blocking
-        const recipients = getPendingRecipients(campaign.id, 50);
+        const recipients = await getPendingRecipients(campaign.id, 50);
         
         if (recipients.length === 0) {
           // No more recipients = completed!
-          updateCampaignStatus(campaign.id, 'completed');
+          await updateCampaignStatus(campaign.id, 'completed');
           console.log(`[Campaigns Poller] Campaign #${campaign.id} completed!`);
           continue;
         }
 
         for (const rec of recipients) {
           // Re-check status inside loop to allow rapid pausing
-          const reCheck = getCampaignById(campaign.id);
+          const reCheck = await getCampaignById(campaign.id);
           if (reCheck.status !== 'running') {
             break;
           }
 
           try {
             // 1. Check user subscription status
-            const plan = getActivePlan(campaign.user_id);
+            const plan = await getActivePlan(campaign.user_id);
             if (!plan || new Date(plan.expires_at) < new Date()) {
               throw new Error('User subscription is inactive or expired');
             }
 
             // 2. Check if recipient contact is blocked
-            const isExcluded = isContactExcluded(campaign.user_id, rec.mobile);
+            const isExcluded = await isContactExcluded(campaign.user_id, rec.mobile);
             if (isExcluded) {
               throw new Error('Recipient contact is excluded/blocked');
             }
@@ -522,7 +521,7 @@ function startCampaignsPoller() {
 
             // 4. Resolve placeholders
             let text = campaign.message_text;
-            const user = getUserById(campaign.user_id);
+            const user = await getUserById(campaign.user_id);
             const emailVal = user?.email || '';
             text = text.replace(/\{name\}/gi, rec.name || '');
             text = text.replace(/\[name\}/gi, rec.name || '');
@@ -541,13 +540,13 @@ function startCampaignsPoller() {
             }
 
             // 6. Update status
-            updateCampaignRecipientStatus(rec.id, 'sent');
-            incrementCampaignSuccess(campaign.id);
+            await updateCampaignRecipientStatus(rec.id, 'sent');
+            await incrementCampaignSuccess(campaign.id);
             console.log(`[Campaigns Poller] Sent campaign #${campaign.id} message to ${rec.mobile}`);
           } catch (err) {
             console.error(`[Campaigns Poller Failed] Campaign #${campaign.id} recipient #${rec.id} failed: ${err.message}`);
-            updateCampaignRecipientStatus(rec.id, 'failed', err.message);
-            incrementCampaignFailure(campaign.id);
+            await updateCampaignRecipientStatus(rec.id, 'failed', err.message);
+            await incrementCampaignFailure(campaign.id);
           }
 
           // Small delay between sends to prevent rate-limiting by Baileys/WhatsApp
@@ -564,15 +563,10 @@ function startCampaignsPoller() {
 function startFollowUpPoller() {
   setInterval(async () => {
     try {
-      const dbConn = getDb();
-
       // Fetch all active automations grouped by user
-      const automations = dbConn.prepare(`
-        SELECT fa.*, u.id AS owner_id
-        FROM followup_automations fa
-        JOIN users u ON u.id = fa.user_id
-        WHERE fa.active = 1
-      `).all();
+      const automations = await queryAll(
+        'SELECT fa.*, u.id AS owner_id FROM followup_automations fa JOIN users u ON u.id = fa.user_id WHERE fa.active = 1'
+      );
 
       if (!automations || automations.length === 0) return;
 
@@ -585,14 +579,14 @@ function startFollowUpPoller() {
 
       for (const [userId, rules] of Object.entries(byUser)) {
         try {
-          const plan = getActivePlan(parseInt(userId));
+          const plan = await getActivePlan(parseInt(userId));
           if (!plan || new Date(plan.expires_at) < new Date()) continue;
 
           const session = getSessionStatus(String(userId));
           if (session.status !== 'CONNECTED') continue;
 
-          const user = getUserById(parseInt(userId));
-          const contacts = getContactsByUser(parseInt(userId));
+          const user = await getUserById(parseInt(userId));
+          const contacts = await getContactsByUser(parseInt(userId));
 
           for (const rule of rules) {
             const nowMs = Date.now();
@@ -603,11 +597,10 @@ function startFollowUpPoller() {
 
               try {
                 // Check if this contact already received a follow-up for this rule recently
-                const lastSentRow = dbConn.prepare(`
-                  SELECT sent_at FROM followup_sent_log
-                  WHERE user_id = ? AND automation_id = ? AND contact_id = ?
-                  ORDER BY sent_at DESC LIMIT 1
-                `).get(parseInt(userId), rule.id, contact.id);
+                const lastSentRow = await queryOne(
+                  'SELECT sent_at FROM followup_sent_log WHERE user_id = $1 AND automation_id = $2 AND contact_id = $3 ORDER BY sent_at DESC LIMIT 1',
+                  [parseInt(userId), rule.id, contact.id]
+                );
 
                 if (lastSentRow) {
                   // Don't re-send if already sent within delay period
@@ -630,10 +623,10 @@ function startFollowUpPoller() {
                 await sendMessageToJid(String(userId), contact.mobile, text);
 
                 // Log this send so we don't re-send immediately
-                dbConn.prepare(`
-                  INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, sent_at)
-                  VALUES (?, ?, ?, 'sent', datetime('now'))
-                `).run(parseInt(userId), rule.id, contact.id);
+                await execute(
+                  "INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, sent_at) VALUES ($1, $2, $3, 'sent', NOW())",
+                  [parseInt(userId), rule.id, contact.id]
+                );
 
                 console.log(`[FollowUp Poller] Sent '${rule.name}' to ${contact.mobile} for user ${userId}`);
 
@@ -641,10 +634,10 @@ function startFollowUpPoller() {
               } catch (contactErr) {
                 console.error(`[FollowUp Poller] Failed for contact ${contact.mobile}: ${contactErr.message}`);
                 try {
-                  dbConn.prepare(`
-                    INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, error_message, sent_at)
-                    VALUES (?, ?, ?, 'failed', ?, datetime('now'))
-                  `).run(parseInt(userId), rule.id, contact.id, contactErr.message || 'Send error');
+                  await execute(
+                    "INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, error_message, sent_at) VALUES ($1, $2, $3, 'failed', $4, NOW())",
+                    [parseInt(userId), rule.id, contact.id, contactErr.message || 'Send error']
+                  );
                 } catch (logErr) {}
               }
             }
@@ -663,7 +656,7 @@ function startFollowUpPoller() {
 function startBirthdayPoller() {
   setInterval(async () => {
     try {
-      const dueWishes = getDueBirthdayWishes();
+      const dueWishes = await getDueBirthdayWishes();
       if (!dueWishes || dueWishes.length === 0) return;
 
       // IST is UTC + 5 hours 30 minutes
@@ -690,13 +683,13 @@ function startBirthdayPoller() {
             continue;
           }
 
-          const plan = getActivePlan(wish.user_id);
+          const plan = await getActivePlan(wish.user_id);
           if (!plan || new Date(plan.expires_at) < new Date()) continue;
 
           const session = getSessionStatus(String(wish.user_id));
           if (session.status !== 'CONNECTED') continue;
 
-          const user = getUserById(wish.user_id);
+          const user = await getUserById(wish.user_id);
 
           let text = wish.message_text;
           text = text.replace(/\{name\}/gi, wish.recipient_name || '');
@@ -708,11 +701,11 @@ function startBirthdayPoller() {
             await sendMessageToJid(String(wish.user_id), wish.recipient_phone, text);
           }
 
-          markBirthdayWishSent(wish.id, currentYear);
+          await markBirthdayWishSent(wish.id, currentYear);
           console.log(`[Birthday Poller] ✅ Sent birthday wish #${wish.id} to ${wish.recipient_phone}`);
         } catch (err) {
           console.error(`[Birthday Poller] Failed for wish #${wish.id}: ${err.message}`);
-          markBirthdayWishFailed(wish.id, err.message);
+          await markBirthdayWishFailed(wish.id, err.message);
         }
       }
     } catch (e) {
@@ -726,23 +719,23 @@ function startBirthdayPoller() {
 function startPaymentReminderPoller() {
   setInterval(async () => {
     try {
-      const dbConn = getDb();
       const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
       const istDateStr = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
 
       // Find active pending reminders due today (factoring in remind_days_before offset)
-      const dueReminders = dbConn.prepare(`
-        SELECT * FROM payment_reminders
-        WHERE active = 1 AND status = 'pending'
-          AND date(due_date, '-' || remind_days_before || ' days') <= ?
-          AND date(due_date) >= ?
-      `).all(istDateStr, istDateStr);
+      const dueReminders = await queryAll(
+        `SELECT * FROM payment_reminders
+         WHERE active = 1 AND status = 'pending'
+           AND (due_date::date - (remind_days_before::text || ' days')::interval)::date <= $1::date
+           AND due_date::date >= $1::date`,
+        [istDateStr]
+      );
 
       if (!dueReminders || dueReminders.length === 0) return;
 
       for (const rem of dueReminders) {
         try {
-          const plan = getActivePlan(rem.user_id);
+          const plan = await getActivePlan(rem.user_id);
           if (!plan || new Date(plan.expires_at) < new Date()) continue;
 
           const session = getSessionStatus(String(rem.user_id));
@@ -760,7 +753,7 @@ function startPaymentReminderPoller() {
             await sendMessageToJid(String(rem.user_id), rem.recipient_phone, text);
           }
 
-          updatePaymentReminderStatus(rem.id, rem.user_id, 'sent');
+          await updatePaymentReminderStatus(rem.id, rem.user_id, 'sent');
           console.log(`[Payment Reminder Poller] Sent reminder #${rem.id} to ${rem.recipient_phone}`);
         } catch (err) {
           console.error(`[Payment Reminder Poller] Failed for #${rem.id}: ${err.message}`);
@@ -781,7 +774,7 @@ function startPlanExpiryPoller() {
       const adminStatus = getSessionStatus('admin');
       if (adminStatus.status !== 'CONNECTED') return;
 
-      const users = getAllUsers();
+      const users = await getAllUsers();
       if (!users || users.length === 0) return;
 
       const now = Date.now();
@@ -791,7 +784,7 @@ function startPlanExpiryPoller() {
         if (!user.phone) continue;
 
         // Get user's latest plan (active or most recent)
-        const plan = getActivePlan(user.id) || getPlansByUser(user.id)?.[0];
+        const plan = await getActivePlan(user.id) || await getPlansByUser(user.id)?.[0];
         if (!plan || !plan.expires_at) continue;
 
         const expiresAtMs = new Date(plan.expires_at).getTime();
@@ -870,7 +863,7 @@ function startPlanExpiryPoller() {
         }
 
         // Check if notification can be sent based on frequency rules
-        if (!canSendExpiryNotification(user.id, minIntervalMinutes, maxPer24h)) {
+        if (!await canSendExpiryNotification(user.id, minIntervalMinutes, maxPer24h)) {
           continue;
         }
 
@@ -879,7 +872,7 @@ function startPlanExpiryPoller() {
           const digits = String(user.phone).replace(/\D/g, '');
           if (digits && digits.length >= 10) {
             await sendMessageToJid('admin', digits, message);
-            logExpiryNotification(user.id, category);
+            await logExpiryNotification(user.id, category);
             console.log(`[Expiry Poller] Sent '${category}' notification to user #${user.id} (${digits})`);
           }
         } catch (sendErr) {

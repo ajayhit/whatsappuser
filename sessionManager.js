@@ -482,10 +482,10 @@ function isTimeInSchedule(startTimeStr, endTimeStr) {
 /**
  * Helper: replaces placeholders {Name}, {ShopName}, {Mobile}, {Email}
  */
-function resolveAutoPlaceholders(text, userId, fromPhone) {
+async function resolveAutoPlaceholders(text, userId, fromPhone) {
   if (!text) return '';
-  const contact = getContactByMobile(userId, fromPhone);
-  const user = getUserById(userId);
+  const contact = await getContactByMobile(userId, fromPhone);
+  const user = await getUserById(userId);
 
   const nameVal = contact?.name || 'Customer';
   const shopVal = contact?.shop_name || 'Store';
@@ -513,7 +513,7 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
   const fromPhone = fromJid.split('@')[0];
 
   // 1. Check if contact is excluded/blocked
-  if (isContactExcluded(userId, fromPhone)) {
+  if (await isContactExcluded(userId, fromPhone)) {
     return;
   }
 
@@ -521,7 +521,7 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
   const rateLimitKey = `${userId}_${fromPhone}`;
 
   // 3. Fetch automation settings
-  const settings = getAutomationSettings(userId);
+  const settings = await getAutomationSettings(userId);
   let repliedWelcome = false;
 
   // 4. Welcome Message check (Once per 24 hours per user)
@@ -529,7 +529,7 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
     const lastWelcomeTime = lastWelcomeSentMap.get(rateLimitKey) || 0;
     // 24 hours cooldown (86400000 ms)
     if (Date.now() - lastWelcomeTime >= 86400000) {
-      const welcomeMsg = resolveAutoPlaceholders(settings.welcome_text, userId, fromPhone);
+      const welcomeMsg = await resolveAutoPlaceholders(settings.welcome_text, userId, fromPhone);
       console.log(`[AutoResponse Welcome] User ${userId} sending Welcome Message to ${fromPhone}`);
       
       lastWelcomeSentMap.set(rateLimitKey, Date.now());
@@ -554,7 +554,7 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
       const lastAwayTime = lastAwaySentMap.get(rateLimitKey) || 0;
       // 60 seconds cooldown for away messages
       if (Date.now() - lastAwayTime >= 60000) {
-        const awayMsg = resolveAutoPlaceholders(settings.away_text, userId, fromPhone);
+        const awayMsg = await resolveAutoPlaceholders(settings.away_text, userId, fromPhone);
         console.log(`[AutoResponse Away] User ${userId} sending Away Message to ${fromPhone}`);
         
         lastAwaySentMap.set(rateLimitKey, Date.now());

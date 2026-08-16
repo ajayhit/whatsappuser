@@ -15,6 +15,8 @@ services:
         value: /opt/render/project/.data/sessions
       - key: DB_PATH
         value: /opt/render/project/.data/database.db
+      - key: DATABASE_URL
+        sync: false
     disk:
       name: whatsapp-sessions
       mountPath: /opt/render/project/.data

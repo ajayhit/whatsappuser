@@ -65,12 +65,12 @@ router.use(planMiddleware);
 
 // ─── Digital Catalog Endpoints ───────────────────────────────────────────────
 
-router.get('/catalog', (req, res) => {
+router.get('/catalog', async (req, res) => {
   try {
-    let catalog = getCatalogByUserId(req.user.id);
+    let catalog = await getCatalogByUserId(req.user.id);
     let services = [];
     if (catalog) {
-      services = getServicesByCatalogId(catalog.id);
+      services = await getServicesByCatalogId(catalog.id);
     }
     return res.json({ catalog: catalog || null, services });
   } catch (err) {
@@ -81,7 +81,7 @@ router.get('/catalog', (req, res) => {
 router.post('/catalog', upload.fields([
   { name: 'logo', maxCount: 1 },
   { name: 'catalog_audio', maxCount: 1 }
-]), (req, res) => {
+]), async (req, res) => {
   const { brand_name, description } = req.body;
   if (!brand_name) {
     return res.status(400).json({ error: 'brand_name is required' });
@@ -91,7 +91,7 @@ router.post('/catalog', upload.fields([
   const catalog_audio_path = req.files?.['catalog_audio']?.[0]?.path || null;
 
   try {
-    const catalog = upsertCatalog(req.user.id, {
+    const catalog = await upsertCatalog(req.user.id, {
       brand_name,
       logo_path,
       description: description || '',
@@ -106,14 +106,14 @@ router.post('/catalog', upload.fields([
 router.post('/catalog/services', upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'audio', maxCount: 1 }
-]), (req, res) => {
+]), async (req, res) => {
   const { name, description, price } = req.body;
   if (!name || price === undefined) {
     return res.status(400).json({ error: 'name and price are required' });
   }
 
   try {
-    const catalog = getCatalogByUserId(req.user.id);
+    const catalog = await getCatalogByUserId(req.user.id);
     if (!catalog) {
       return res.status(400).json({ error: 'Please create your catalog settings first before adding services.' });
     }
@@ -121,7 +121,7 @@ router.post('/catalog/services', upload.fields([
     const image_path = req.files?.['image']?.[0]?.path || null;
     const audio_path = req.files?.['audio']?.[0]?.path || null;
 
-    const service = createService(catalog.id, {
+    const service = await createService(catalog.id, {
       name,
       description: description || '',
       price: parseFloat(price),
@@ -137,7 +137,7 @@ router.post('/catalog/services', upload.fields([
 router.put('/catalog/services/:id', upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'audio', maxCount: 1 }
-]), (req, res) => {
+]), async (req, res) => {
   const { name, description, price } = req.body;
   const serviceId = parseInt(req.params.id);
 
@@ -146,7 +146,7 @@ router.put('/catalog/services/:id', upload.fields([
   }
 
   try {
-    const catalog = getCatalogByUserId(req.user.id);
+    const catalog = await getCatalogByUserId(req.user.id);
     if (!catalog) {
       return res.status(400).json({ error: 'Catalog not found' });
     }
@@ -154,7 +154,7 @@ router.put('/catalog/services/:id', upload.fields([
     const image_path = req.files?.['image']?.[0]?.path || null;
     const audio_path = req.files?.['audio']?.[0]?.path || null;
 
-    const service = updateService(serviceId, catalog.id, {
+    const service = await updateService(serviceId, catalog.id, {
       name,
       description: description || '',
       price: parseFloat(price),
@@ -167,14 +167,14 @@ router.put('/catalog/services/:id', upload.fields([
   }
 });
 
-router.delete('/catalog/services/:id', (req, res) => {
+router.delete('/catalog/services/:id', async (req, res) => {
   const serviceId = parseInt(req.params.id);
   try {
-    const catalog = getCatalogByUserId(req.user.id);
+    const catalog = await getCatalogByUserId(req.user.id);
     if (!catalog) {
       return res.status(400).json({ error: 'Catalog not found' });
     }
-    const result = deleteService(serviceId, catalog.id);
+    const result = await deleteService(serviceId, catalog.id);
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -183,16 +183,16 @@ router.delete('/catalog/services/:id', (req, res) => {
 
 // ─── Contacts Directory Endpoints ────────────────────────────────────────────
 
-router.get('/contacts', (req, res) => {
+router.get('/contacts', async (req, res) => {
   try {
-    const contacts = getContactsByUser(req.user.id);
+    const contacts = await getContactsByUser(req.user.id);
     return res.json({ contacts });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/contacts', (req, res) => {
+router.post('/contacts', async (req, res) => {
   const { name, mobile, shop_name } = req.body;
   if (!name || !mobile) {
     return res.status(400).json({ error: 'name and mobile are required' });
@@ -204,7 +204,7 @@ router.post('/contacts', (req, res) => {
   }
 
   try {
-    const contact = upsertContact({
+    const contact = await upsertContact({
       user_id: req.user.id,
       name,
       mobile: phone,
@@ -216,24 +216,24 @@ router.post('/contacts', (req, res) => {
   }
 });
 
-router.post('/contacts/toggle-exclude', (req, res) => {
+router.post('/contacts/toggle-exclude', async (req, res) => {
   const { contactId, isExcluded } = req.body;
   if (!contactId || isExcluded === undefined) {
     return res.status(400).json({ error: 'contactId and isExcluded are required' });
   }
 
   try {
-    const contact = toggleContactExclude(contactId, req.user.id, isExcluded);
+    const contact = await toggleContactExclude(contactId, req.user.id, isExcluded);
     return res.json({ message: 'Blocklist status updated', contact });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.delete('/contacts/:id', (req, res) => {
+router.delete('/contacts/:id', async (req, res) => {
   const contactId = parseInt(req.params.id);
   try {
-    const result = deleteContact(contactId, req.user.id);
+    const result = await deleteContact(contactId, req.user.id);
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -242,36 +242,36 @@ router.delete('/contacts/:id', (req, res) => {
 
 // ─── Contact Groups Endpoints ─────────────────────────────────────────────────
 
-router.get('/contact-groups', (req, res) => {
+router.get('/contact-groups', async (req, res) => {
   try {
-    const groups = getContactGroupsByUser(req.user.id);
+    const groups = await getContactGroupsByUser(req.user.id);
     return res.json({ groups });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/contact-groups', (req, res) => {
+router.post('/contact-groups', async (req, res) => {
   const { name, description } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Group name is required' });
   }
   try {
-    const group = createContactGroup(req.user.id, { name, description });
+    const group = await createContactGroup(req.user.id, { name, description });
     return res.json({ message: 'Group created successfully', group });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.put('/contact-groups/:id', (req, res) => {
+router.put('/contact-groups/:id', async (req, res) => {
   const groupId = parseInt(req.params.id);
   const { name, description } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Group name is required' });
   }
   try {
-    const group = updateContactGroup(groupId, req.user.id, { name, description });
+    const group = await updateContactGroup(groupId, req.user.id, { name, description });
     if (!group) return res.status(404).json({ error: 'Group not found' });
     return res.json({ message: 'Group updated successfully', group });
   } catch (err) {
@@ -279,12 +279,12 @@ router.put('/contact-groups/:id', (req, res) => {
   }
 });
 
-router.delete('/contact-groups/:id', (req, res) => {
+router.delete('/contact-groups/:id', async (req, res) => {
   const groupId = parseInt(req.params.id);
   try {
-    const group = getContactGroupById(groupId, req.user.id);
+    const group = await getContactGroupById(groupId, req.user.id);
     if (!group) return res.status(404).json({ error: 'Group not found' });
-    const result = deleteContactGroup(groupId, req.user.id);
+    const result = await deleteContactGroup(groupId, req.user.id);
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -292,10 +292,10 @@ router.delete('/contact-groups/:id', (req, res) => {
 });
 
 // Get members of a group
-router.get('/contact-groups/:id/members', (req, res) => {
+router.get('/contact-groups/:id/members', async (req, res) => {
   const groupId = parseInt(req.params.id);
   try {
-    const members = getContactGroupMembers(groupId, req.user.id);
+    const members = await getContactGroupMembers(groupId, req.user.id);
     if (members === null) return res.status(404).json({ error: 'Group not found' });
     return res.json({ members });
   } catch (err) {
@@ -304,12 +304,12 @@ router.get('/contact-groups/:id/members', (req, res) => {
 });
 
 // Get contacts NOT yet in a group (for add-member picker)
-router.get('/contact-groups/:id/available-contacts', (req, res) => {
+router.get('/contact-groups/:id/available-contacts', async (req, res) => {
   const groupId = parseInt(req.params.id);
   try {
-    const group = getContactGroupById(groupId, req.user.id);
+    const group = await getContactGroupById(groupId, req.user.id);
     if (!group) return res.status(404).json({ error: 'Group not found' });
-    const contacts = getContactsNotInGroup(groupId, req.user.id);
+    const contacts = await getContactsNotInGroup(groupId, req.user.id);
     return res.json({ contacts });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -317,14 +317,14 @@ router.get('/contact-groups/:id/available-contacts', (req, res) => {
 });
 
 // Add contacts to a group
-router.post('/contact-groups/:id/members', (req, res) => {
+router.post('/contact-groups/:id/members', async (req, res) => {
   const groupId = parseInt(req.params.id);
   const { contactIds } = req.body;
   if (!Array.isArray(contactIds) || contactIds.length === 0) {
     return res.status(400).json({ error: 'contactIds array is required' });
   }
   try {
-    const result = addContactsToGroup(groupId, req.user.id, contactIds.map(Number));
+    const result = await addContactsToGroup(groupId, req.user.id, contactIds.map(Number));
     return res.json({ message: `${result.added} contact(s) added to group`, result });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -332,18 +332,18 @@ router.post('/contact-groups/:id/members', (req, res) => {
 });
 
 // Remove a contact from a group
-router.delete('/contact-groups/:id/members/:contactId', (req, res) => {
+router.delete('/contact-groups/:id/members/:contactId', async (req, res) => {
   const groupId = parseInt(req.params.id);
   const contactId = parseInt(req.params.contactId);
   try {
-    const result = removeContactFromGroup(groupId, contactId, req.user.id);
+    const result = await removeContactFromGroup(groupId, contactId, req.user.id);
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/contacts/import', upload.single('file'), (req, res) => {
+router.post('/contacts/import', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Excel file is required' });
   }
@@ -383,7 +383,7 @@ router.post('/contacts/import', upload.single('file'), (req, res) => {
       const name = String(row[nameKey] || phone).trim();
       const shopName = shopKey ? String(row[shopKey] || '').trim() : '';
 
-      upsertContact({
+      await upsertContact({
         user_id: req.user.id,
         name,
         mobile: phone,
@@ -403,7 +403,7 @@ router.post('/contacts/import', upload.single('file'), (req, res) => {
   }
 });
 
-router.get('/contacts/sample-excel', (req, res) => {
+router.get('/contacts/sample-excel', async (req, res) => {
   try {
     const sampleContacts = [
       { Name: 'John Doe', Mobile: '919876543210', ShopName: 'Acme Traders' },
@@ -431,9 +431,9 @@ router.get('/contacts/sample-excel', (req, res) => {
   }
 });
 
-router.get('/contacts/export-excel', (req, res) => {
+router.get('/contacts/export-excel', async (req, res) => {
   try {
-    const contacts = getContactsByUser(req.user.id);
+    const contacts = await getContactsByUser(req.user.id);
     const data = contacts.map(c => ({
       Name: c.name || '',
       Mobile: c.mobile || '',
@@ -460,16 +460,16 @@ router.get('/contacts/export-excel', (req, res) => {
 
 // ─── Scheduled Reminders Endpoints ───────────────────────────────────────────
 
-router.get('/reminders', (req, res) => {
+router.get('/reminders', async (req, res) => {
   try {
-    const reminders = getRemindersByUser(req.user.id);
+    const reminders = await getRemindersByUser(req.user.id);
     return res.json({ reminders });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/reminders', (req, res) => {
+router.post('/reminders', async (req, res) => {
   const { contact_id, recipient_mobile, recipient_name, shop_name, message_template, scheduled_at, send_after_days, selected_days, send_time, repeat_option } = req.body;
 
   if (!recipient_mobile || !message_template) {
@@ -504,7 +504,7 @@ router.post('/reminders', (req, res) => {
   }
 
   try {
-    const reminder = createReminder({
+    const reminder = await createReminder({
       user_id: req.user.id,
       contact_id: contact_id ? parseInt(contact_id) : null,
       recipient_mobile: phone,
@@ -522,10 +522,10 @@ router.post('/reminders', (req, res) => {
   }
 });
 
-router.delete('/reminders/:id', (req, res) => {
+router.delete('/reminders/:id', async (req, res) => {
   const reminderId = parseInt(req.params.id);
   try {
-    const result = deleteReminder(reminderId, req.user.id);
+    const result = await deleteReminder(reminderId, req.user.id);
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -534,23 +534,23 @@ router.delete('/reminders/:id', (req, res) => {
 
 // ─── Personalized Message Templates Endpoints ───────────────────────────────
 
-router.get('/templates', (req, res) => {
+router.get('/templates', async (req, res) => {
   try {
-    const templates = getTemplatesByUser(req.user.id);
+    const templates = await getTemplatesByUser(req.user.id);
     return res.json({ templates });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/templates', (req, res) => {
+router.post('/templates', async (req, res) => {
   const { title, content, category } = req.body;
   if (!title || !content) {
     return res.status(400).json({ error: 'Title and content are required' });
   }
 
   try {
-    const template = createTemplate({
+    const template = await createTemplate({
       user_id: req.user.id,
       title: title.trim(),
       content: content.trim(),
@@ -562,7 +562,7 @@ router.post('/templates', (req, res) => {
   }
 });
 
-router.put('/templates/:id', (req, res) => {
+router.put('/templates/:id', async (req, res) => {
   const templateId = parseInt(req.params.id);
   const { title, content, category } = req.body;
   if (!title || !content) {
@@ -570,7 +570,7 @@ router.put('/templates/:id', (req, res) => {
   }
 
   try {
-    const template = updateTemplate(templateId, req.user.id, {
+    const template = await updateTemplate(templateId, req.user.id, {
       title: title.trim(),
       content: content.trim(),
       category: category ? category.trim() : 'General'
@@ -581,10 +581,10 @@ router.put('/templates/:id', (req, res) => {
   }
 });
 
-router.delete('/templates/:id', (req, res) => {
+router.delete('/templates/:id', async (req, res) => {
   const templateId = parseInt(req.params.id);
   try {
-    const result = deleteTemplate(templateId, req.user.id);
+    const result = await deleteTemplate(templateId, req.user.id);
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -607,7 +607,7 @@ router.post('/templates/send-bulk', async (req, res) => {
   }
 
   try {
-    let contacts = getContactsByUser(req.user.id);
+    let contacts = await getContactsByUser(req.user.id);
 
     // Filter out excluded contacts
     contacts = contacts.filter(c => c.is_excluded !== 1);
@@ -627,7 +627,7 @@ router.post('/templates/send-bulk', async (req, res) => {
     let successCount = 0;
     let failCount = 0;
 
-    const senderUser = getUserById(req.user.id);
+    const senderUser = await getUserById(req.user.id);
     for (const contact of contacts) {
       // Substitute placeholders
       let personalizedMsg = content;
@@ -672,16 +672,16 @@ router.post('/templates/send-bulk', async (req, res) => {
 
 // ─── Automation Settings Endpoints (Welcome & Away Messages) ─────────────────
 
-router.get('/automation-settings', (req, res) => {
+router.get('/automation-settings', async (req, res) => {
   try {
-    const settings = getAutomationSettings(req.user.id);
+    const settings = await getAutomationSettings(req.user.id);
     return res.json({ settings });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/automation-settings', upload.single('welcome_media'), (req, res) => {
+router.post('/automation-settings', upload.single('welcome_media'), async (req, res) => {
   const {
     welcome_active, welcome_text,
     away_active, away_text, away_schedule_type, away_start_time, away_end_time
@@ -691,7 +691,7 @@ router.post('/automation-settings', upload.single('welcome_media'), (req, res) =
     const welcome_media_path = req.file ? req.file.path : undefined;
     const welcome_media_type = req.file ? getMediaType(req.file.mimetype) : undefined;
 
-    const updated = upsertAutomationSettings(req.user.id, {
+    const updated = await upsertAutomationSettings(req.user.id, {
       welcome_active: welcome_active !== undefined ? (welcome_active === 'true' || welcome_active === '1' || welcome_active === true ? 1 : 0) : undefined,
       welcome_text: welcome_text !== undefined ? welcome_text.trim() : undefined,
       welcome_media_path,
@@ -711,25 +711,25 @@ router.post('/automation-settings', upload.single('welcome_media'), (req, res) =
 
 // ─── Campaigns Endpoints ─────────────────────────────────────────────────────
 
-router.get('/campaigns', (req, res) => {
+router.get('/campaigns', async (req, res) => {
   try {
-    const campaigns = getCampaignsByUser(req.user.id);
+    const campaigns = await getCampaignsByUser(req.user.id);
     return res.json({ campaigns });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/campaigns/:id/recipients', (req, res) => {
+router.get('/campaigns/:id/recipients', async (req, res) => {
   try {
-    const recipients = getCampaignRecipients(req.params.id);
+    const recipients = await getCampaignRecipients(req.params.id);
     return res.json({ recipients });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/campaigns', upload.single('media'), (req, res) => {
+router.post('/campaigns', upload.single('media'), async (req, res) => {
   try {
     const { name, message_text, scheduled_at, contactsStr } = req.body;
     let contacts = [];
@@ -744,7 +744,7 @@ router.post('/campaigns', upload.single('media'), (req, res) => {
     const media_path = req.file ? req.file.path : null;
     const media_type = req.file ? getMediaType(req.file.mimetype) : null;
 
-    const campaign = createCampaign(req.user.id, {
+    const campaign = await createCampaign(req.user.id, {
       name,
       message_text,
       media_path,
@@ -759,12 +759,12 @@ router.post('/campaigns', upload.single('media'), (req, res) => {
   }
 });
 
-router.put('/campaigns/:id/status', (req, res) => {
+router.put('/campaigns/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
 
     // Validate ownership
-    const campaign = getCampaignById(req.params.id);
+    const campaign = await getCampaignById(req.params.id);
     if (!campaign || campaign.user_id !== req.user.id) {
       return res.status(404).json({ error: 'Campaign not found' });
     }
@@ -774,7 +774,7 @@ router.put('/campaigns/:id/status', (req, res) => {
       return res.status(400).json({ error: 'Invalid status update' });
     }
 
-    const updated = updateCampaignStatus(req.params.id, status);
+    const updated = await updateCampaignStatus(req.params.id, status);
     return res.json({ message: 'Campaign status updated', campaign: updated });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -783,16 +783,16 @@ router.put('/campaigns/:id/status', (req, res) => {
 
 // ─── Birthday Wishes Endpoints ───────────────────────────────────────────────
 
-router.get('/birthday-wishes', (req, res) => {
+router.get('/birthday-wishes', async (req, res) => {
   try {
-    const wishes = getBirthdayWishesByUser(req.user.id);
+    const wishes = await getBirthdayWishesByUser(req.user.id);
     return res.json(wishes);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/birthday-wishes', upload.single('media'), (req, res) => {
+router.post('/birthday-wishes', upload.single('media'), async (req, res) => {
   try {
     const { contact_id, recipient_name, recipient_phone, birthday_date, birth_year, message_text, send_time } = req.body;
     if (!recipient_name || !recipient_phone || !birthday_date || !message_text) {
@@ -801,7 +801,7 @@ router.post('/birthday-wishes', upload.single('media'), (req, res) => {
     const media_path = req.file ? req.file.path : null;
     const media_type = req.file ? getMediaType(req.file.mimetype) : null;
 
-    const wish = createBirthdayWish(req.user.id, {
+    const wish = await createBirthdayWish(req.user.id, {
       contact_id: contact_id ? parseInt(contact_id) : null,
       recipient_name,
       recipient_phone: normalizePhone(recipient_phone),
@@ -818,9 +818,9 @@ router.post('/birthday-wishes', upload.single('media'), (req, res) => {
   }
 });
 
-router.delete('/birthday-wishes/:id', (req, res) => {
+router.delete('/birthday-wishes/:id', async (req, res) => {
   try {
-    deleteBirthdayWish(req.params.id, req.user.id);
+    await deleteBirthdayWish(req.params.id, req.user.id);
     return res.json({ message: 'Birthday wish deleted' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -829,16 +829,16 @@ router.delete('/birthday-wishes/:id', (req, res) => {
 
 // ─── Payment Reminder Endpoints ─────────────────────────────────────────────
 
-router.get('/payment-reminders', (req, res) => {
+router.get('/payment-reminders', async (req, res) => {
   try {
-    const reminders = getPaymentRemindersByUser(req.user.id);
+    const reminders = await getPaymentRemindersByUser(req.user.id);
     return res.json(reminders);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/payment-reminders', upload.single('media'), (req, res) => {
+router.post('/payment-reminders', upload.single('media'), async (req, res) => {
   try {
     const { contact_id, recipient_name, recipient_phone, amount, currency, due_date, message_text, remind_days_before } = req.body;
     if (!recipient_name || !recipient_phone || !due_date || !message_text) {
@@ -847,7 +847,7 @@ router.post('/payment-reminders', upload.single('media'), (req, res) => {
     const media_path = req.file ? req.file.path : null;
     const media_type = req.file ? getMediaType(req.file.mimetype) : null;
 
-    const reminder = createPaymentReminder(req.user.id, {
+    const reminder = await createPaymentReminder(req.user.id, {
       contact_id: contact_id ? parseInt(contact_id) : null,
       recipient_name,
       recipient_phone: normalizePhone(recipient_phone),
@@ -865,19 +865,19 @@ router.post('/payment-reminders', upload.single('media'), (req, res) => {
   }
 });
 
-router.put('/payment-reminders/:id/status', (req, res) => {
+router.put('/payment-reminders/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
-    const updated = updatePaymentReminderStatus(req.params.id, req.user.id, status);
+    const updated = await updatePaymentReminderStatus(req.params.id, req.user.id, status);
     return res.json({ message: 'Payment reminder status updated', reminder: updated });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.delete('/payment-reminders/:id', (req, res) => {
+router.delete('/payment-reminders/:id', async (req, res) => {
   try {
-    deletePaymentReminder(req.params.id, req.user.id);
+    await deletePaymentReminder(req.params.id, req.user.id);
     return res.json({ message: 'Payment reminder deleted' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -886,16 +886,16 @@ router.delete('/payment-reminders/:id', (req, res) => {
 
 // ─── Order Notifications Endpoints ──────────────────────────────────────────
 
-router.get('/order-notifications', (req, res) => {
+router.get('/order-notifications', async (req, res) => {
   try {
-    const notifications = getOrderNotificationsByUser(req.user.id);
+    const notifications = await getOrderNotificationsByUser(req.user.id);
     return res.json(notifications);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/order-notifications', upload.single('media'), (req, res) => {
+router.post('/order-notifications', upload.single('media'), async (req, res) => {
   try {
     const { contact_id, recipient_name, recipient_phone, order_id, order_status, product_name, amount, currency, message_text, send_immediately, scheduled_at } = req.body;
     if (!recipient_name || !recipient_phone || !order_id || !message_text) {
@@ -904,7 +904,7 @@ router.post('/order-notifications', upload.single('media'), (req, res) => {
     const media_path = req.file ? req.file.path : null;
     const media_type = req.file ? getMediaType(req.file.mimetype) : null;
 
-    const notif = createOrderNotification(req.user.id, {
+    const notif = await createOrderNotification(req.user.id, {
       contact_id: contact_id ? parseInt(contact_id) : null,
       recipient_name,
       recipient_phone: normalizePhone(recipient_phone),
@@ -941,9 +941,9 @@ router.post('/order-notifications', upload.single('media'), (req, res) => {
   }
 });
 
-router.delete('/order-notifications/:id', (req, res) => {
+router.delete('/order-notifications/:id', async (req, res) => {
   try {
-    deleteOrderNotification(req.params.id, req.user.id);
+    await deleteOrderNotification(req.params.id, req.user.id);
     return res.json({ message: 'Order notification deleted' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -952,16 +952,16 @@ router.delete('/order-notifications/:id', (req, res) => {
 
 // ─── Follow-up Automation Endpoints ─────────────────────────────────────────
 
-router.get('/followup-automations', (req, res) => {
+router.get('/followup-automations', async (req, res) => {
   try {
-    const automations = getFollowupAutomationsByUser(req.user.id);
+    const automations = await getFollowupAutomationsByUser(req.user.id);
     return res.json(automations);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/followup-automations', upload.single('media'), (req, res) => {
+router.post('/followup-automations', upload.single('media'), async (req, res) => {
   try {
     const { name, trigger_event, delay_days, message_text, apply_to } = req.body;
     if (!name || !message_text) {
@@ -970,7 +970,7 @@ router.post('/followup-automations', upload.single('media'), (req, res) => {
     const media_path = req.file ? req.file.path : null;
     const media_type = req.file ? getMediaType(req.file.mimetype) : null;
 
-    const auto = createFollowupAutomation(req.user.id, {
+    const auto = await createFollowupAutomation(req.user.id, {
       name,
       trigger_event: trigger_event || 'no_response',
       delay_days: delay_days ? parseInt(delay_days) : 3,
@@ -985,36 +985,36 @@ router.post('/followup-automations', upload.single('media'), (req, res) => {
   }
 });
 
-router.put('/followup-automations/:id', (req, res) => {
+router.put('/followup-automations/:id', async (req, res) => {
   try {
-    const updated = updateFollowupAutomation(req.params.id, req.user.id, req.body);
+    const updated = await updateFollowupAutomation(req.params.id, req.user.id, req.body);
     return res.json({ message: 'Follow-up automation updated', automation: updated });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.delete('/followup-automations/:id', (req, res) => {
+router.delete('/followup-automations/:id', async (req, res) => {
   try {
-    deleteFollowupAutomation(req.params.id, req.user.id);
+    await deleteFollowupAutomation(req.params.id, req.user.id);
     return res.json({ message: 'Follow-up automation deleted' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/followup-logs', (req, res) => {
+router.get('/followup-logs', async (req, res) => {
   try {
-    const logs = getFollowupLogsByUser(req.user.id);
+    const logs = await getFollowupLogsByUser(req.user.id);
     return res.json(logs);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-router.delete('/followup-logs/:id', (req, res) => {
+router.delete('/followup-logs/:id', async (req, res) => {
   try {
-    deleteFollowupLog(req.params.id, req.user.id);
+    await deleteFollowupLog(req.params.id, req.user.id);
     return res.json({ message: 'Follow-up log deleted' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
