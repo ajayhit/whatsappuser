@@ -23,7 +23,11 @@ export function getPgPool() {
     const isLocalhost = databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1');
     pgPool = new pg.Pool({
       connectionString: databaseUrl,
-      ssl: isLocalhost ? false : { rejectUnauthorized: false }
+      ssl: isLocalhost ? false : { rejectUnauthorized: false },
+      max: 20,
+      idleTimeoutMillis: 5000, // Release and close idle connection after 5 seconds so Neon can suspend
+      connectionTimeoutMillis: 10000,
+      allowExitOnIdle: true
     });
   }
   return pgPool;
@@ -498,6 +502,23 @@ export async function initDb() {
           error_message TEXT,
           sent_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
         );
+
+        CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id);
+        CREATE INDEX IF NOT EXISTS idx_contacts_user_mobile ON contacts(user_id, mobile);
+        CREATE INDEX IF NOT EXISTS idx_campaigns_status_sched ON campaigns(status, scheduled_at);
+        CREATE INDEX IF NOT EXISTS idx_campaigns_user_id ON campaigns(user_id);
+        CREATE INDEX IF NOT EXISTS idx_campaign_recipients_camp_status ON campaign_recipients(campaign_id, status);
+        CREATE INDEX IF NOT EXISTS idx_reminders_status_sched ON reminders(status, scheduled_at);
+        CREATE INDEX IF NOT EXISTS idx_reminders_user_id ON reminders(user_id);
+        CREATE INDEX IF NOT EXISTS idx_payment_reminders_active_status ON payment_reminders(active, status, due_date);
+        CREATE INDEX IF NOT EXISTS idx_payment_reminders_user_id ON payment_reminders(user_id);
+        CREATE INDEX IF NOT EXISTS idx_birthday_wishes_user_id ON birthday_wishes(user_id);
+        CREATE INDEX IF NOT EXISTS idx_followup_auto_user_active ON followup_automations(user_id, active);
+        CREATE INDEX IF NOT EXISTS idx_followup_sent_log_lookup ON followup_sent_log(user_id, automation_id, contact_id);
+        CREATE INDEX IF NOT EXISTS idx_plans_user_status ON plans(user_id, status, expires_at);
+        CREATE INDEX IF NOT EXISTS idx_orders_user_status ON orders(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_auto_replies_user_active ON auto_replies(user_id, is_active);
+        CREATE INDEX IF NOT EXISTS idx_digital_catalog_user_id ON digital_catalog(user_id);
       `);
 
       const defaultPrices = {
@@ -527,7 +548,7 @@ export async function initDb() {
         console.log(`[DB] Default admin created in PG: ${adminEmail}`);
       }
 
-      console.log('[DB] All PostgreSQL tables initialized.');
+      console.log('[DB] All PostgreSQL tables and indexes initialized.');
     } finally {
       client.release();
     }

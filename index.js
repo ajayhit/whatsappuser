@@ -394,9 +394,7 @@ app.listen(PORT, async () => {
 
   // Start Background Plan Expiry Poller
   startPlanExpiryPoller();
-});
-
-// Background reminders polling handler
+});// ─── Background Reminders Poller ─────────────────────────────────────────────
 function startRemindersPoller() {
   setInterval(async () => {
     try {
@@ -463,38 +461,43 @@ function startRemindersPoller() {
     } catch (e) {
       console.error('[Reminders Poller Error]', e);
     }
-  }, 60000); // Poll every minute
+  }, 2 * 60 * 1000); // Poll every 2 minutes
 }
 
-// Background campaigns polling handler
-function startCampaignsPoller() {
-  setInterval(async () => {
-    try {
+// ─── Adaptive Event-Driven Campaigns Poller ─────────────────────────────────
+let isProcessingCampaigns = false;
+
+export async function triggerCampaignsPoller() {
+  if (isProcessingCampaigns) return;
+  isProcessingCampaigns = true;
+  try {
+    while (true) {
       const campaigns = await getPendingCampaigns();
-      if (campaigns.length === 0) return;
+      if (!campaigns || campaigns.length === 0) break;
+
+      let processedAny = false;
 
       for (const campaign of campaigns) {
-        // If it was pending and it's time to run, mark it as running
         if (campaign.status === 'pending') {
           await updateCampaignStatus(campaign.id, 'running');
         }
 
-        // Double check status in case user paused it
         const currentCampaign = await getCampaignById(campaign.id);
         if (currentCampaign.status !== 'running') continue;
 
-        // Fetch up to 50 pending recipients per cycle to prevent blocking
+        // Fetch up to 50 pending recipients per batch
         const recipients = await getPendingRecipients(campaign.id, 50);
         
         if (recipients.length === 0) {
-          // No more recipients = completed!
           await updateCampaignStatus(campaign.id, 'completed');
           console.log(`[Campaigns Poller] Campaign #${campaign.id} completed!`);
+          processedAny = true;
           continue;
         }
 
+        processedAny = true;
+
         for (const rec of recipients) {
-          // Re-check status inside loop to allow rapid pausing
           const reCheck = await getCampaignById(campaign.id);
           if (reCheck.status !== 'running') {
             break;
@@ -524,7 +527,7 @@ function startCampaignsPoller() {
             const user = await getUserById(campaign.user_id);
             const emailVal = user?.email || '';
             text = text.replace(/\{name\}/gi, rec.name || '');
-            text = text.replace(/\[name\}/gi, rec.name || '');
+            text = text.replace(/\[name\]/gi, rec.name || '');
             text = text.replace(/\{shopname\}/gi, rec.shop_name || '');
             text = text.replace(/\[shopname\]/gi, rec.shop_name || '');
             text = text.replace(/\{mobile\}/gi, rec.mobile || '');
@@ -553,10 +556,24 @@ function startCampaignsPoller() {
           await new Promise(r => setTimeout(r, 1000));
         }
       }
-    } catch (e) {
-      console.error('[Campaigns Poller Error]', e);
+
+      if (!processedAny) break;
     }
-  }, 10000); // Poll every 10 seconds for campaigns for faster execution
+  } catch (e) {
+    console.error('[Campaigns Poller Error]', e);
+  } finally {
+    isProcessingCampaigns = false;
+  }
+}
+
+function startCampaignsPoller() {
+  // Trigger immediate check on startup
+  triggerCampaignsPoller().catch(err => console.error('[Campaigns Poller Init Error]', err));
+  
+  // Relaxed background interval (every 2 minutes) to pick up future scheduled campaigns
+  setInterval(() => {
+    triggerCampaignsPoller().catch(err => console.error('[Campaigns Poller Interval Error]', err));
+  }, 2 * 60 * 1000);
 }
 
 // ─── Follow-up Automation Poller ─────────────────────────────────────────────
@@ -649,7 +666,7 @@ function startFollowUpPoller() {
     } catch (e) {
       console.error('[FollowUp Poller Error]', e);
     }
-  }, 10 * 60 * 1000); // Poll every 10 minutes
+  }, 15 * 60 * 1000); // Poll every 15 minutes
 }
 
 // ─── Birthday Wishes Poller ───────────────────────────────────────────────────
@@ -672,14 +689,11 @@ function startBirthdayPoller() {
 
       for (const wish of dueWishes) {
         try {
-          // Only send within a 2-minute window of the configured send_time (local time).
+          // Send within a 5-minute window of the configured send_time (local time)
           const [sendHour, sendMin] = (wish.send_time || '09:00').split(':').map(Number);
           const sendInMinutes = sendHour * 60 + sendMin;
-          const WINDOW = 2; // minutes — matches the poll interval
+          const WINDOW = 5;
           if (nowInMinutes < sendInMinutes || nowInMinutes > sendInMinutes + WINDOW) {
-            if (nowInMinutes < sendInMinutes) {
-              console.log(`[Birthday Poller] Wish #${wish.id} — not yet time (send at ${wish.send_time}, now ${String(currentHour).padStart(2,'0')}:${String(currentMinute).padStart(2,'0')})`);
-            }
             continue;
           }
 
@@ -711,7 +725,7 @@ function startBirthdayPoller() {
     } catch (e) {
       console.error('[Birthday Poller Error]', e);
     }
-  }, 1 * 60 * 1000); // Poll every 1 minute for accurate send-time delivery
+  }, 2 * 60 * 1000); // Poll every 2 minutes
 }
 
 
@@ -762,7 +776,7 @@ function startPaymentReminderPoller() {
     } catch (e) {
       console.error('[Payment Reminder Poller Error]', e);
     }
-  }, 10 * 60 * 1000); // Poll every 10 minutes
+  }, 15 * 60 * 1000); // Poll every 15 minutes
 }
 
 // ─── Plan Expiry Notification Poller ─────────────────────────────────────────
@@ -882,5 +896,5 @@ function startPlanExpiryPoller() {
     } catch (e) {
       console.error('[Plan Expiry Poller Error]', e);
     }
-  }, 10 * 60 * 1000); // Check every 10 minutes
+  }, 30 * 60 * 1000); // Check every 30 minutes
 }

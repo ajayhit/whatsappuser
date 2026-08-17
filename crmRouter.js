@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import xlsx from 'xlsx';
 import { sendMessageToJid, getSessionStatus } from './sessionManager.js';
+import { triggerCampaignsPoller } from './index.js';
 import {
   getCatalogByUserId, getServicesByCatalogId, upsertCatalog,
   createService, updateService, deleteService,
@@ -753,6 +754,9 @@ router.post('/campaigns', upload.single('media'), async (req, res) => {
       contacts
     });
 
+    // Instantly wake up the campaign poller to begin sending
+    triggerCampaignsPoller().catch(err => console.error('[Campaign Trigger Error]', err));
+
     return res.json({ message: 'Campaign created successfully', campaign });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -775,6 +779,11 @@ router.put('/campaigns/:id/status', async (req, res) => {
     }
 
     const updated = await updateCampaignStatus(req.params.id, status);
+
+    if (status === 'pending') {
+      triggerCampaignsPoller().catch(err => console.error('[Campaign Trigger Error]', err));
+    }
+
     return res.json({ message: 'Campaign status updated', campaign: updated });
   } catch (err) {
     return res.status(500).json({ error: err.message });

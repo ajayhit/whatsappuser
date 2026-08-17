@@ -94,6 +94,31 @@ async function getCachedBaileysVersion() {
   return cachedBaileysVersion;
 }
 
+// Cleanup socket resources and event listeners to prevent memory leaks
+export function cleanupSocket(userId) {
+  const sock = sessions.get(userId);
+  if (sock) {
+    try { sock.ev.removeAllListeners(); } catch (e) {}
+    try { sock.ws?.close(); } catch (e) {}
+    try { sock.end(); } catch (e) {}
+    sessions.delete(userId);
+  }
+}
+
+// Periodic memory cleanup for rate limit maps and stale QR codes (every 30 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, time] of lastWelcomeSentMap.entries()) {
+    if (now - time > 86400000) lastWelcomeSentMap.delete(key);
+  }
+  for (const [key, time] of lastAwaySentMap.entries()) {
+    if (now - time > 3600000) lastAwaySentMap.delete(key);
+  }
+  for (const [userId] of qrCodes.entries()) {
+    if (sessionStatus.get(userId) !== 'QR') qrCodes.delete(userId);
+  }
+}, 30 * 60 * 1000);
+
 /**
  * Initializes a new WhatsApp Web session or returns the state of an existing one.
  * @param {string} userId - Unique identifier for the user
@@ -128,6 +153,13 @@ export async function initSession(userId) {
     logger: pino({ level: 'silent' }), // Suppress Baileys verbose logs
     printQRInTerminal: false,
     browser: Browsers.macOS('Desktop'), // Mimic a standard desktop client to prevent 405 blocks
+    syncFullHistory: false, // CRITICAL: Disable full chat history sync to drastically reduce RAM usage
+    markOnlineOnConnect: false, // Save CPU and keepalive bandwidth
+    generateHighQualityLinkPreview: false,
+    shouldIgnoreJid: (jid) => !jid || jid.endsWith('@broadcast') || jid.includes('newsletter') || jid.endsWith('@call'),
+    getMessage: async () => undefined, // Prevent buffering messages in Node memory
+    connectTimeoutMs: 60000,
+    keepAliveIntervalMs: 30000,
   });
 
   sessions.set(userId, sock);
@@ -190,7 +222,7 @@ export async function initSession(userId) {
           setTimeout(() => {
             // Check if the session wasn't explicitly logged out/deleted in the meantime
             if (sessions.has(userId)) {
-              sessions.delete(userId);
+              cleanupSocket(userId);
               initSession(userId).catch(err => {
                 console.error(`Reconnection initialization failed for ${userId}:`, err);
               });
@@ -199,13 +231,13 @@ export async function initSession(userId) {
         } else {
           console.log(`[Max Reconnects Reached] userId: ${userId}`);
           sessionStatus.set(userId, 'DISCONNECTED');
-          sessions.delete(userId);
+          cleanupSocket(userId);
         }
       } else {
         // Manual or forced logout, or a critical error (like 405 / corrupted credentials)
         console.log(`[Session Terminated] Cleaning up credentials for userId: ${userId} due to statusCode: ${statusCode}`);
         sessionStatus.set(userId, 'DISCONNECTED');
-        sessions.delete(userId);
+        cleanupSocket(userId);
         qrCodes.delete(userId);
         try {
           await fs.rm(sessionDir, { recursive: true, force: true });
@@ -263,24 +295,15 @@ export async function logoutSession(userId) {
       await sock.logout();
     } catch (err) {
       console.error(`Error logging out session ${userId} from WhatsApp:`, err.message);
-      // Fallback manual cleanup if logout call fails
-      try { sock.end(); } catch (e) {}
-      sessions.delete(userId);
-      try {
-        await fs.rm(sessionDir, { recursive: true, force: true });
-      } catch (e) {}
     }
-  } else {
-    // If not connected, clean up files and session immediately
-    if (sock) {
-      try { sock.end(); } catch (e) {}
-      sessions.delete(userId);
-    }
-    try {
-      await fs.rm(sessionDir, { recursive: true, force: true });
-    } catch (err) {
-      console.error(`Failed to delete session state folder for ${userId}:`, err.message);
-    }
+  }
+
+  cleanupSocket(userId);
+
+  try {
+    await fs.rm(sessionDir, { recursive: true, force: true });
+  } catch (err) {
+    console.error(`Failed to delete session state folder for ${userId}:`, err.message);
   }
 
   return { status: 'DISCONNECTED' };
@@ -566,24 +589,38 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
 
 
 /**
- * Scans directories on server start and restores previous sessions in the background.
+ * Scans directories on server start and restores previous sessions in throttled batches.
+ * Batches session initialization to prevent OOM / CPU thrashing when handling 200+ users.
  */
 export async function restoreAllSessions() {
   try {
     await fs.mkdir(sessionsDir, { recursive: true });
     const files = await fs.readdir(sessionsDir);
+    const sessionUserIds = files
+      .filter(file => file.startsWith('session_'))
+      .map(file => file.substring('session_'.length));
+
+    if (sessionUserIds.length === 0) return;
+
+    console.log(`[Auto-Restore] Found ${sessionUserIds.length} session(s) to restore. Starting throttled restore queue...`);
     
-    for (const file of files) {
-      if (file.startsWith('session_')) {
-        const userId = file.substring('session_'.length);
-        console.log(`[Auto-Restore] Restoring background session for userId: ${userId}`);
-        
-        // Initialize in background
-        initSession(userId).catch(err => {
-          console.error(`[Auto-Restore Failed] userId: ${userId}, error:`, err);
-        });
+    // Restore in small batches of 3 with 1.5s delay to keep RAM and network usage smooth
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < sessionUserIds.length; i += BATCH_SIZE) {
+      const batch = sessionUserIds.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (userId) => {
+        try {
+          console.log(`[Auto-Restore] Restoring background session for userId: ${userId}`);
+          await initSession(userId);
+        } catch (err) {
+          console.error(`[Auto-Restore Failed] userId: ${userId}, error:`, err.message);
+        }
+      }));
+      if (i + BATCH_SIZE < sessionUserIds.length) {
+        await new Promise(r => setTimeout(r, 1500));
       }
     }
+    console.log(`[Auto-Restore] Completed background session restoration for all ${sessionUserIds.length} sessions.`);
   } catch (err) {
     console.error('[Auto-Restore] Error reading sessions directory:', err);
   }
