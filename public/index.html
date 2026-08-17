@@ -4670,6 +4670,7 @@
     function switchTab(tabId) {
       state.currentTab = tabId;
       renderApp();
+      bindDashboardEvents();
       setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 50);
@@ -4729,10 +4730,10 @@
 
         renderApp();
 
-        // Start polling if subscriber and plan is active (Admins bypass polling as they don't have studio)
+        // Check session status once on load if subscriber and plan is active
         const hasActivePlan = state.plan && state.plan.status === 'active' && new Date(state.plan.expires_at) > new Date();
         if (hasActivePlan && state.user.role !== 'admin') {
-          startPollingWhatsappStatus();
+          checkWhatsappStatus();
         }
         if (state.user.role !== 'admin') {
           fetchContacts();
@@ -4876,7 +4877,9 @@
 
     // BIND EVENT DISPATCHERS & FETCH DATA ON TAB ACTIVE
     function bindDashboardEvents() {
-      if (state.currentTab === 'adminOrdersTab') {
+      if (state.currentTab === 'whatsappTab') {
+        checkWhatsappStatus();
+      } else if (state.currentTab === 'adminOrdersTab') {
         fetchAdminOrders();
       } else if (state.currentTab === 'adminUsersTab') {
         fetchAdminUsers();
@@ -6424,13 +6427,55 @@
     }
 
     // WHATSAPP CONTROLS (Only rendered/used by Subscribers with active plans)
-    let isAutoConnectDisabled = false;
+    let statusPollInterval = null;
+
+    async function checkWhatsappStatus() {
+      if (!state.token) return;
+      try {
+        const res = await fetch('/api/session/status?autoConnect=false', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.status === 403) {
+          stopPollingWhatsappStatus();
+          return;
+        }
+        const data = await res.json();
+        handleWhatsappStateChange(data);
+
+        // If connected, keep a light 30-second heartbeat to detect disconnections
+        if (data.status === 'CONNECTED') {
+          if (!statusPollInterval || statusPollInterval._fast) {
+            stopPollingWhatsappStatus();
+            statusPollInterval = setInterval(checkWhatsappStatus, 30000);
+            statusPollInterval._fast = false;
+          }
+        } else if (data.status === 'CONNECTING' || data.status === 'QR') {
+          // If actively connecting or waiting for QR scan, poll every 2s
+          if (!statusPollInterval || !statusPollInterval._fast) {
+            stopPollingWhatsappStatus();
+            statusPollInterval = setInterval(checkWhatsappStatus, 2000);
+            statusPollInterval._fast = true;
+          }
+        } else {
+          // Disconnected — stop polling to reduce server/DB load until user clicks Connect
+          stopPollingWhatsappStatus();
+        }
+        return data;
+      } catch (err) {
+        console.error('Status check error:', err);
+      }
+    }
 
     async function triggerLogin() {
-      isAutoConnectDisabled = false;
       const qrContainer = document.getElementById('qrContainer');
       if (qrContainer) {
-        qrContainer.innerHTML = `<div class="pulse" style="background-color: var(--warning-color); width: 16px; height: 16px; margin-bottom: 0.5rem;"></div><span style="font-size: 0.85rem; color: var(--text-muted);">Initializing WhatsApp connection...</span>`;
+        qrContainer.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0;">
+            <div class="pulse" style="background-color: var(--warning-color); width: 18px; height: 18px;"></div>
+            <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 500;">Initializing WhatsApp connection & QR Code...</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Please wait a moment...</span>
+          </div>
+        `;
       }
       updateWhatsappBadge('CONNECTING');
 
@@ -6443,18 +6488,24 @@
           }
         });
         const data = await res.json();
-        
         handleWhatsappStateChange(data);
-        startPollingWhatsappStatus();
+
+        // Start active polling every 2s while in QR / Connecting state
+        stopPollingWhatsappStatus();
+        statusPollInterval = setInterval(checkWhatsappStatus, 2000);
+        statusPollInterval._fast = true;
       } catch (err) {
         console.error('Connection setup error:', err.message);
         updateWhatsappBadge('DISCONNECTED');
+        if (qrContainer) {
+          qrContainer.innerHTML = `<span style="color:var(--error-color); font-size:0.85rem;">Failed to initialize session: ${err.message}</span>`;
+        }
       }
     }
 
     async function triggerLogout() {
       if (!confirm('Are you sure you want to log out and unlink this phone from WhatsApp servers?')) return;
-      isAutoConnectDisabled = true;
+      stopPollingWhatsappStatus();
       try {
         const res = await fetch('/api/session/logout', {
           method: 'POST',
@@ -6465,45 +6516,6 @@
       } catch (err) {
         alert(`Logout error: ${err.message}`);
       }
-    }
-
-    function startPollingWhatsappStatus() {
-      if (statusPollInterval) clearInterval(statusPollInterval);
-      
-      async function poll() {
-        if (!state.token) return;
-        try {
-          const autoConnParam = isAutoConnectDisabled ? 'autoConnect=false' : 'autoConnect=true';
-          const res = await fetch(`/api/session/status?${autoConnParam}`, {
-            headers: { 'Authorization': `Bearer ${state.token}` }
-          });
-          if (res.status === 403) {
-            stopPollingWhatsappStatus();
-            fetchUserProfile();
-            return;
-          }
-          const data = await res.json();
-          handleWhatsappStateChange(data);
-
-          if (data.status === 'CONNECTED') {
-            clearInterval(statusPollInterval);
-            statusPollInterval = setInterval(poll, 12000); // stable heartbeat once connected
-          } else if (data.status === 'CONNECTING' || data.status === 'QR') {
-            // Fast 1-second polling while connecting or displaying QR
-            if (statusPollInterval && statusPollInterval._fast !== true) {
-              clearInterval(statusPollInterval);
-              statusPollInterval = setInterval(poll, 1000);
-              statusPollInterval._fast = true;
-            }
-          }
-        } catch (e) {
-          console.error('Status poll error:', e);
-        }
-      }
-
-      poll();
-      statusPollInterval = setInterval(poll, 1000);
-      statusPollInterval._fast = true;
     }
 
     function stopPollingWhatsappStatus() {
@@ -6555,7 +6567,6 @@
       state.whatsappStatus = data.status;
       state.whatsappQr = data.qr;
       state.whatsappAccount = data.user;
-      // Track hasFiles so the connect button logic can use it
       state.whatsappHasFiles = data.hasFiles || false;
       
       updateWhatsappBadge(data.status);
@@ -6575,12 +6586,14 @@
         profileContainer.style.display = 'none';
       } else if (data.status === 'CONNECTED') {
         qrContainer.innerHTML = `
-          <span style="color: var(--accent-color); font-weight: 600; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
-            <div class="pulse" style="background-color: var(--accent-color)"></div> Connection Secured
-          </span>
-          <span style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-top: 0.4rem;">
-            WhatsApp Messaging API engine is running in the background.
-          </span>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.4rem; padding: 0.5rem 0;">
+            <span style="color: var(--accent-color); font-weight: 600; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+              <div class="pulse" style="background-color: var(--accent-color)"></div> Connection Secured
+            </span>
+            <span style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">
+              WhatsApp Messaging API engine is connected & running in background.
+            </span>
+          </div>
         `;
         
         if (data.user) {
@@ -6590,7 +6603,6 @@
           fetchOwnAvatar();
         }
       } else if (data.status === 'CONNECTING') {
-        // Could be restoring an existing session from disk on the server
         const restoringMsg = data.hasFiles
           ? 'Restoring your WhatsApp session — please wait…'
           : 'Initializing WebSocket link…';
@@ -6600,24 +6612,19 @@
         `;
         profileContainer.style.display = 'none';
       } else {
-        // DISCONNECTED — differentiate based on whether session files exist on disk
-        let disconnectedMsg;
-        if (data.hasFiles) {
-          // Files exist but session isn't in memory — server may have just restarted
-          disconnectedMsg = `
-            <span style="color: var(--warning-color); font-size: 0.85rem; text-align: center; font-weight: 500;">
-              ⚠️ Session files found but connection dropped.<br>
-              <span style="color: var(--text-muted); font-weight: 400;">Click <strong>Connect / Reload Session</strong> to restore your WhatsApp link without scanning a new QR code.</span>
+        // DISCONNECTED — show clean button to connect
+        qrContainer.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0;">
+            <div style="font-size: 2rem;">📱</div>
+            <div style="font-weight: 600; color: var(--text-main); font-size: 1rem;">WhatsApp Disconnected</div>
+            <span style="color: var(--text-muted); font-size: 0.85rem; text-align: center; max-width: 340px;">
+              ${data.hasFiles ? 'Saved session credentials found on server. Click below to reconnect without scanning a new QR code.' : 'No active session found. Click below to initialize and scan your WhatsApp QR code.'}
             </span>
-          `;
-        } else {
-          disconnectedMsg = `
-            <span style="color: var(--text-muted); font-size: 0.85rem; text-align: center;">
-              No active session. Click <strong>Connect / Reload Session</strong> to scan a QR code and link your WhatsApp.
-            </span>
-          `;
-        }
-        qrContainer.innerHTML = disconnectedMsg;
+            <button onclick="triggerLogin()" style="margin-top: 0.5rem; background: var(--accent-color); padding: 0.6rem 1.25rem; font-size: 0.9rem; font-weight: 600; border-radius: 8px;">
+              🔗 Connect WhatsApp & Scan QR
+            </button>
+          </div>
+        `;
         profileContainer.style.display = 'none';
       }
     }

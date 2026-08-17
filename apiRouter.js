@@ -60,17 +60,17 @@ router.post('/session/login', async (req, res) => {
 
 /**
  * Route: GET /api/session/status
- * Returns the current WhatsApp connection status. Automatically connects if disconnected.
+ * Returns the current WhatsApp connection status.
  * Accepts optional ?userId=<id> in query (falls back to JWT user id).
  */
 router.get('/session/status', async (req, res) => {
   const userId = String(req.query.userId || req.user.id);
-  const autoConnect = req.query.autoConnect !== 'false';
+  const autoConnect = req.query.autoConnect === 'true';
   try {
     let statusInfo = getSessionStatus(userId);
     const filesExist = hasSessionFiles(userId);
     
-    // Immediately auto-connect in background if disconnected and autoConnect is active
+    // Only auto-connect if explicitly requested with autoConnect=true
     if (statusInfo.status === 'DISCONNECTED' && autoConnect) {
       initSession(userId).catch(err => console.error(`[AutoConnect Async] user ${userId}:`, err));
       statusInfo = await waitForSessionState(userId, ['CONNECTED', 'QR'], 1000);

@@ -12,9 +12,6 @@ export async function planMiddleware(req, res, next) {
   // Admins bypass plan checks
   if (req.user?.role === 'admin') return next();
 
-  // Run expiry sweep first
-  try { await expireOldPlans(); } catch (e) {}
-
   const plan = await getActivePlan(req.user.id);
 
   if (!plan) {
