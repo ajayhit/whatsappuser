@@ -536,6 +536,14 @@ export async function initDb() {
           sent_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
         );
 
+        CREATE TABLE IF NOT EXISTS whatsapp_session_auth (
+          user_id TEXT NOT NULL,
+          file_name TEXT NOT NULL,
+          file_data TEXT NOT NULL,
+          updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (user_id, file_name)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id);
         CREATE INDEX IF NOT EXISTS idx_contacts_user_mobile ON contacts(user_id, mobile);
         CREATE INDEX IF NOT EXISTS idx_campaigns_status_sched ON campaigns(status, scheduled_at);
@@ -990,7 +998,15 @@ export async function initDb() {
       sent_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (automation_id) REFERENCES followup_automations(id) ON DELETE CASCADE
-    )
+    );
+
+    CREATE TABLE IF NOT EXISTS whatsapp_session_auth (
+      user_id TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      file_data TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, file_name)
+    );
   `);
 
   try { db.exec("ALTER TABLE plans ADD COLUMN plan_type TEXT NOT NULL DEFAULT 'plan_28'"); } catch (e) {}
@@ -2340,3 +2356,37 @@ export async function deleteFollowupLog(id, userId) {
   await execute('DELETE FROM followup_sent_log WHERE id = ? AND user_id = ?', [id, userId]);
   return { id, deleted: true };
 }
+
+// ─── WhatsApp Multi-Session Auth Persistence (Cloud DB Sync) ─────────────────
+
+export async function saveSessionFile(userId, fileName, fileData) {
+  if (isPg()) {
+    await execute(`
+      INSERT INTO whatsapp_session_auth (user_id, file_name, file_data, updated_at)
+      VALUES (?, ?, ?, NOW())
+      ON CONFLICT (user_id, file_name)
+      DO UPDATE SET file_data = EXCLUDED.file_data, updated_at = NOW()
+    `, [String(userId), fileName, fileData]);
+  } else {
+    await execute(`
+      INSERT INTO whatsapp_session_auth (user_id, file_name, file_data, updated_at)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT (user_id, file_name)
+      DO UPDATE SET file_data = excluded.file_data, updated_at = datetime('now')
+    `, [String(userId), fileName, fileData]);
+  }
+}
+
+export async function getSessionFiles(userId) {
+  return await queryAll('SELECT file_name, file_data FROM whatsapp_session_auth WHERE user_id = ?', [String(userId)]);
+}
+
+export async function deleteSessionFiles(userId) {
+  await execute('DELETE FROM whatsapp_session_auth WHERE user_id = ?', [String(userId)]);
+}
+
+export async function getAllSessionUserIdsFromDb() {
+  const rows = await queryAll('SELECT DISTINCT user_id FROM whatsapp_session_auth');
+  return (rows || []).map(r => String(r.user_id));
+}
+

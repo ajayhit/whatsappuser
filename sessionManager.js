@@ -4,7 +4,16 @@ import QRCode from 'qrcode';
 import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
-import { isContactExcluded, getContactByMobile, getUserById, getAutomationSettings } from './db.js';
+import {
+  isContactExcluded,
+  getContactByMobile,
+  getUserById,
+  getAutomationSettings,
+  saveSessionFile,
+  getSessionFiles,
+  deleteSessionFiles,
+  getAllSessionUserIdsFromDb
+} from './db.js';
 
 
 // Memory stores for active connections and statuses
@@ -14,6 +23,7 @@ export const qrCodes = new Map();
 const reconnectCount = new Map();
 const lastWelcomeSentMap = new Map();
 const lastAwaySentMap = new Map();
+const dbSyncTimers = new Map();
 
 const sessionsDir = process.env.SESSION_DIR || './sessions';
 
@@ -36,7 +46,73 @@ console.error = function (...args) {
  */
 export function hasSessionFiles(userId) {
   const sessionDir = path.join(sessionsDir, `session_${userId}`);
-  return fsSync.existsSync(sessionDir);
+  const credsFile = path.join(sessionDir, 'creds.json');
+  return fsSync.existsSync(credsFile) || fsSync.existsSync(sessionDir);
+}
+
+/**
+ * Downloads session auth credentials from PostgreSQL into the local filesystem if missing.
+ * This guarantees sessions survive Render deploys, container restarts, and ephemeral disk wipes.
+ */
+export async function syncSessionFromDb(userId) {
+  const sessionDir = path.join(sessionsDir, `session_${userId}`);
+  const credsFile = path.join(sessionDir, 'creds.json');
+
+  if (fsSync.existsSync(credsFile)) {
+    return true; // Already cached on disk
+  }
+
+  try {
+    const dbFiles = await getSessionFiles(userId);
+    if (!dbFiles || dbFiles.length === 0) {
+      return false;
+    }
+
+    await fs.mkdir(sessionDir, { recursive: true });
+    for (const f of dbFiles) {
+      const filePath = path.join(sessionDir, f.file_name);
+      await fs.writeFile(filePath, f.file_data, 'utf-8');
+    }
+    console.log(`[Session DB Sync] Restored ${dbFiles.length} auth file(s) for user ${userId} from PostgreSQL.`);
+    return true;
+  } catch (err) {
+    console.error(`[Session DB Sync Error] Failed restoring session ${userId} from DB:`, err.message);
+    return false;
+  }
+}
+
+/**
+ * Debounced sync of local session files up to PostgreSQL.
+ */
+export function queueSessionDbSync(userId) {
+  if (dbSyncTimers.has(userId)) {
+    clearTimeout(dbSyncTimers.get(userId));
+  }
+
+  const timer = setTimeout(async () => {
+    dbSyncTimers.delete(userId);
+    const sessionDir = path.join(sessionsDir, `session_${userId}`);
+    if (!fsSync.existsSync(sessionDir)) return;
+
+    try {
+      const files = await fs.readdir(sessionDir);
+      for (const file of files) {
+        const filePath = path.join(sessionDir, file);
+        try {
+          const stat = await fs.stat(filePath);
+          if (stat.isFile()) {
+            const content = await fs.readFile(filePath, 'utf-8');
+            await saveSessionFile(userId, file, content);
+          }
+        } catch (fileErr) {}
+      }
+      console.log(`[Session DB Sync] Synced ${files.length} auth file(s) for user ${userId} to PostgreSQL.`);
+    } catch (err) {
+      console.error(`[Session DB Sync Error] Failed saving session ${userId} to DB:`, err.message);
+    }
+  }, 1500);
+
+  dbSyncTimers.set(userId, timer);
 }
 
 function normalizeTargetJid(to) {
@@ -144,6 +220,9 @@ export async function initSession(userId) {
   // Ensure the sessions directory structure exists
   await fs.mkdir(sessionsDir, { recursive: true });
 
+  // Sync existing session credentials from PostgreSQL if Render container was redeployed
+  await syncSessionFromDb(userId);
+
   const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
   const version = await getCachedBaileysVersion();
 
@@ -164,7 +243,10 @@ export async function initSession(userId) {
 
   sessions.set(userId, sock);
 
-  sock.ev.on('creds.update', saveCreds);
+  sock.ev.on('creds.update', async () => {
+    await saveCreds();
+    queueSessionDbSync(userId);
+  });
 
   sock.ev.on('messages.upsert', async (m) => {
     if (m.type !== 'notify') return;
@@ -198,6 +280,7 @@ export async function initSession(userId) {
       sessionStatus.set(userId, 'CONNECTED');
       qrCodes.delete(userId);
       reconnectCount.delete(userId);
+      queueSessionDbSync(userId);
       console.log(`[Session Connected] userId: ${userId}, phone: ${sock.user.id.split(':')[0]}`);
     }
 
@@ -304,6 +387,13 @@ export async function logoutSession(userId) {
     await fs.rm(sessionDir, { recursive: true, force: true });
   } catch (err) {
     console.error(`Failed to delete session state folder for ${userId}:`, err.message);
+  }
+
+  try {
+    await deleteSessionFiles(userId);
+    console.log(`[Session DB Sync] Deleted PostgreSQL session auth records for user ${userId}`);
+  } catch (dbErr) {
+    console.error(`Failed to delete DB session state for ${userId}:`, dbErr.message);
   }
 
   return { status: 'DISCONNECTED' };
@@ -595,19 +685,31 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
 export async function restoreAllSessions() {
   try {
     await fs.mkdir(sessionsDir, { recursive: true });
-    const files = await fs.readdir(sessionsDir);
-    const sessionUserIds = files
+    
+    // 1. Get session IDs from local disk
+    const diskFiles = await fs.readdir(sessionsDir);
+    const diskUserIds = diskFiles
       .filter(file => file.startsWith('session_'))
       .map(file => file.substring('session_'.length));
 
-    if (sessionUserIds.length === 0) return;
+    // 2. Get session IDs from PostgreSQL (preserves sessions across Render container redeploys)
+    let dbUserIds = [];
+    try {
+      dbUserIds = await getAllSessionUserIdsFromDb();
+    } catch (dbErr) {
+      console.error('[Auto-Restore] Failed fetching session user IDs from DB:', dbErr.message);
+    }
 
-    console.log(`[Auto-Restore] Found ${sessionUserIds.length} session(s) to restore. Starting throttled restore queue...`);
+    const allUserIds = Array.from(new Set([...diskUserIds, ...dbUserIds]));
+
+    if (allUserIds.length === 0) return;
+
+    console.log(`[Auto-Restore] Found ${allUserIds.length} session(s) to restore (${dbUserIds.length} in DB, ${diskUserIds.length} on disk). Starting throttled restore queue...`);
     
     // Restore in small batches of 3 with 1.5s delay to keep RAM and network usage smooth
     const BATCH_SIZE = 3;
-    for (let i = 0; i < sessionUserIds.length; i += BATCH_SIZE) {
-      const batch = sessionUserIds.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < allUserIds.length; i += BATCH_SIZE) {
+      const batch = allUserIds.slice(i, i + BATCH_SIZE);
       await Promise.all(batch.map(async (userId) => {
         try {
           console.log(`[Auto-Restore] Restoring background session for userId: ${userId}`);
@@ -616,11 +718,11 @@ export async function restoreAllSessions() {
           console.error(`[Auto-Restore Failed] userId: ${userId}, error:`, err.message);
         }
       }));
-      if (i + BATCH_SIZE < sessionUserIds.length) {
+      if (i + BATCH_SIZE < allUserIds.length) {
         await new Promise(r => setTimeout(r, 1500));
       }
     }
-    console.log(`[Auto-Restore] Completed background session restoration for all ${sessionUserIds.length} sessions.`);
+    console.log(`[Auto-Restore] Completed background session restoration for all ${allUserIds.length} sessions.`);
   } catch (err) {
     console.error('[Auto-Restore] Error reading sessions directory:', err);
   }
