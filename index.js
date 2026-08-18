@@ -31,10 +31,10 @@ const PORT = process.env.PORT || 3000;
 // Initialize database
 initDb().catch(err => { console.error('[DB Init Error]', err); process.exit(1); });
 
-// Enable CORS and JSON body parser
+// Enable CORS and JSON body parser with sensible buffer limits
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 // Serve static control panel assets from the 'public' folder
 app.use(express.static('public'));
@@ -890,3 +890,17 @@ function startPlanExpiryPoller() {
     }
   }, 30 * 60 * 1000); // Check every 30 minutes
 }
+
+// ─── Periodic Memory Cleanup & Garbage Collection ───────────────────────────
+setInterval(() => {
+  if (global.gc) {
+    try {
+      global.gc();
+      const mem = process.memoryUsage();
+      const rssMb = Math.round(mem.rss / 1024 / 1024);
+      const heapMb = Math.round(mem.heapUsed / 1024 / 1024);
+      console.log(`[Memory Monitor] GC executed. Current RSS: ${rssMb}MB, Heap: ${heapMb}MB`);
+    } catch (e) {}
+  }
+}, 5 * 60 * 1000); // Run garbage collection cycle every 5 minutes
+

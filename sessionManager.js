@@ -235,6 +235,10 @@ export async function initSession(userId) {
     syncFullHistory: false, // CRITICAL: Disable full chat history sync to drastically reduce RAM usage
     markOnlineOnConnect: false, // Save CPU and keepalive bandwidth
     generateHighQualityLinkPreview: false,
+    fireInitQueries: false, // Prevents loading all chat/contact records into memory on connect
+    emitOwnEvents: false, // Reduces event loop object allocations
+    cachedGroupMetadata: async () => undefined, // Prevents buffering large group metadata in memory
+    appStateMacVerification: { patch: false, snapshot: false }, // Avoids storing crypto patch verification buffers
     shouldIgnoreJid: (jid) => !jid || jid.endsWith('@broadcast') || jid.includes('newsletter') || jid.endsWith('@call'),
     getMessage: async () => undefined, // Prevent buffering messages in Node memory
     connectTimeoutMs: 60000,
