@@ -195,15 +195,34 @@ export async function queryAll(sql, params = []) {
 export async function execute(sql, params = []) {
   if (isPg()) {
     let { text, values } = transformPgQuery(sql, params);
-    if (text.trim().toUpperCase().startsWith('INSERT') && !text.toUpperCase().includes('RETURNING')) {
+    const shouldAppendReturning = text.trim().toUpperCase().startsWith('INSERT') &&
+      !text.toUpperCase().includes('RETURNING') &&
+      !text.toUpperCase().includes('WHATSAPP_SESSION_AUTH') &&
+      !text.toUpperCase().includes('SETTINGS');
+
+    if (shouldAppendReturning) {
       text += ' RETURNING id';
     }
-    const res = await getPgPool().query(text, values);
-    return {
-      changes: res.rowCount,
-      lastInsertRowid: res.rows[0]?.id || null,
-      rows: res.rows
-    };
+
+    try {
+      const res = await getPgPool().query(text, values);
+      return {
+        changes: res.rowCount,
+        lastInsertRowid: res.rows?.[0]?.id || null,
+        rows: res.rows || []
+      };
+    } catch (err) {
+      if (shouldAppendReturning && err.message && err.message.includes('"id" does not exist')) {
+        const cleanText = text.replace(/\s+RETURNING id$/i, '');
+        const res = await getPgPool().query(cleanText, values);
+        return {
+          changes: res.rowCount,
+          lastInsertRowid: null,
+          rows: res.rows || []
+        };
+      }
+      throw err;
+    }
   } else {
     const db = getDb();
     let info;
