@@ -377,23 +377,15 @@ app.listen(PORT, async () => {
     console.error('Error restoring sessions:', err);
   }
 
-  // Start Background Reminders Poller
-  startRemindersPoller();
-  
-  // Start Background Campaigns Poller
+  // Start pollers with staggered offsets to prevent simultaneous CPU spikes
+  // Campaigns starts immediately (event-driven, already handles concurrency)
   startCampaignsPoller();
-
-  // Start Background Follow-up Automation Poller
-  startFollowUpPoller();
-
-  // Start Background Birthday Wishes Poller
-  startBirthdayPoller();
-
-  // Start Background Payment Reminders Poller
-  startPaymentReminderPoller();
-
-  // Start Background Plan Expiry Poller
-  startPlanExpiryPoller();
+  // Stagger remaining pollers: 10s, 20s, 30s, 40s, 50s apart
+  setTimeout(() => startRemindersPoller(),       10_000);
+  setTimeout(() => startFollowUpPoller(),         20_000);
+  setTimeout(() => startBirthdayPoller(),         30_000);
+  setTimeout(() => startPaymentReminderPoller(),  40_000);
+  setTimeout(() => startPlanExpiryPoller(),       50_000);
 });// ─── Background Reminders Poller ─────────────────────────────────────────────
 function startRemindersPoller() {
   setInterval(async () => {
@@ -461,7 +453,7 @@ function startRemindersPoller() {
     } catch (e) {
       console.error('[Reminders Poller Error]', e);
     }
-  }, 2 * 60 * 1000); // Poll every 2 minutes
+  }, 5 * 60 * 1000); // Poll every 5 minutes (was 2min — relaxed since precision is not critical)
 }
 
 // ─── Adaptive Event-Driven Campaigns Poller ─────────────────────────────────
@@ -725,7 +717,7 @@ function startBirthdayPoller() {
     } catch (e) {
       console.error('[Birthday Poller Error]', e);
     }
-  }, 2 * 60 * 1000); // Poll every 2 minutes
+  }, 5 * 60 * 1000); // Poll every 5 minutes (was 2min — relaxed since birthday timing has a 5-min window anyway)
 }
 
 

@@ -159,7 +159,7 @@ export async function initSession(userId) {
     shouldIgnoreJid: (jid) => !jid || jid.endsWith('@broadcast') || jid.includes('newsletter') || jid.endsWith('@call'),
     getMessage: async () => undefined, // Prevent buffering messages in Node memory
     connectTimeoutMs: 60000,
-    keepAliveIntervalMs: 30000,
+    keepAliveIntervalMs: 60000, // Increased from 30s to 60s to reduce constant I/O
   });
 
   sessions.set(userId, sock);
@@ -634,18 +634,43 @@ export async function restoreAllSessions() {
  * @returns {Promise<object>}
  */
 export async function waitForSessionState(userId, targetStates, timeoutMs = 8000) {
-  const startTime = Date.now();
-  return new Promise((resolve) => {
-    const interval = setInterval(() => {
-      const currentStatus = sessionStatus.get(userId);
-      const isTarget = targetStates.includes(currentStatus);
-      const isTimeout = (Date.now() - startTime) > timeoutMs;
+  // Check immediately — already in target state?
+  const current = sessionStatus.get(userId);
+  if (targetStates.includes(current)) {
+    return getSessionStatus(userId);
+  }
 
-      if (isTarget || isTimeout) {
-        clearInterval(interval);
+  // Event-driven: subscribe to connection.update on the socket (zero CPU while waiting)
+  return new Promise((resolve) => {
+    let timer;
+    const sock = sessions.get(userId);
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      if (sock) sock.ev.off('connection.update', onUpdate);
+    };
+
+    const onUpdate = () => {
+      const status = sessionStatus.get(userId);
+      if (targetStates.includes(status)) {
+        cleanup();
         resolve(getSessionStatus(userId));
       }
-    }, 200);
+    };
+
+    // Fallback timeout
+    timer = setTimeout(() => {
+      cleanup();
+      resolve(getSessionStatus(userId));
+    }, timeoutMs);
+
+    if (sock) {
+      sock.ev.on('connection.update', onUpdate);
+    } else {
+      // No socket yet, fall back to a single delayed check
+      clearTimeout(timer);
+      timer = setTimeout(() => resolve(getSessionStatus(userId)), timeoutMs);
+    }
   });
 }
 

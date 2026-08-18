@@ -13,6 +13,39 @@ const DB_PATH = process.env.DB_PATH
 let sqliteDb = null;
 let pgPool = null;
 
+// Lightweight in-memory TTL cache to eliminate redundant WAN round-trips to Neon PostgreSQL
+const memoryCache = new Map();
+
+function getCached(key, ttlMs = 30000) {
+  const item = memoryCache.get(key);
+  if (item && (Date.now() - item.time < ttlMs)) {
+    return item.value;
+  }
+  return undefined;
+}
+
+function setCached(key, value) {
+  memoryCache.set(key, { value, time: Date.now() });
+}
+
+export function invalidateCache(prefix) {
+  for (const key of memoryCache.keys()) {
+    if (key.startsWith(prefix)) {
+      memoryCache.delete(key);
+    }
+  }
+}
+
+// Clean up expired cache items every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, item] of memoryCache.entries()) {
+    if (now - item.time > 60000) {
+      memoryCache.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
 export function isPg() {
   return !!(process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '');
 }
@@ -24,8 +57,8 @@ export function getPgPool() {
     pgPool = new pg.Pool({
       connectionString: databaseUrl,
       ssl: isLocalhost ? false : { rejectUnauthorized: false },
-      max: 20,
-      idleTimeoutMillis: 5000, // Release and close idle connection after 5 seconds so Neon can suspend
+      max: 5, // Reduced from 20 to 5 for lower RAM & socket buffer usage on serverless Neon
+      idleTimeoutMillis: 10000, // Keep connections alive for 10s to avoid frequent reconnect TLS handshakes
       connectionTimeoutMillis: 10000,
       allowExitOnIdle: true
     });
@@ -1027,7 +1060,11 @@ export async function getUserByPhone(phone) {
 }
 
 export async function getUserById(id) {
-  return await queryOne(`
+  const cacheKey = `user_${id}`;
+  const cached = getCached(cacheKey, 30000);
+  if (cached !== undefined) return cached;
+
+  const user = await queryOne(`
     SELECT
       id,
       name,
@@ -1040,9 +1077,13 @@ export async function getUserById(id) {
     FROM users
     WHERE id = ?
   `, [id]);
+
+  if (user) setCached(cacheKey, user);
+  return user;
 }
 
 export async function updateUserProfile(userId, { name, phone }) {
+  invalidateCache(`user_${userId}`);
   await execute('UPDATE users SET name = ?, phone = ? WHERE id = ?', [name, phone || '', userId]);
   return await getUserById(userId);
 }
@@ -1091,9 +1132,16 @@ export async function getWalletTransactions(userId) {
 // ─── Plan Helpers ─────────────────────────────────────────────────────────────
 
 export async function getActivePlan(userId) {
-  return await queryOne(`
+  const cacheKey = `active_plan_${userId}`;
+  const cached = getCached(cacheKey, 30000);
+  if (cached !== undefined) return cached;
+
+  const plan = await queryOne(`
     SELECT * FROM plans WHERE user_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1
   `, [userId]);
+
+  setCached(cacheKey, plan || null);
+  return plan;
 }
 
 export async function getPlansByUser(userId) {
@@ -1103,6 +1151,7 @@ export async function getPlansByUser(userId) {
 }
 
 export async function activatePlan(userId, planType = 'plan_28', durationDays = 28, price = 199) {
+  invalidateCache(`active_plan_${userId}`);
   const activePlan = await getActivePlan(userId);
   const startedAt = new Date().toISOString();
   let expiresAt;
@@ -1649,13 +1698,20 @@ export async function deleteContact(contactId, userId) {
 }
 
 export async function toggleContactExclude(contactId, userId, isExcluded) {
+  invalidateCache(`excluded_${userId}_`);
   await execute('UPDATE contacts SET is_excluded = ? WHERE id = ? AND user_id = ?', [isExcluded ? 1 : 0, contactId, userId]);
   return await queryOne('SELECT * FROM contacts WHERE id = ?', [contactId]);
 }
 
 export async function isContactExcluded(userId, mobile) {
+  const cacheKey = `excluded_${userId}_${mobile}`;
+  const cached = getCached(cacheKey, 30000);
+  if (cached !== undefined) return cached;
+
   const row = await queryOne('SELECT is_excluded FROM contacts WHERE user_id = ? AND mobile = ?', [userId, mobile]);
-  return row ? parseInt(row.is_excluded) === 1 : false;
+  const res = row ? parseInt(row.is_excluded) === 1 : false;
+  setCached(cacheKey, res);
+  return res;
 }
 
 export async function getContactGroupsByUser(userId) {
@@ -1888,25 +1944,30 @@ export async function deleteTemplate(templateId, userId) {
 }
 
 export async function getAutomationSettings(userId) {
+  const cacheKey = `auto_settings_${userId}`;
+  const cached = getCached(cacheKey, 30000);
+  if (cached !== undefined) return cached;
+
   const settings = await queryOne('SELECT * FROM automation_settings WHERE user_id = ?', [userId]);
-  if (!settings) {
-    return {
-      user_id: userId,
-      welcome_active: 0,
-      welcome_text: 'Hello {Name}! Welcome to {ShopName}. How can we assist you today?',
-      welcome_media_path: null,
-      welcome_media_type: null,
-      away_active: 0,
-      away_text: 'Thank you for contacting us! We are currently away and will reply to your message as soon as possible.',
-      away_schedule_type: 'always',
-      away_start_time: '19:00',
-      away_end_time: '09:00'
-    };
-  }
-  return settings;
+  const result = settings || {
+    user_id: userId,
+    welcome_active: 0,
+    welcome_text: 'Hello {Name}! Welcome to {ShopName}. How can we assist you today?',
+    welcome_media_path: null,
+    welcome_media_type: null,
+    away_active: 0,
+    away_text: 'Thank you for contacting us! We are currently away and will reply to your message as soon as possible.',
+    away_schedule_type: 'always',
+    away_start_time: '19:00',
+    away_end_time: '09:00'
+  };
+
+  setCached(cacheKey, result);
+  return result;
 }
 
 export async function upsertAutomationSettings(userId, settings) {
+  invalidateCache(`auto_settings_${userId}`);
   const existing = await queryOne('SELECT id FROM automation_settings WHERE user_id = ?', [userId]);
   if (existing) {
     await execute(`
