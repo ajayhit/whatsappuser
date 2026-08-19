@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node --max-old-space-size=256 --expose-gc index.js",
+    "start": "node --max-old-space-size=200 --optimize-for-size --expose-gc index.js",
     "migrate:pg": "node scripts/migrate-to-postgres.js"
   },
   "dependencies": {

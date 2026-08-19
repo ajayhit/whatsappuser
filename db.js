@@ -36,7 +36,7 @@ export function invalidateCache(prefix) {
   }
 }
 
-// Clean up expired cache items every 5 minutes
+// Clean up expired cache items every 15 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [key, item] of memoryCache.entries()) {
@@ -44,7 +44,7 @@ setInterval(() => {
       memoryCache.delete(key);
     }
   }
-}, 5 * 60 * 1000);
+}, 15 * 60 * 1000);
 
 export function isPg() {
   return !!(process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '');
@@ -57,8 +57,8 @@ export function getPgPool() {
     pgPool = new pg.Pool({
       connectionString: databaseUrl,
       ssl: isLocalhost ? false : { rejectUnauthorized: false },
-      max: 5, // Reduced from 20 to 5 for lower RAM & socket buffer usage on serverless Neon
-      idleTimeoutMillis: 10000, // Keep connections alive for 10s to avoid frequent reconnect TLS handshakes
+      max: 2, // Minimal connection pool for low memory and fast idle suspend on Neon
+      idleTimeoutMillis: 3000, // Drop idle connections after 3s to allow Neon to auto-suspend
       connectionTimeoutMillis: 10000,
       allowExitOnIdle: true
     });

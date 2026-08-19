@@ -6496,7 +6496,7 @@
     let statusPollInterval = null;
 
     async function checkWhatsappStatus() {
-      if (!state.token) return;
+      if (!state.token || document.hidden) return;
       try {
         const res = await fetch('/api/session/status?autoConnect=false', {
           headers: { 'Authorization': `Bearer ${state.token}` }
@@ -7383,7 +7383,7 @@
     function startRemindersStatusPolling() {
       if (reminderPollInterval) clearInterval(reminderPollInterval);
       reminderPollInterval = setInterval(async () => {
-        if (!state.token) return;
+        if (!state.token || document.hidden) return;
         // Only silently refresh if there are any pending reminders
         const hasPending = (state.reminders || []).some(r => r.status === 'pending');
         if (hasPending) {
@@ -8793,12 +8793,27 @@
       document.getElementById('campaignRecipientsModal').style.display = 'none';
     }
 
-    // Poll for updates if viewing campaigns tab
+    // Poll for updates if viewing campaigns tab (only if document is active)
     setInterval(() => {
+      if (document.hidden) return;
       if ((state.currentTab === 'campaignsTab' || state.currentTab === 'campaignAnalyticsTab' || state.currentTab === 'campaignSchedulerTab' || state.currentTab === 'reportsTab') && state.user && state.user.role !== 'admin') {
-        fetchCampaigns();
+        const hasRunning = (state.campaigns || []).some(c => c.status === 'running' || c.status === 'pending');
+        // If campaigns are actively running, poll every 15s; otherwise skip redundant polls
+        if (hasRunning || state.currentTab === 'campaignsTab') {
+          fetchCampaigns();
+        }
       }
-    }, 5000);
+    }, 15000);
+
+    // Pause / Resume UI heartbeats when tab is hidden/visible to prevent 24/7 DB queries
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && state.token) {
+        // Tab just became active: do an immediate refresh of relevant status
+        if (typeof checkWhatsappStatus === 'function') checkWhatsappStatus();
+        if (state.currentTab === 'campaignsTab' && typeof fetchCampaigns === 'function') fetchCampaigns();
+        if (state.currentTab === 'remindersTab' && typeof fetchReminders === 'function') fetchReminders();
+      }
+    });
 
     // ─── New Sidebar Tab Helper Functions ────────────────────────────────────────
 

@@ -377,83 +377,76 @@ app.listen(PORT, async () => {
     console.error('Error restoring sessions:', err);
   }
 
-  // Start pollers with staggered offsets to prevent simultaneous CPU spikes
-  // Campaigns starts immediately (event-driven, already handles concurrency)
-  startCampaignsPoller();
-  // Stagger remaining pollers: 10s, 20s, 30s, 40s, 50s apart
-  setTimeout(() => startRemindersPoller(),       10_000);
-  setTimeout(() => startFollowUpPoller(),         20_000);
-  setTimeout(() => startBirthdayPoller(),         30_000);
-  setTimeout(() => startPaymentReminderPoller(),  40_000);
-  setTimeout(() => startPlanExpiryPoller(),       50_000);
-});// ─── Background Reminders Poller ─────────────────────────────────────────────
-function startRemindersPoller() {
-  setInterval(async () => {
-    try {
-      const pending = await getPendingReminders();
-      if (pending.length === 0) return;
+  // Start unified background poller (runs every 10 min to allow Neon DB auto-suspend)
+  startUnifiedBackgroundPoller();
+});
 
-      console.log(`[Reminders Poller] Found ${pending.length} pending reminders to process.`);
+// ─── Background Reminders Processing ─────────────────────────────────────────
+async function processPendingReminders() {
+  try {
+    const pending = await getPendingReminders();
+    if (!pending || pending.length === 0) return;
 
-      for (const rem of pending) {
-        try {
-          // 1. Check user subscription status
-          const plan = await getActivePlan(rem.user_id);
-          if (!plan || new Date(plan.expires_at) < new Date()) {
-            throw new Error('User subscription is inactive or expired');
-          }
+    console.log(`[Reminders Poller] Found ${pending.length} pending reminders to process.`);
 
-          // 2. Check if recipient contact is blocked
-          const isExcluded = await isContactExcluded(rem.user_id, rem.recipient_mobile);
-          if (isExcluded) {
-            throw new Error('Recipient contact is excluded/blocked');
-          }
-
-          // 3. Check WhatsApp session status
-          const session = getSessionStatus(String(rem.user_id));
-          if (session.status !== 'CONNECTED') {
-            throw new Error('WhatsApp session is disconnected');
-          }
-
-          // 4. Resolve placeholders — supports both {Name} and [Name] style
-          let text = rem.message_template;
-          const user = await getUserById(rem.user_id);
-          const emailVal = user?.email || '';
-          text = text.replace(/\{name\}/gi, rem.recipient_name || '');
-          text = text.replace(/\[name\]/gi, rem.recipient_name || '');
-          text = text.replace(/\{shopname\}/gi, rem.shop_name || '');
-          text = text.replace(/\[shopname\]/gi, rem.shop_name || '');
-          text = text.replace(/\{shop\}/gi, rem.shop_name || '');
-          text = text.replace(/\[shop\]/gi, rem.shop_name || '');
-          text = text.replace(/\{mobile\}/gi, rem.recipient_mobile || '');
-          text = text.replace(/\[mobile\]/gi, rem.recipient_mobile || '');
-          text = text.replace(/\{email\}/gi, emailVal);
-          text = text.replace(/\[email\]/gi, emailVal);
-
-          // 5. Send message
-          await sendMessageToJid(String(rem.user_id), rem.recipient_mobile, text);
-
-          // 6. Update status or reschedule if recurring
-          if (rem.repeat_option === 'weekly' && rem.selected_days) {
-            const nextScheduledAt = calculateNextScheduleDate(rem.selected_days, rem.send_time || '09:00');
-            await execute(
-              "UPDATE reminders SET scheduled_at = $1, sent_at = NOW(), status = 'pending', error_message = NULL WHERE id = $2",
-              [nextScheduledAt, rem.id]
-            );
-            console.log(`[Reminders Poller] Sent recurring reminder #${rem.id} to ${rem.recipient_mobile}. Rescheduled for ${nextScheduledAt}`);
-          } else {
-            await updateReminderStatus(rem.id, 'sent');
-            console.log(`[Reminders Poller] Successfully sent reminder #${rem.id} to ${rem.recipient_mobile}`);
-          }
-        } catch (err) {
-          console.error(`[Reminders Poller Failed] Reminder #${rem.id} failed: ${err.message}`);
-          await updateReminderStatus(rem.id, 'failed', err.message);
+    for (const rem of pending) {
+      try {
+        // 1. Check user subscription status
+        const plan = await getActivePlan(rem.user_id);
+        if (!plan || new Date(plan.expires_at) < new Date()) {
+          throw new Error('User subscription is inactive or expired');
         }
+
+        // 2. Check if recipient contact is blocked
+        const isExcluded = await isContactExcluded(rem.user_id, rem.recipient_mobile);
+        if (isExcluded) {
+          throw new Error('Recipient contact is excluded/blocked');
+        }
+
+        // 3. Check WhatsApp session status
+        const session = getSessionStatus(String(rem.user_id));
+        if (session.status !== 'CONNECTED') {
+          throw new Error('WhatsApp session is disconnected');
+        }
+
+        // 4. Resolve placeholders — supports both {Name} and [Name] style
+        let text = rem.message_template;
+        const user = await getUserById(rem.user_id);
+        const emailVal = user?.email || '';
+        text = text.replace(/\{name\}/gi, rem.recipient_name || '');
+        text = text.replace(/\[name\]/gi, rem.recipient_name || '');
+        text = text.replace(/\{shopname\}/gi, rem.shop_name || '');
+        text = text.replace(/\[shopname\]/gi, rem.shop_name || '');
+        text = text.replace(/\{shop\}/gi, rem.shop_name || '');
+        text = text.replace(/\[shop\]/gi, rem.shop_name || '');
+        text = text.replace(/\{mobile\}/gi, rem.recipient_mobile || '');
+        text = text.replace(/\[mobile\]/gi, rem.recipient_mobile || '');
+        text = text.replace(/\{email\}/gi, emailVal);
+        text = text.replace(/\[email\]/gi, emailVal);
+
+        // 5. Send message
+        await sendMessageToJid(String(rem.user_id), rem.recipient_mobile, text);
+
+        // 6. Update status or reschedule if recurring
+        if (rem.repeat_option === 'weekly' && rem.selected_days) {
+          const nextScheduledAt = calculateNextScheduleDate(rem.selected_days, rem.send_time || '09:00');
+          await execute(
+            "UPDATE reminders SET scheduled_at = $1, sent_at = NOW(), status = 'pending', error_message = NULL WHERE id = $2",
+            [nextScheduledAt, rem.id]
+          );
+          console.log(`[Reminders Poller] Sent recurring reminder #${rem.id} to ${rem.recipient_mobile}. Rescheduled for ${nextScheduledAt}`);
+        } else {
+          await updateReminderStatus(rem.id, 'sent');
+          console.log(`[Reminders Poller] Successfully sent reminder #${rem.id} to ${rem.recipient_mobile}`);
+        }
+      } catch (err) {
+        console.error(`[Reminders Poller Failed] Reminder #${rem.id} failed: ${err.message}`);
+        await updateReminderStatus(rem.id, 'failed', err.message);
       }
-    } catch (e) {
-      console.error('[Reminders Poller Error]', e);
     }
-  }, 5 * 60 * 1000); // Poll every 5 minutes (was 2min — relaxed since precision is not critical)
+  } catch (e) {
+    console.error('[Reminders Poller Error]', e);
+  }
 }
 
 // ─── Adaptive Event-Driven Campaigns Poller ─────────────────────────────────
@@ -558,349 +551,349 @@ export async function triggerCampaignsPoller() {
   }
 }
 
-function startCampaignsPoller() {
-  // Trigger immediate check on startup
-  triggerCampaignsPoller().catch(err => console.error('[Campaigns Poller Init Error]', err));
-  
-  // Relaxed background interval (every 2 minutes) to pick up future scheduled campaigns
-  setInterval(() => {
-    triggerCampaignsPoller().catch(err => console.error('[Campaigns Poller Interval Error]', err));
-  }, 2 * 60 * 1000);
-}
+// ─── Follow-up Automation Processing ─────────────────────────────────────────
+async function processFollowUps() {
+  try {
+    // Fetch all active automations grouped by user
+    const automations = await queryAll(
+      'SELECT fa.*, u.id AS owner_id FROM followup_automations fa JOIN users u ON u.id = fa.user_id WHERE fa.active = 1'
+    );
 
-// ─── Follow-up Automation Poller ─────────────────────────────────────────────
-function startFollowUpPoller() {
-  setInterval(async () => {
-    try {
-      // Fetch all active automations grouped by user
-      const automations = await queryAll(
-        'SELECT fa.*, u.id AS owner_id FROM followup_automations fa JOIN users u ON u.id = fa.user_id WHERE fa.active = 1'
-      );
+    if (!automations || automations.length === 0) return;
 
-      if (!automations || automations.length === 0) return;
+    // Group by user
+    const byUser = {};
+    for (const auto of automations) {
+      if (!byUser[auto.user_id]) byUser[auto.user_id] = [];
+      byUser[auto.user_id].push(auto);
+    }
 
-      // Group by user
-      const byUser = {};
-      for (const auto of automations) {
-        if (!byUser[auto.user_id]) byUser[auto.user_id] = [];
-        byUser[auto.user_id].push(auto);
-      }
+    for (const [userId, rules] of Object.entries(byUser)) {
+      try {
+        const plan = await getActivePlan(parseInt(userId));
+        if (!plan || new Date(plan.expires_at) < new Date()) continue;
 
-      for (const [userId, rules] of Object.entries(byUser)) {
-        try {
-          const plan = await getActivePlan(parseInt(userId));
-          if (!plan || new Date(plan.expires_at) < new Date()) continue;
+        const session = getSessionStatus(String(userId));
+        if (session.status !== 'CONNECTED') continue;
 
-          const session = getSessionStatus(String(userId));
-          if (session.status !== 'CONNECTED') continue;
+        const user = await getUserById(parseInt(userId));
+        const contacts = await getContactsByUser(parseInt(userId));
 
-          const user = await getUserById(parseInt(userId));
-          const contacts = await getContactsByUser(parseInt(userId));
+        for (const rule of rules) {
+          const nowMs = Date.now();
+          const delayMs = rule.delay_days * 24 * 60 * 60 * 1000;
 
-          for (const rule of rules) {
-            const nowMs = Date.now();
-            const delayMs = rule.delay_days * 24 * 60 * 60 * 1000;
+          for (const contact of contacts) {
+            if (contact.is_excluded) continue;
 
-            for (const contact of contacts) {
-              if (contact.is_excluded) continue;
+            try {
+              // Check if this contact already received a follow-up for this rule recently
+              const lastSentRow = await queryOne(
+                'SELECT sent_at FROM followup_sent_log WHERE user_id = $1 AND automation_id = $2 AND contact_id = $3 ORDER BY sent_at DESC LIMIT 1',
+                [parseInt(userId), rule.id, contact.id]
+              );
 
-              try {
-                // Check if this contact already received a follow-up for this rule recently
-                const lastSentRow = await queryOne(
-                  'SELECT sent_at FROM followup_sent_log WHERE user_id = $1 AND automation_id = $2 AND contact_id = $3 ORDER BY sent_at DESC LIMIT 1',
-                  [parseInt(userId), rule.id, contact.id]
-                );
-
-                if (lastSentRow) {
-                  // Don't re-send if already sent within delay period
-                  const lastSentMs = new Date(lastSentRow.sent_at).getTime();
-                  if ((nowMs - lastSentMs) < delayMs) continue;
-                }
-
-                // For 'no_response' trigger — check if contact has been in DB longer than delay_days
-                if (rule.trigger_event === 'no_response') {
-                  const createdMs = new Date(contact.created_at).getTime();
-                  if ((nowMs - createdMs) < delayMs) continue;
-                }
-
-                // Build message with placeholder replacements
-                let text = rule.message_text;
-                text = text.replace(/\{name\}/gi, contact.name || '');
-                text = text.replace(/\{shopname\}/gi, contact.shop_name || '');
-                text = text.replace(/\{mobile\}/gi, contact.mobile || '');
-
-                await sendMessageToJid(String(userId), contact.mobile, text);
-
-                // Log this send so we don't re-send immediately
-                await execute(
-                  "INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, sent_at) VALUES ($1, $2, $3, 'sent', NOW())",
-                  [parseInt(userId), rule.id, contact.id]
-                );
-
-                console.log(`[FollowUp Poller] Sent '${rule.name}' to ${contact.mobile} for user ${userId}`);
-
-                await new Promise(r => setTimeout(r, 1000));
-              } catch (contactErr) {
-                console.error(`[FollowUp Poller] Failed for contact ${contact.mobile}: ${contactErr.message}`);
-                try {
-                  await execute(
-                    "INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, error_message, sent_at) VALUES ($1, $2, $3, 'failed', $4, NOW())",
-                    [parseInt(userId), rule.id, contact.id, contactErr.message || 'Send error']
-                  );
-                } catch (logErr) {}
+              if (lastSentRow) {
+                // Don't re-send if already sent within delay period
+                const lastSentMs = new Date(lastSentRow.sent_at).getTime();
+                if ((nowMs - lastSentMs) < delayMs) continue;
               }
+
+              // For 'no_response' trigger — check if contact has been in DB longer than delay_days
+              if (rule.trigger_event === 'no_response') {
+                const createdMs = new Date(contact.created_at).getTime();
+                if ((nowMs - createdMs) < delayMs) continue;
+              }
+
+              // Build message with placeholder replacements
+              let text = rule.message_text;
+              text = text.replace(/\{name\}/gi, contact.name || '');
+              text = text.replace(/\{shopname\}/gi, contact.shop_name || '');
+              text = text.replace(/\{mobile\}/gi, contact.mobile || '');
+
+              await sendMessageToJid(String(userId), contact.mobile, text);
+
+              // Log this send so we don't re-send immediately
+              await execute(
+                "INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, sent_at) VALUES ($1, $2, $3, 'sent', NOW())",
+                [parseInt(userId), rule.id, contact.id]
+              );
+
+              console.log(`[FollowUp Poller] Sent '${rule.name}' to ${contact.mobile} for user ${userId}`);
+
+              await new Promise(r => setTimeout(r, 1000));
+            } catch (contactErr) {
+              console.error(`[FollowUp Poller] Failed for contact ${contact.mobile}: ${contactErr.message}`);
+              try {
+                await execute(
+                  "INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, error_message, sent_at) VALUES ($1, $2, $3, 'failed', $4, NOW())",
+                  [parseInt(userId), rule.id, contact.id, contactErr.message || 'Send error']
+                );
+              } catch (logErr) {}
             }
           }
-        } catch (userErr) {
-          console.error(`[FollowUp Poller] User ${userId} error: ${userErr.message}`);
         }
+      } catch (userErr) {
+        console.error(`[FollowUp Poller] User ${userId} error: ${userErr.message}`);
       }
-    } catch (e) {
-      console.error('[FollowUp Poller Error]', e);
     }
-  }, 15 * 60 * 1000); // Poll every 15 minutes
-}
-
-// ─── Birthday Wishes Poller ───────────────────────────────────────────────────
-function startBirthdayPoller() {
-  setInterval(async () => {
-    try {
-      const dueWishes = await getDueBirthdayWishes();
-      if (!dueWishes || dueWishes.length === 0) return;
-
-      // IST is UTC + 5 hours 30 minutes
-      const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
-      const istNow = new Date(Date.now() + IST_OFFSET_MS);
-
-      const currentYear   = istNow.getUTCFullYear();
-      const currentHour   = istNow.getUTCHours();
-      const currentMinute = istNow.getUTCMinutes();
-      const nowInMinutes  = currentHour * 60 + currentMinute;
-
-      console.log(`[Birthday Poller] ${dueWishes.length} due wish(es). Local time (IST): ${String(currentHour).padStart(2,'0')}:${String(currentMinute).padStart(2,'0')}`);
-
-      for (const wish of dueWishes) {
-        try {
-          // Send within a 5-minute window of the configured send_time (local time)
-          const [sendHour, sendMin] = (wish.send_time || '09:00').split(':').map(Number);
-          const sendInMinutes = sendHour * 60 + sendMin;
-          const WINDOW = 5;
-          if (nowInMinutes < sendInMinutes || nowInMinutes > sendInMinutes + WINDOW) {
-            continue;
-          }
-
-          const plan = await getActivePlan(wish.user_id);
-          if (!plan || new Date(plan.expires_at) < new Date()) continue;
-
-          const session = getSessionStatus(String(wish.user_id));
-          if (session.status !== 'CONNECTED') continue;
-
-          const user = await getUserById(wish.user_id);
-
-          let text = wish.message_text;
-          text = text.replace(/\{name\}/gi, wish.recipient_name || '');
-          text = text.replace(/\{shopname\}/gi, user?.name || '');
-
-          if (wish.media_path && wish.media_type) {
-            await sendMediaToJid(String(wish.user_id), wish.recipient_phone, wish.media_path, wish.media_type, text);
-          } else {
-            await sendMessageToJid(String(wish.user_id), wish.recipient_phone, text);
-          }
-
-          await markBirthdayWishSent(wish.id, currentYear);
-          console.log(`[Birthday Poller] ✅ Sent birthday wish #${wish.id} to ${wish.recipient_phone}`);
-        } catch (err) {
-          console.error(`[Birthday Poller] Failed for wish #${wish.id}: ${err.message}`);
-          await markBirthdayWishFailed(wish.id, err.message);
-        }
-      }
-    } catch (e) {
-      console.error('[Birthday Poller Error]', e);
-    }
-  }, 5 * 60 * 1000); // Poll every 5 minutes (was 2min — relaxed since birthday timing has a 5-min window anyway)
-}
-
-
-// ─── Payment Reminder Poller ──────────────────────────────────────────────────
-function startPaymentReminderPoller() {
-  setInterval(async () => {
-    try {
-      const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
-      const istDateStr = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
-
-      // Find active pending reminders due today (factoring in remind_days_before offset)
-      const dueReminders = await queryAll(
-        `SELECT * FROM payment_reminders
-         WHERE active = 1 AND status = 'pending'
-           AND (due_date::date - (remind_days_before::text || ' days')::interval)::date <= $1::date
-           AND due_date::date >= $1::date`,
-        [istDateStr]
-      );
-
-      if (!dueReminders || dueReminders.length === 0) return;
-
-      for (const rem of dueReminders) {
-        try {
-          const plan = await getActivePlan(rem.user_id);
-          if (!plan || new Date(plan.expires_at) < new Date()) continue;
-
-          const session = getSessionStatus(String(rem.user_id));
-          if (session.status !== 'CONNECTED') continue;
-
-          let text = rem.message_text;
-          text = text.replace(/\{name\}/gi, rem.recipient_name || '');
-          text = text.replace(/\{amount\}/gi, rem.amount ? `₹${rem.amount}` : '');
-          text = text.replace(/\{duedate\}/gi, rem.due_date || '');
-          text = text.replace(/\{shopname\}/gi, '');
-
-          if (rem.media_path && rem.media_type) {
-            await sendMediaToJid(String(rem.user_id), rem.recipient_phone, rem.media_path, rem.media_type, text);
-          } else {
-            await sendMessageToJid(String(rem.user_id), rem.recipient_phone, text);
-          }
-
-          await updatePaymentReminderStatus(rem.id, rem.user_id, 'sent');
-          console.log(`[Payment Reminder Poller] Sent reminder #${rem.id} to ${rem.recipient_phone}`);
-        } catch (err) {
-          console.error(`[Payment Reminder Poller] Failed for #${rem.id}: ${err.message}`);
-        }
-      }
-    } catch (e) {
-      console.error('[Payment Reminder Poller Error]', e);
-    }
-  }, 15 * 60 * 1000); // Poll every 15 minutes
-}
-
-// ─── Plan Expiry Notification Poller ─────────────────────────────────────────
-
-function startPlanExpiryPoller() {
-  setInterval(async () => {
-    try {
-      // 1. Check if Admin WhatsApp session is connected
-      const adminStatus = getSessionStatus('admin');
-      if (adminStatus.status !== 'CONNECTED') return;
-
-      const users = await getAllUsers();
-      if (!users || users.length === 0) return;
-
-      const now = Date.now();
-
-      for (const user of users) {
-        if (user.role === 'admin') continue;
-        if (!user.phone) continue;
-
-        // Get user's latest plan (active or most recent)
-        const plan = await getActivePlan(user.id) || await getPlansByUser(user.id)?.[0];
-        if (!plan || !plan.expires_at) continue;
-
-        const expiresAtMs = new Date(plan.expires_at).getTime();
-        const diffMs = expiresAtMs - now;
-        const diffHours = diffMs / (1000 * 60 * 60);
-
-        let category = null;
-        let minIntervalMinutes = 0;
-        let maxPer24h = 0;
-        let message = '';
-
-        const formattedExpiryDate = new Date(expiresAtMs).toLocaleDateString('en-IN', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric'
-        });
-
-        // ── FREQUENCY & TIME WINDOW RULES ──────────────────────────────────────
-        if (diffHours > 48 && diffHours <= 72) {
-          // 3 Days Remaining: 2 times a day (every 12 hours)
-          category = '3_days';
-          minIntervalMinutes = 12 * 60; // 720 min
-          maxPer24h = 2;
-          message =
-            `⏳ *Subscription Expiring Soon!*\n\n` +
-            `Hi ${user.name || 'there'},\n` +
-            `Your WhatsApp Automation Plan will expire in *3 Days* (on ${formattedExpiryDate}).\n\n` +
-            `To ensure uninterrupted automated messaging and API access, please renew your subscription.\n\n` +
-            `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
-            `💰 Price: ₹${plan.price || 199}\n\n` +
-            `Log in to your account dashboard to submit deposit or renew plan. Thank you! 🙏`;
-        } else if (diffHours > 24 && diffHours <= 48) {
-          // 2 Days Remaining: 3 times a day (every 8 hours)
-          category = '2_days';
-          minIntervalMinutes = 8 * 60; // 480 min
-          maxPer24h = 3;
-          message =
-            `⚠️ *Subscription Alert: 2 Days Left*\n\n` +
-            `Hi ${user.name || 'there'},\n` +
-            `Your WhatsApp Automation Plan expires in *2 Days* (on ${formattedExpiryDate}).\n\n` +
-            `Please renew your subscription today to keep your WhatsApp automation running smoothly!\n\n` +
-            `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
-            `💰 Price: ₹${plan.price || 199}\n\n` +
-            `Submit your deposit reference in the portal. Thank you! 🙏`;
-        } else if (diffHours >= 0 && diffHours <= 24) {
-          // Due Date / 1 Day Left: 4 times a day (every 6 hours)
-          category = 'due_date';
-          minIntervalMinutes = 6 * 60; // 360 min
-          maxPer24h = 4;
-          message =
-            `🚨 *Subscription Expiring TODAY!*\n\n` +
-            `Hi ${user.name || 'there'},\n` +
-            `Your WhatsApp Automation Plan expires *TODAY* (${formattedExpiryDate}).\n\n` +
-            `⚡ *Action Required*: Renew now to prevent interruption of your automated messages and campaigns!\n\n` +
-            `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
-            `💰 Price: ₹${plan.price || 199}\n\n` +
-            `Please transfer funds and submit deposit UTR in your portal. 🙏`;
-        } else if (diffHours < 0 && diffHours >= -96) {
-          // Expired within last 4 days: 4 times a day (every 6 hours) for up to 4 days post-expiry
-          category = 'expired_4d';
-          minIntervalMinutes = 6 * 60; // 360 min
-          maxPer24h = 4;
-          const daysAgo = Math.floor(Math.abs(diffHours) / 24) || 1;
-          message =
-            `❌ *Subscription Expired*\n\n` +
-            `Hi ${user.name || 'there'},\n` +
-            `Your WhatsApp Automation Plan expired ${daysAgo} day(s) ago (on ${formattedExpiryDate}).\n\n` +
-            `Your WhatsApp automated sessions and campaign APIs are currently paused.\n\n` +
-            `To reactivate all services instantly, please submit your payment deposit in the portal.\n\n` +
-            `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
-            `💰 Price: ₹${plan.price || 199}\n\n` +
-            `Thank you! 🙏`;
-        } else {
-          // Active > 3 days left OR Expired > 4 days ago OR Plan renewed -> DO NOT SEND
-          continue;
-        }
-
-        // Check if notification can be sent based on frequency rules
-        if (!await canSendExpiryNotification(user.id, minIntervalMinutes, maxPer24h)) {
-          continue;
-        }
-
-        // Dispatch WhatsApp message via Admin Session
-        try {
-          const digits = String(user.phone).replace(/\D/g, '');
-          if (digits && digits.length >= 10) {
-            await sendMessageToJid('admin', digits, message);
-            await logExpiryNotification(user.id, category);
-            console.log(`[Expiry Poller] Sent '${category}' notification to user #${user.id} (${digits})`);
-          }
-        } catch (sendErr) {
-          console.error(`[Expiry Poller] Failed to send to user #${user.id}: ${sendErr.message}`);
-        }
-      }
-    } catch (e) {
-      console.error('[Plan Expiry Poller Error]', e);
-    }
-  }, 30 * 60 * 1000); // Check every 30 minutes
-}
-
-// ─── Periodic Memory Cleanup & Garbage Collection ───────────────────────────
-setInterval(() => {
-  if (global.gc) {
-    try {
-      global.gc();
-      const mem = process.memoryUsage();
-      const rssMb = Math.round(mem.rss / 1024 / 1024);
-      const heapMb = Math.round(mem.heapUsed / 1024 / 1024);
-      console.log(`[Memory Monitor] GC executed. Current RSS: ${rssMb}MB, Heap: ${heapMb}MB`);
-    } catch (e) {}
+  } catch (e) {
+    console.error('[FollowUp Poller Error]', e);
   }
-}, 5 * 60 * 1000); // Run garbage collection cycle every 5 minutes
+}
+
+// ─── Birthday Wishes Processing ───────────────────────────────────────────────
+async function processBirthdayWishes() {
+  try {
+    const dueWishes = await getDueBirthdayWishes();
+    if (!dueWishes || dueWishes.length === 0) return;
+
+    // IST is UTC + 5 hours 30 minutes
+    const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+    const istNow = new Date(Date.now() + IST_OFFSET_MS);
+
+    const currentYear   = istNow.getUTCFullYear();
+    const currentHour   = istNow.getUTCHours();
+    const currentMinute = istNow.getUTCMinutes();
+    const nowInMinutes  = currentHour * 60 + currentMinute;
+
+    for (const wish of dueWishes) {
+      try {
+        // Send within a 15-minute window of the configured send_time (local time)
+        const [sendHour, sendMin] = (wish.send_time || '09:00').split(':').map(Number);
+        const sendInMinutes = sendHour * 60 + sendMin;
+        const WINDOW = 15;
+        if (nowInMinutes < sendInMinutes || nowInMinutes > sendInMinutes + WINDOW) {
+          continue;
+        }
+
+        const plan = await getActivePlan(wish.user_id);
+        if (!plan || new Date(plan.expires_at) < new Date()) continue;
+
+        const session = getSessionStatus(String(wish.user_id));
+        if (session.status !== 'CONNECTED') continue;
+
+        const user = await getUserById(wish.user_id);
+
+        let text = wish.message_text;
+        text = text.replace(/\{name\}/gi, wish.recipient_name || '');
+        text = text.replace(/\{shopname\}/gi, user?.name || '');
+
+        if (wish.media_path && wish.media_type) {
+          await sendMediaToJid(String(wish.user_id), wish.recipient_phone, wish.media_path, wish.media_type, text);
+        } else {
+          await sendMessageToJid(String(wish.user_id), wish.recipient_phone, text);
+        }
+
+        await markBirthdayWishSent(wish.id, currentYear);
+        console.log(`[Birthday Poller] ✅ Sent birthday wish #${wish.id} to ${wish.recipient_phone}`);
+      } catch (err) {
+        console.error(`[Birthday Poller] Failed for wish #${wish.id}: ${err.message}`);
+        await markBirthdayWishFailed(wish.id, err.message);
+      }
+    }
+  } catch (e) {
+    console.error('[Birthday Poller Error]', e);
+  }
+}
+
+// ─── Payment Reminder Processing ──────────────────────────────────────────────
+async function processPaymentReminders() {
+  try {
+    const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+    const istDateStr = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
+
+    // Find active pending reminders due today (factoring in remind_days_before offset)
+    const dueReminders = await queryAll(
+      `SELECT * FROM payment_reminders
+       WHERE active = 1 AND status = 'pending'
+         AND (due_date::date - (remind_days_before::text || ' days')::interval)::date <= $1::date
+         AND due_date::date >= $1::date`,
+      [istDateStr]
+    );
+
+    if (!dueReminders || dueReminders.length === 0) return;
+
+    for (const rem of dueReminders) {
+      try {
+        const plan = await getActivePlan(rem.user_id);
+        if (!plan || new Date(plan.expires_at) < new Date()) continue;
+
+        const session = getSessionStatus(String(rem.user_id));
+        if (session.status !== 'CONNECTED') continue;
+
+        let text = rem.message_text;
+        text = text.replace(/\{name\}/gi, rem.recipient_name || '');
+        text = text.replace(/\{amount\}/gi, rem.amount ? `₹${rem.amount}` : '');
+        text = text.replace(/\{duedate\}/gi, rem.due_date || '');
+        text = text.replace(/\{shopname\}/gi, '');
+
+        if (rem.media_path && rem.media_type) {
+          await sendMediaToJid(String(rem.user_id), rem.recipient_phone, rem.media_path, rem.media_type, text);
+        } else {
+          await sendMessageToJid(String(rem.user_id), rem.recipient_phone, text);
+        }
+
+        await updatePaymentReminderStatus(rem.id, rem.user_id, 'sent');
+        console.log(`[Payment Reminder Poller] Sent reminder #${rem.id} to ${rem.recipient_phone}`);
+      } catch (err) {
+        console.error(`[Payment Reminder Poller] Failed for #${rem.id}: ${err.message}`);
+      }
+    }
+  } catch (e) {
+    console.error('[Payment Reminder Poller Error]', e);
+  }
+}
+
+// ─── Plan Expiry Notification Processing ─────────────────────────────────────
+async function processPlanExpiries() {
+  try {
+    // 1. Check if Admin WhatsApp session is connected
+    const adminStatus = getSessionStatus('admin');
+    if (adminStatus.status !== 'CONNECTED') return;
+
+    const users = await getAllUsers();
+    if (!users || users.length === 0) return;
+
+    const now = Date.now();
+
+    for (const user of users) {
+      if (user.role === 'admin') continue;
+      if (!user.phone) continue;
+
+      // Get user's latest plan (active or most recent)
+      const plan = await getActivePlan(user.id) || await getPlansByUser(user.id)?.[0];
+      if (!plan || !plan.expires_at) continue;
+
+      const expiresAtMs = new Date(plan.expires_at).getTime();
+      const diffMs = expiresAtMs - now;
+      const diffHours = diffMs / (1000 * 60 * 60);
+
+      let category = null;
+      let minIntervalMinutes = 0;
+      let maxPer24h = 0;
+      let message = '';
+
+      const formattedExpiryDate = new Date(expiresAtMs).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+
+      if (diffHours > 48 && diffHours <= 72) {
+        category = '3_days';
+        minIntervalMinutes = 12 * 60;
+        maxPer24h = 2;
+        message =
+          `⏳ *Subscription Expiring Soon!*\n\n` +
+          `Hi ${user.name || 'there'},\n` +
+          `Your WhatsApp Automation Plan will expire in *3 Days* (on ${formattedExpiryDate}).\n\n` +
+          `To ensure uninterrupted automated messaging and API access, please renew your subscription.\n\n` +
+          `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
+          `💰 Price: ₹${plan.price || 199}\n\n` +
+          `Log in to your account dashboard to submit deposit or renew plan. Thank you! 🙏`;
+      } else if (diffHours > 24 && diffHours <= 48) {
+        category = '2_days';
+        minIntervalMinutes = 8 * 60;
+        maxPer24h = 3;
+        message =
+          `⚠️ *Subscription Alert: 2 Days Left*\n\n` +
+          `Hi ${user.name || 'there'},\n` +
+          `Your WhatsApp Automation Plan expires in *2 Days* (on ${formattedExpiryDate}).\n\n` +
+          `Please renew your subscription today to keep your WhatsApp automation running smoothly!\n\n` +
+          `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
+          `💰 Price: ₹${plan.price || 199}\n\n` +
+          `Submit your deposit reference in the portal. Thank you! 🙏`;
+      } else if (diffHours >= 0 && diffHours <= 24) {
+        category = 'due_date';
+        minIntervalMinutes = 6 * 60;
+        maxPer24h = 4;
+        message =
+          `🚨 *Subscription Expiring TODAY!*\n\n` +
+          `Hi ${user.name || 'there'},\n` +
+          `Your WhatsApp Automation Plan expires *TODAY* (${formattedExpiryDate}).\n\n` +
+          `⚡ *Action Required*: Renew now to prevent interruption of your automated messages and campaigns!\n\n` +
+          `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
+          `💰 Price: ₹${plan.price || 199}\n\n` +
+          `Please transfer funds and submit deposit UTR in your portal. 🙏`;
+      } else if (diffHours < 0 && diffHours >= -96) {
+        category = 'expired_4d';
+        minIntervalMinutes = 6 * 60;
+        maxPer24h = 4;
+        const daysAgo = Math.floor(Math.abs(diffHours) / 24) || 1;
+        message =
+          `❌ *Subscription Expired*\n\n` +
+          `Hi ${user.name || 'there'},\n` +
+          `Your WhatsApp Automation Plan expired ${daysAgo} day(s) ago (on ${formattedExpiryDate}).\n\n` +
+          `Your WhatsApp automated sessions and campaign APIs are currently paused.\n\n` +
+          `To reactivate all services instantly, please submit your payment deposit in the portal.\n\n` +
+          `📋 Plan: ${plan.plan_type || 'Monthly'}\n` +
+          `💰 Price: ₹${plan.price || 199}\n\n` +
+          `Thank you! 🙏`;
+      } else {
+        continue;
+      }
+
+      if (!await canSendExpiryNotification(user.id, minIntervalMinutes, maxPer24h)) {
+        continue;
+      }
+
+      try {
+        const digits = String(user.phone).replace(/\D/g, '');
+        if (digits && digits.length >= 10) {
+          await sendMessageToJid('admin', digits, message);
+          await logExpiryNotification(user.id, category);
+          console.log(`[Expiry Poller] Sent '${category}' notification to user #${user.id} (${digits})`);
+        }
+      } catch (sendErr) {
+        console.error(`[Expiry Poller] Failed to send to user #${user.id}: ${sendErr.message}`);
+      }
+    }
+  } catch (e) {
+    console.error('[Plan Expiry Poller Error]', e);
+  }
+}
+
+// ─── Unified Background Runner ──────────────────────────────────────────────
+let isRunningUnifiedJobs = false;
+
+export async function runUnifiedBackgroundJobs() {
+  if (isRunningUnifiedJobs) return;
+  isRunningUnifiedJobs = true;
+  try {
+    // Run all tasks in a single fast synchronized burst
+    await processPendingReminders();
+    await triggerCampaignsPoller();
+    await processBirthdayWishes();
+    await processFollowUps();
+    await processPaymentReminders();
+    await processPlanExpiries();
+  } catch (err) {
+    console.error('[Unified Background Jobs Error]', err);
+  } finally {
+    isRunningUnifiedJobs = false;
+    // Trigger garbage collection to immediately free allocated memory buffers
+    if (global.gc) {
+      try {
+        global.gc();
+        const mem = process.memoryUsage();
+        const rssMb = Math.round(mem.rss / 1024 / 1024);
+        const heapMb = Math.round(mem.heapUsed / 1024 / 1024);
+        console.log(`[Memory Monitor] Cleaned. RSS: ${rssMb}MB, Heap: ${heapMb}MB`);
+      } catch (e) {}
+    }
+  }
+}
+
+function startUnifiedBackgroundPoller() {
+  // Stagger initial check 15s after startup
+  setTimeout(() => {
+    runUnifiedBackgroundJobs().catch(e => console.error('[Initial Unified Jobs Error]', e));
+  }, 15_000);
+
+  // Poll in a synchronized batch every 10 minutes (allowing Neon DB to auto-suspend between cycles)
+  setInterval(() => {
+    runUnifiedBackgroundJobs().catch(e => console.error('[Scheduled Unified Jobs Error]', e));
+  }, 10 * 60 * 1000);
+}
 
