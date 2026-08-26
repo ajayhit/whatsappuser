@@ -2379,20 +2379,64 @@ export async function deleteFollowupLog(id, userId) {
 // ─── WhatsApp Multi-Session Auth Persistence (Cloud DB Sync) ─────────────────
 
 export async function saveSessionFile(userId, fileName, fileData) {
+  return saveSessionFilesBatch(userId, [{ fileName, fileData }]);
+}
+
+export async function saveSessionFilesBatch(userId, files) {
+  if (!files || files.length === 0) return;
+  const uid = String(userId);
+
   if (isPg()) {
-    await execute(`
-      INSERT INTO whatsapp_session_auth (user_id, file_name, file_data, updated_at)
-      VALUES (?, ?, ?, NOW())
-      ON CONFLICT (user_id, file_name)
-      DO UPDATE SET file_data = EXCLUDED.file_data, updated_at = NOW()
-    `, [String(userId), fileName, fileData]);
+    // Process in chunks of 50 to stay well within Postgres parameter limits
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < files.length; i += CHUNK_SIZE) {
+      const chunk = files.slice(i, i + CHUNK_SIZE);
+      const values = [];
+      const placeholders = [];
+      let idx = 1;
+      for (const item of chunk) {
+        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, NOW())`);
+        values.push(uid, item.fileName, item.fileData);
+      }
+      const sql = `
+        INSERT INTO whatsapp_session_auth (user_id, file_name, file_data, updated_at)
+        VALUES ${placeholders.join(', ')}
+        ON CONFLICT (user_id, file_name)
+        DO UPDATE SET file_data = EXCLUDED.file_data, updated_at = NOW()
+      `;
+      await getPgPool().query(sql, values);
+    }
   } else {
-    await execute(`
+    const db = getDb();
+    const insertStmt = db.prepare(`
       INSERT INTO whatsapp_session_auth (user_id, file_name, file_data, updated_at)
       VALUES (?, ?, ?, datetime('now'))
       ON CONFLICT (user_id, file_name)
       DO UPDATE SET file_data = excluded.file_data, updated_at = datetime('now')
-    `, [String(userId), fileName, fileData]);
+    `);
+    const insertMany = db.transaction((items) => {
+      for (const item of items) {
+        insertStmt.run(uid, item.fileName, item.fileData);
+      }
+    });
+    insertMany(files);
+  }
+}
+
+export async function deleteSessionFilesSpecific(userId, fileNames) {
+  if (!fileNames || fileNames.length === 0) return;
+  const uid = String(userId);
+  if (isPg()) {
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < fileNames.length; i += CHUNK_SIZE) {
+      const chunk = fileNames.slice(i, i + CHUNK_SIZE);
+      const placeholders = chunk.map((_, idx) => `$${idx + 2}`).join(', ');
+      await getPgPool().query(`DELETE FROM whatsapp_session_auth WHERE user_id = $1 AND file_name IN (${placeholders})`, [uid, ...chunk]);
+    }
+  } else {
+    const db = getDb();
+    const placeholders = fileNames.map(() => '?').join(', ');
+    db.prepare(`DELETE FROM whatsapp_session_auth WHERE user_id = ? AND file_name IN (${placeholders})`).run(uid, ...fileNames);
   }
 }
 

@@ -10,6 +10,8 @@ import {
   getUserById,
   getAutomationSettings,
   saveSessionFile,
+  saveSessionFilesBatch,
+  deleteSessionFilesSpecific,
   getSessionFiles,
   deleteSessionFiles,
   getAllSessionUserIdsFromDb
@@ -24,6 +26,8 @@ const reconnectCount = new Map();
 const lastWelcomeSentMap = new Map();
 const lastAwaySentMap = new Map();
 const dbSyncTimers = new Map();
+// Cache of synced files: Map<userId, Map<fileName, { mtimeMs: number, size: number }>>
+const sessionFilesSyncedState = new Map();
 
 const sessionsDir = process.env.SESSION_DIR || './sessions';
 
@@ -55,64 +59,175 @@ export function hasSessionFiles(userId) {
  * This guarantees sessions survive Render deploys, container restarts, and ephemeral disk wipes.
  */
 export async function syncSessionFromDb(userId) {
-  const sessionDir = path.join(sessionsDir, `session_${userId}`);
+  const uid = String(userId);
+  const sessionDir = path.join(sessionsDir, `session_${uid}`);
   const credsFile = path.join(sessionDir, 'creds.json');
 
   if (fsSync.existsSync(credsFile)) {
+    // If files already exist locally, cache their stats so we don't re-sync unchanged files to DB
+    try {
+      let userState = sessionFilesSyncedState.get(uid);
+      if (!userState) {
+        userState = new Map();
+        sessionFilesSyncedState.set(uid, userState);
+        const diskFiles = await fs.readdir(sessionDir);
+        for (const file of diskFiles) {
+          try {
+            const stat = await fs.stat(path.join(sessionDir, file));
+            if (stat.isFile()) {
+              userState.set(file, { mtimeMs: stat.mtimeMs, size: stat.size });
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
     return true; // Already cached on disk
   }
 
   try {
-    const dbFiles = await getSessionFiles(userId);
+    const dbFiles = await getSessionFiles(uid);
     if (!dbFiles || dbFiles.length === 0) {
       return false;
     }
 
     await fs.mkdir(sessionDir, { recursive: true });
+    const userState = new Map();
     for (const f of dbFiles) {
       const filePath = path.join(sessionDir, f.file_name);
       await fs.writeFile(filePath, f.file_data, 'utf-8');
+      try {
+        const stat = await fs.stat(filePath);
+        userState.set(f.file_name, { mtimeMs: stat.mtimeMs, size: stat.size });
+      } catch (e) {}
     }
-    console.log(`[Session DB Sync] Restored ${dbFiles.length} auth file(s) for user ${userId} from PostgreSQL.`);
+    sessionFilesSyncedState.set(uid, userState);
+    console.log(`[Session DB Sync] Restored ${dbFiles.length} auth file(s) for user ${uid} from PostgreSQL.`);
     return true;
   } catch (err) {
-    console.error(`[Session DB Sync Error] Failed restoring session ${userId} from DB:`, err.message);
+    console.error(`[Session DB Sync Error] Failed restoring session ${uid} from DB:`, err.message);
     return false;
   }
 }
 
 /**
- * Debounced sync of local session files up to PostgreSQL.
+ * Safely cleans up obsolete pre-keys (keeping the most recent 150 pre-keys)
+ * to prevent disk and database explosion over time.
+ */
+async function pruneObsoletePreKeys(sessionDir, userId, files) {
+  try {
+    const credsPath = path.join(sessionDir, 'creds.json');
+    if (!files.includes('creds.json')) return [];
+
+    let nextPreKeyId = null;
+    try {
+      const credsRaw = await fs.readFile(credsPath, 'utf-8');
+      const creds = JSON.parse(credsRaw);
+      nextPreKeyId = creds.nextPreKeyId || creds.firstUnuploadedPreKeyId;
+    } catch (e) {
+      return [];
+    }
+
+    if (!nextPreKeyId || typeof nextPreKeyId !== 'number' || nextPreKeyId <= 150) {
+      return [];
+    }
+
+    const cutoffId = nextPreKeyId - 150;
+    const deletedFiles = [];
+
+    for (const file of files) {
+      const match = file.match(/^pre-key-(\d+)\.json$/);
+      if (match) {
+        const keyId = parseInt(match[1], 10);
+        if (keyId < cutoffId) {
+          try {
+            await fs.unlink(path.join(sessionDir, file));
+            deletedFiles.push(file);
+          } catch (e) {}
+        }
+      }
+    }
+
+    if (deletedFiles.length > 0) {
+      await deleteSessionFilesSpecific(userId, deletedFiles);
+      const userState = sessionFilesSyncedState.get(String(userId));
+      if (userState) {
+        for (const df of deletedFiles) {
+          userState.delete(df);
+        }
+      }
+      console.log(`[Session Cleanup] Pruned ${deletedFiles.length} obsolete pre-key file(s) for user ${userId} (< id ${cutoffId}).`);
+    }
+    return deletedFiles;
+  } catch (err) {
+    console.error(`[Session Cleanup Error] User ${userId}:`, err.message);
+    return [];
+  }
+}
+
+/**
+ * Debounced differential sync of local session files up to PostgreSQL.
+ * Only uploads files that have been modified or newly created.
  */
 export function queueSessionDbSync(userId) {
-  if (dbSyncTimers.has(userId)) {
-    clearTimeout(dbSyncTimers.get(userId));
+  const uid = String(userId);
+  if (dbSyncTimers.has(uid)) {
+    clearTimeout(dbSyncTimers.get(uid));
   }
 
   const timer = setTimeout(async () => {
-    dbSyncTimers.delete(userId);
-    const sessionDir = path.join(sessionsDir, `session_${userId}`);
+    dbSyncTimers.delete(uid);
+    const sessionDir = path.join(sessionsDir, `session_${uid}`);
     if (!fsSync.existsSync(sessionDir)) return;
 
     try {
-      const files = await fs.readdir(sessionDir);
+      let userState = sessionFilesSyncedState.get(uid);
+      if (!userState) {
+        userState = new Map();
+        sessionFilesSyncedState.set(uid, userState);
+      }
+
+      let files = await fs.readdir(sessionDir);
+
+      // Prune old prekeys if there are too many
+      if (files.length > 180) {
+        const deleted = await pruneObsoletePreKeys(sessionDir, uid, files);
+        if (deleted && deleted.length > 0) {
+          const deletedSet = new Set(deleted);
+          files = files.filter(f => !deletedSet.has(f));
+        }
+      }
+
+      const modifiedFiles = [];
+
       for (const file of files) {
         const filePath = path.join(sessionDir, file);
         try {
           const stat = await fs.stat(filePath);
           if (stat.isFile()) {
-            const content = await fs.readFile(filePath, 'utf-8');
-            await saveSessionFile(userId, file, content);
+            const lastState = userState.get(file);
+            // Only sync if file is new, modified, or changed in size
+            if (!lastState || stat.mtimeMs > lastState.mtimeMs || stat.size !== lastState.size) {
+              const content = await fs.readFile(filePath, 'utf-8');
+              modifiedFiles.push({ fileName: file, fileData: content, mtimeMs: stat.mtimeMs, size: stat.size });
+            }
           }
         } catch (fileErr) {}
       }
-      console.log(`[Session DB Sync] Synced ${files.length} auth file(s) for user ${userId} to PostgreSQL.`);
+
+      if (modifiedFiles.length > 0) {
+        await saveSessionFilesBatch(uid, modifiedFiles);
+        for (const item of modifiedFiles) {
+          userState.set(item.fileName, { mtimeMs: item.mtimeMs, size: item.size });
+        }
+        const skipped = files.length - modifiedFiles.length;
+        console.log(`[Session DB Sync] Synced ${modifiedFiles.length} modified auth file(s) for user ${uid} to PostgreSQL (${skipped} unchanged skipped).`);
+      }
     } catch (err) {
-      console.error(`[Session DB Sync Error] Failed saving session ${userId} to DB:`, err.message);
+      console.error(`[Session DB Sync Error] Failed saving session ${uid} to DB:`, err.message);
     }
   }, 1500);
 
-  dbSyncTimers.set(userId, timer);
+  dbSyncTimers.set(uid, timer);
 }
 
 function normalizeTargetJid(to) {
@@ -331,6 +446,7 @@ export async function initSession(userId) {
         } catch (e) {
           console.error(`Error deleting auth directory for ${userId}:`, e);
         }
+        sessionFilesSyncedState.delete(String(userId));
         // Also wipe DB session so syncSessionFromDb doesn't restore stale creds on next connect
         try {
           await deleteSessionFiles(userId);
@@ -391,6 +507,7 @@ export async function logoutSession(userId) {
 
   sessionStatus.set(userId, 'DISCONNECTED');
   qrCodes.delete(userId);
+  sessionFilesSyncedState.delete(String(userId));
 
   if (sock && status === 'CONNECTED') {
     try {
