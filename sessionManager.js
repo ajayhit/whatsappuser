@@ -331,6 +331,13 @@ export async function initSession(userId) {
         } catch (e) {
           console.error(`Error deleting auth directory for ${userId}:`, e);
         }
+        // Also wipe DB session so syncSessionFromDb doesn't restore stale creds on next connect
+        try {
+          await deleteSessionFiles(userId);
+          console.log(`[Session Terminated] Deleted stale DB session files for userId: ${userId}`);
+        } catch (e) {
+          console.error(`Error deleting DB session files for ${userId}:`, e);
+        }
       }
     }
   });
@@ -344,10 +351,20 @@ export async function initSession(userId) {
  * @returns {{status: string, qr?: string, user?: {id: string, name: string, phone: string}}}
  */
 export function getSessionStatus(userId) {
+  const status = sessionStatus.get(userId);
+
+  // If the socket isn't in the map yet (initSession still running its awaits),
+  // still report the real status (CONNECTING / QR) so the frontend keeps polling.
   if (!sessions.has(userId)) {
+    if (status && status !== 'DISCONNECTED') {
+      return {
+        status,
+        qr: status === 'QR' ? qrCodes.get(userId) : undefined
+      };
+    }
     return { status: 'DISCONNECTED' };
   }
-  const status = sessionStatus.get(userId);
+
   const sock = sessions.get(userId);
   const details = (status === 'CONNECTED' && sock?.user) ? {
     id: sock.user.id,
@@ -356,7 +373,7 @@ export function getSessionStatus(userId) {
   } : null;
 
   return {
-    status,
+    status: status || 'DISCONNECTED',
     qr: status === 'QR' ? qrCodes.get(userId) : undefined,
     user: details
   };
