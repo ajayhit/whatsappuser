@@ -1168,12 +1168,18 @@ export async function getWalletTransactions(userId) {
 
 export async function getActivePlan(userId) {
   const cacheKey = `active_plan_${userId}`;
-  const cached = getCached(cacheKey, 30000);
+  const cached = getCached(cacheKey, 10000);
   if (cached !== undefined) return cached;
 
   const plan = await queryOne(`
     SELECT * FROM plans WHERE user_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1
   `, [userId]);
+
+  // If expired by date, don't return active
+  if (plan && new Date(plan.expires_at) <= new Date()) {
+    setCached(cacheKey, null);
+    return null;
+  }
 
   setCached(cacheKey, plan || null);
   return plan;
@@ -1186,8 +1192,11 @@ export async function getPlansByUser(userId) {
 }
 
 export async function activatePlan(userId, planType = 'plan_28', durationDays = 28, price = 199) {
-  invalidateCache(`active_plan_${userId}`);
-  const activePlan = await getActivePlan(userId);
+  // Query DB directly without dirtying the cache with previous expired state
+  const activePlan = await queryOne(`
+    SELECT * FROM plans WHERE user_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1
+  `, [userId]);
+
   const startedAt = new Date().toISOString();
   let expiresAt;
 
@@ -1206,7 +1215,17 @@ export async function activatePlan(userId, planType = 'plan_28', durationDays = 
     VALUES (?, 'active', ?, ?, ?, ?, ?)
   `, [userId, startedAt, expiresAt, planType, durationDays, price]);
 
-  return await queryOne('SELECT * FROM plans WHERE id = ?', [res.lastInsertRowid]);
+  const newPlan = (res?.lastInsertRowid)
+    ? await queryOne('SELECT * FROM plans WHERE id = ?', [res.lastInsertRowid])
+    : await queryOne(`SELECT * FROM plans WHERE user_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1`, [userId]);
+
+  // Invalidate stale cache and populate with new plan immediately
+  invalidateCache(`active_plan_${userId}`);
+  if (newPlan) {
+    setCached(`active_plan_${userId}`, newPlan);
+  }
+
+  return newPlan;
 }
 
 export async function getPlanDetails(planType) {

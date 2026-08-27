@@ -4937,6 +4937,17 @@
           throw new Error(data.error || 'Failed to purchase subscription');
         }
 
+        // Instant optimistic state update — zero waiting time
+        if (data.plan) {
+          state.plan = data.plan;
+          if (!state.plans) state.plans = [];
+          state.plans.unshift(data.plan);
+        }
+        if (data.user) {
+          state.user = data.user;
+        }
+        renderApp();
+
         alert(data.message || 'Subscription activated successfully!');
         fetchUserProfile();
       } catch (err) {
