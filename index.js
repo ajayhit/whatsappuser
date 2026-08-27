@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -31,24 +32,41 @@ const PORT = process.env.PORT || 3000;
 // Initialize database
 initDb().catch(err => { console.error('[DB Init Error]', err); process.exit(1); });
 
+// Enable Gzip/Deflate compression for all responses (HTML, JSON, JS, CSS) to drastically reduce bandwidth
+app.use(compression({
+  threshold: 1024, // Compress responses larger than 1KB
+  level: 6
+}));
+
 // Enable CORS and JSON body parser with sensible buffer limits
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
-// Serve static control panel assets from the 'public' folder
-app.use(express.static('public'));
+// Serve static control panel assets from the 'public' folder with caching
+app.use(express.static('public', {
+  maxAge: '1d', // 1 day browser cache for static files
+  etag: true
+}));
 
-// Serve uploaded payment screenshots
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploaded payment screenshots and catalog media with 7-day cache
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '7d',
+  etag: true,
+  immutable: true
+}));
 
-// Health check endpoint
+// Health check endpoint (lightweight for uptime monitors and pingers)
 app.get('/health', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
   res.json({
     status: 'OK',
-    uptime: process.uptime(),
+    uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString()
   });
+});
+app.head('/health', (req, res) => {
+  res.status(200).end();
 });
 
 // Dynamic XML Sitemap Endpoint for Search Engine SEO
