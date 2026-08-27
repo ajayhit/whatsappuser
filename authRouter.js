@@ -242,6 +242,26 @@ router.post('/login', async (req, res) => {
 });
 
 /**
+ * POST /auth/regenerate-token
+ * Generate a new permanent API authorization token
+ */
+router.post('/regenerate-token', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.is_blocked === 1) {
+      return res.status(403).json({ error: 'Your account is blocked.' });
+    }
+    const token = generateToken(req.user);
+    return res.json({
+      message: 'New permanent API token generated successfully!',
+      token
+    });
+  } catch (err) {
+    console.error('Regenerate token error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * GET /auth/me
  * Get current user info, plan, wallet, orders, dynamic banks, plan_price
  */
