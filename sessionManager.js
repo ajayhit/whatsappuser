@@ -166,9 +166,11 @@ async function pruneObsoletePreKeys(sessionDir, userId, files) {
 
 /**
  * Debounced differential sync of local session files up to PostgreSQL.
- * Only uploads files that have been modified or newly created.
+ * Batches file updates to prevent keeping Neon PostgreSQL awake 24/7.
+ * @param {string|number} userId
+ * @param {number} delayMs - Debounce time (default: 60,000ms / 1 min for background creds, 1,000ms for connection events)
  */
-export function queueSessionDbSync(userId) {
+export function queueSessionDbSync(userId, delayMs = 60000) {
   const uid = String(userId);
   if (dbSyncTimers.has(uid)) {
     clearTimeout(dbSyncTimers.get(uid));
@@ -225,7 +227,7 @@ export function queueSessionDbSync(userId) {
     } catch (err) {
       console.error(`[Session DB Sync Error] Failed saving session ${uid} to DB:`, err.message);
     }
-  }, 1500);
+  }, delayMs);
 
   dbSyncTimers.set(uid, timer);
 }
@@ -364,7 +366,8 @@ export async function initSession(userId) {
 
   sock.ev.on('creds.update', async () => {
     await saveCreds();
-    queueSessionDbSync(userId);
+    // Batch background credential changes to once every 60s to avoid waking PostgreSQL continuously
+    queueSessionDbSync(userId, 60000);
   });
 
   sock.ev.on('messages.upsert', async (m) => {
@@ -399,7 +402,8 @@ export async function initSession(userId) {
       sessionStatus.set(userId, 'CONNECTED');
       qrCodes.delete(userId);
       reconnectCount.delete(userId);
-      queueSessionDbSync(userId);
+      // Sync immediately on connection open
+      queueSessionDbSync(userId, 1000);
       console.log(`[Session Connected] userId: ${userId}, phone: ${sock.user.id.split(':')[0]}`);
     }
 
