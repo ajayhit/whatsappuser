@@ -1120,6 +1120,27 @@
     }
 
     /* Animations */
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .btn-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-radius: 50%;
+      border-top-color: #ffffff;
+      animation: spin 0.75s linear infinite;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+
     @keyframes pulse {
       0% {
         transform: scale(0.9);
@@ -1987,7 +2008,9 @@
             <label>Password</label>
             <input type="password" id="loginPassword" required placeholder="••••••••">
           </div>
-          <button type="submit" style="margin-top: 1rem;">Sign In</button>
+          <button type="submit" id="loginSubmitBtn" style="margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            <span>Sign In</span>
+          </button>
           <div style="text-align: center; margin-top: 0.25rem;">
             <a href="#" onclick="event.preventDefault(); switchAuthTab('forgot')" style="color: var(--info-color); font-size: 0.85rem; text-decoration: none;">Forgot your password?</a>
           </div>
@@ -2028,7 +2051,9 @@
             </div>
             <input type="text" id="regCaptchaAnswer" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="10" placeholder="Type the code shown above" style="text-transform: uppercase; letter-spacing: 0.18em; font-weight: 700;">
           </div>
-          <button type="submit" style="margin-top: 1rem;">Sign Up</button>
+          <button type="submit" id="registerSubmitBtn" style="margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            <span>Sign Up</span>
+          </button>
         </form>
       `;
     }
@@ -4339,8 +4364,15 @@
       e.preventDefault();
       const email = document.getElementById('loginEmail').value.trim();
       const password = document.getElementById('loginPassword').value;
+      const submitBtn = document.getElementById('loginSubmitBtn') || e.target.querySelector('button[type="submit"]');
 
       showAuthAlert('');
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Signing In...</span>`;
+      }
+
       try {
         const res = await fetch('/auth/login', {
           method: 'POST',
@@ -4363,6 +4395,10 @@
         await fetchUserProfile();
       } catch (err) {
         showAuthAlert(err.message);
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<span>Sign In</span>`;
+        }
       }
     }
 
@@ -4373,6 +4409,7 @@
       const phone = document.getElementById('regPhone').value.trim();
       const password = document.getElementById('regPassword').value;
       const captchaAnswer = document.getElementById('regCaptchaAnswer').value.trim();
+      const submitBtn = document.getElementById('registerSubmitBtn') || e.target.querySelector('button[type="submit"]');
 
       const cleanPhone = phone.replace(/\D/g, '');
       if (!cleanPhone || cleanPhone.length !== 10) {
@@ -4381,6 +4418,12 @@
       }
 
       showAuthAlert('');
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Creating Account...</span>`;
+      }
+
       try {
         const res = await fetch('/auth/register', {
           method: 'POST',
@@ -4404,6 +4447,10 @@
       } catch (err) {
         showAuthAlert(err.message);
         loadCaptcha();
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `<span>Sign Up</span>`;
+        }
       }
     }
 
