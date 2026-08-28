@@ -558,7 +558,42 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     }
 
     await updateUserPassword(req.user.id, newPassword);
-    return res.json({ message: 'Password changed successfully!' });
+
+    let whatsappSent = false;
+    // Send WhatsApp confirmation to user's mobile via Admin session
+    try {
+      const userPhone = userRow.phone ? String(userRow.phone).replace(/\D/g, '') : '';
+      let adminStatusObj = getSessionStatus('admin');
+      if (adminStatusObj.status !== 'CONNECTED' && hasSessionFiles('admin')) {
+        try {
+          initSession('admin').catch(e => {});
+          await waitForSessionState('admin', ['CONNECTED'], 4000);
+          adminStatusObj = getSessionStatus('admin');
+        } catch (e) {}
+      }
+      if (userPhone && userPhone.length >= 10 && adminStatusObj.status === 'CONNECTED') {
+        const timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const confirmMsg =
+          `🔐 *Password Changed Successfully*\n\n` +
+          `Hello *${userRow.name || 'User'}*,\n\n` +
+          `Your password for *WhatsApp Automation Studio* was changed successfully.\n\n` +
+          `🕐 Time: ${timestamp}\n` +
+          `📧 Account: ${userRow.email}\n\n` +
+          `⚠️ If you did NOT make this change, please contact admin immediately.\n\n` +
+          `_WhatsApp Automation Studio_`;
+        await sendMessageToJid('admin', userPhone, confirmMsg);
+        whatsappSent = true;
+        console.log(`[Change Password] Confirmation sent to ${userPhone} for user #${req.user.id}`);
+      }
+    } catch (notifyErr) {
+      console.error('[Change Password] WhatsApp notify error:', notifyErr.message);
+    }
+
+    return res.json({
+      message: whatsappSent
+        ? 'Password changed successfully! A confirmation message has been sent to your WhatsApp.'
+        : 'Password changed successfully!'
+    });
   } catch (err) {
     console.error('Change password error:', err);
     return res.status(500).json({ error: err.message });
