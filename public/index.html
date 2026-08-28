@@ -1315,12 +1315,13 @@
     async function fetchPublicPlans() {
       if (state.planOptions && state.planOptions.length > 0) return;
       try {
-        const res = await fetch('/api/auth/public-plans');
+        let res = await fetch('/auth/public-plans');
+        if (!res.ok) res = await fetch('/api/auth/public-plans');
         if (res.ok) {
           const data = await res.json();
           if (data.planOptions) {
             state.planOptions = data.planOptions;
-            if (!state.token && state.publicPage === 'pricing') {
+            if (!state.token && (state.publicPage === 'pricing' || state.publicPage === 'home')) {
               renderApp();
             }
           }
@@ -1382,11 +1383,11 @@
       return `
         <section class="site-hero">
           <div class="site-hero-content">
-            <div class="site-kicker">WhatsApp Messaging for business teams</div>
+            <div class="site-kicker">✨ 5-Day Free Trial Available • WhatsApp Messaging for Business Teams</div>
             <h1>Manage messaging, campaigns, contacts, and subscriptions from one secure dashboard.</h1>
             <p>Run WhatsApp sessions, send bulk messages, parse Excel contact lists, track plan access, and manage payments from a clean SaaS panel built for daily operations.</p>
             <div class="site-hero-actions">
-              <button type="button" onclick="showAuth('register')" style="width:auto; padding:0.8rem 1.2rem;">Create Account</button>
+              <button type="button" onclick="showAuth('register')" style="width:auto; padding:0.8rem 1.2rem;">Start 5-Day Free Trial</button>
               <button type="button" class="btn-secondary" onclick="showAuth('login')" style="width:auto; padding:0.8rem 1.2rem;">Login</button>
             </div>
           </div>
@@ -1394,6 +1395,11 @@
 
         <section class="site-band">
           <div class="site-grid">
+            <div class="site-panel" style="border-color: rgba(59, 130, 246, 0.35); background: rgba(59, 130, 246, 0.08);">
+              <i class="fa-solid fa-gift" style="color: #60a5fa;"></i>
+              <h3 style="color: #93c5fd;">5-Day Free Demo</h3>
+              <p>Get instant access with a 5-day trial to experience our full WhatsApp Studio, Excel bulk messaging, and automation tools.</p>
+            </div>
             <div class="site-panel">
               <i class="fa-solid fa-message"></i>
               <h3>WhatsApp Studio</h3>
@@ -1409,11 +1415,6 @@
               <h3>Secure Signup</h3>
               <p>New users pass a visual security challenge before registration, with server-side verification and expiring one-time captcha codes.</p>
             </div>
-             <div class="site-panel">
-  <i class="fa-solid fa-chart-line"></i>
-  <h3>Grow Your Business</h3>
-  <p>Increase customer engagement with smart WhatsApp Messaging. Schedule campaigns, reach thousands of contacts, and improve communication with a simple and secure platform.</p>
-</div>
           </div>
         </section>
       `;
@@ -2022,7 +2023,7 @@
 
               <div class="auth-header">
                 <h2>WhatsApp Messaging Studio</h2>
-                <p>${state.authTab === 'login' ? 'Sign in to access your dashboard' : state.authTab === 'register' ? 'Create an account to start automating' : 'Reset your account password'}</p>
+                <p>${state.authTab === 'login' ? 'Sign in to access your dashboard' : state.authTab === 'register' ? 'Create an account to start your 5-day free demo' : 'Reset your account password'}</p>
               </div>
               
               <!-- Active Loading Indicator with animated spinner -->
