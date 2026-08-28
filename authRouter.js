@@ -567,32 +567,76 @@ router.post('/change-password', authMiddleware, async (req, res) => {
 
 /**
  * POST /auth/forgot-password
- * Generate a password reset OTP token
+ * Generate a password reset OTP token and send to user mobile from Admin WhatsApp session
  */
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
   if (!email) {
-    return res.status(400).json({ error: 'Email is required' });
+    return res.status(400).json({ error: 'Email or mobile number is required' });
   }
 
   try {
-    const user = await getUserByEmail(email);
+    let user = await getUserByEmail(email);
+    if (!user) {
+      const cleanPhone = String(email).replace(/\D/g, '');
+      if (cleanPhone && cleanPhone.length === 10) {
+        user = await getUserByPhone(cleanPhone);
+      }
+    }
+
     if (!user) {
       // Don't reveal whether the email exists
       return res.json({ 
-        message: 'If this email is registered, a reset code has been generated.',
+        message: 'If this account is registered, a reset code has been generated and sent.',
         showOtp: false
       });
     }
 
     const { token, expiresAt } = await createPasswordResetToken(user.id);
-    
-    // Since there's no email service configured, return the OTP directly
-    // In production, this should be sent via email/SMS
-    console.log(`[Password Reset] OTP for ${email}: ${token}`);
+    console.log(`[Password Reset] OTP for user #${user.id} (${user.email}): ${token}`);
+
+    // Send OTP code to user's mobile via Admin WhatsApp session
+    let whatsappSent = false;
+    const userPhone = user.phone ? String(user.phone).replace(/\D/g, '') : '';
+    const adminStatus = getSessionStatus('admin');
+
+    if (userPhone && userPhone.length >= 10 && adminStatus === 'connected') {
+      try {
+        const resetMsg =
+          `🔐 *Password Reset Verification*\n\n` +
+          `Hello *${user.name || 'User'}*,\n\n` +
+          `We received a request to reset your password for *WhatsApp Automation Studio*.\n\n` +
+          `Your 6-digit Verification Code is:\n` +
+          `🔑 *${token}*\n\n` +
+          `⏳ Code valid for: *15 minutes*\n` +
+          `⚠️ If you did not request this, please ignore this message.\n\n` +
+          `_WhatsApp Automation Studio_`;
+
+        await sendMessageToJid('admin', userPhone, resetMsg);
+        whatsappSent = true;
+        console.log(`[Password Reset] OTP successfully sent via Admin WhatsApp to user #${user.id} (${userPhone})`);
+      } catch (waErr) {
+        console.error(`[Password Reset] Failed to send WhatsApp OTP to ${userPhone}:`, waErr.message);
+      }
+    } else {
+      if (!userPhone || userPhone.length < 10) {
+        console.warn(`[Password Reset] User #${user.id} has no registered mobile number.`);
+      } else {
+        console.warn(`[Password Reset] Admin WhatsApp session is not connected (${adminStatus}).`);
+      }
+    }
+
+    const maskedPhone = (userPhone && userPhone.length >= 10)
+      ? userPhone.slice(0, 2) + '******' + userPhone.slice(-2)
+      : '';
+
     return res.json({
-      message: 'A 6-digit reset code has been generated. It expires in 15 minutes.',
-      otp: token,  // In production, remove this and send via email/SMS
+      message: whatsappSent 
+        ? `A 6-digit reset code has been sent directly to your WhatsApp (${maskedPhone}) from Admin WhatsApp.`
+        : (userPhone ? `Reset code generated for ${maskedPhone}.` : 'A 6-digit reset code has been generated. It expires in 15 minutes.'),
+      whatsappSent,
+      phone: maskedPhone,
+      otp: whatsappSent ? undefined : token,
       expiresAt,
       showOtp: true
     });
@@ -609,7 +653,7 @@ router.post('/forgot-password', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
   const { email, otp, newPassword } = req.body;
   if (!email || !otp || !newPassword) {
-    return res.status(400).json({ error: 'Email, OTP code, and new password are required' });
+    return res.status(400).json({ error: 'Email/Mobile, OTP code, and new password are required' });
   }
   if (newPassword.length < 6) {
     return res.status(400).json({ error: 'New password must be at least 6 characters' });
@@ -624,6 +668,23 @@ router.post('/reset-password', async (req, res) => {
     // Update password and invalidate token
     await updateUserPassword(resetRecord.user_id, newPassword);
     await invalidateResetToken(resetRecord.id);
+
+    // Send confirmation message to user via Admin WhatsApp
+    try {
+      const userPhone = resetRecord.phone ? String(resetRecord.phone).replace(/\D/g, '') : '';
+      const adminStatus = getSessionStatus('admin');
+      if (userPhone && userPhone.length >= 10 && adminStatus === 'connected') {
+        const confirmMsg =
+          `✅ *Password Reset Successful*\n\n` +
+          `Hello *${resetRecord.name || 'User'}*,\n\n` +
+          `Your password for *WhatsApp Automation Studio* has been successfully reset.\n` +
+          `You can now sign in with your new password.\n\n` +
+          `_WhatsApp Automation Studio_`;
+        await sendMessageToJid('admin', userPhone, confirmMsg);
+      }
+    } catch (confErr) {
+      console.error('[Password Reset Confirmation] Error sending message:', confErr.message);
+    }
 
     return res.json({ message: 'Password has been reset successfully! You can now sign in.' });
   } catch (err) {

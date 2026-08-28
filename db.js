@@ -1618,14 +1618,15 @@ export async function createPasswordResetToken(userId) {
   return { token, expiresAt };
 }
 
-export async function getValidResetToken(email, token) {
+export async function getValidResetToken(identifier, token) {
   const now = new Date().toISOString();
+  const cleanPhone = String(identifier || '').replace(/\D/g, '');
   return await queryOne(`
-    SELECT pr.*, u.email, u.name FROM password_resets pr
+    SELECT pr.*, u.email, u.name, u.phone FROM password_resets pr
     JOIN users u ON u.id = pr.user_id
-    WHERE u.email = ? AND pr.token = ? AND pr.used = 0 AND pr.expires_at > ?
+    WHERE (u.email = ? OR (length(?) = 10 AND u.phone = ?)) AND pr.token = ? AND pr.used = 0 AND pr.expires_at > ?
     ORDER BY pr.created_at DESC LIMIT 1
-  `, [email, token, now]);
+  `, [identifier, cleanPhone, cleanPhone, token, now]);
 }
 
 export async function invalidateResetToken(tokenId) {
