@@ -4804,34 +4804,66 @@
 
     async function handleChangePassword(e) {
       e.preventDefault();
-      const currentPassword = document.getElementById('currentPassword').value;
-      const newPassword = document.getElementById('newPassword').value;
-      const confirmNewPassword = document.getElementById('confirmNewPassword').value;
-      const alertDiv = document.getElementById('changePwAlert');
+      const form = e.target;
+      const currentPasswordInput = form ? form.querySelector('#currentPassword') : document.getElementById('currentPassword');
+      const newPasswordInput = form ? form.querySelector('#newPassword') : document.getElementById('newPassword');
+      const confirmNewPasswordInput = form ? form.querySelector('#confirmNewPassword') : document.getElementById('confirmNewPassword');
+      const alertDiv = form ? form.querySelector('#changePwAlert') : document.getElementById('changePwAlert');
+      const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+
+      const currentPassword = currentPasswordInput ? currentPasswordInput.value : '';
+      const newPassword = newPasswordInput ? newPasswordInput.value : '';
+      const confirmNewPassword = confirmNewPasswordInput ? confirmNewPasswordInput.value : '';
 
       // Reset alert
-      if (alertDiv) alertDiv.style.display = 'none';
+      if (alertDiv) {
+        alertDiv.style.display = 'none';
+        alertDiv.textContent = '';
+      }
 
-      if (newPassword !== confirmNewPassword) {
+      if (!currentPassword) {
+        const msg = 'Please enter your current password';
         if (alertDiv) {
-          alertDiv.textContent = 'New passwords do not match';
+          alertDiv.innerHTML = `⚠️ ${msg}`;
           alertDiv.style.display = 'block';
           alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
           alertDiv.style.border = '1px solid var(--error-color)';
           alertDiv.style.color = 'var(--error-color)';
         }
+        alert(msg);
+        return;
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        const msg = 'New password and confirm password do not match';
+        if (alertDiv) {
+          alertDiv.innerHTML = `⚠️ ${msg}`;
+          alertDiv.style.display = 'block';
+          alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+          alertDiv.style.border = '1px solid var(--error-color)';
+          alertDiv.style.color = 'var(--error-color)';
+        }
+        alert(msg);
         return;
       }
 
       if (newPassword.length < 6) {
+        const msg = 'New password must be at least 6 characters long';
         if (alertDiv) {
-          alertDiv.textContent = 'New password must be at least 6 characters';
+          alertDiv.innerHTML = `⚠️ ${msg}`;
           alertDiv.style.display = 'block';
           alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
           alertDiv.style.border = '1px solid var(--error-color)';
           alertDiv.style.color = 'var(--error-color)';
         }
+        alert(msg);
         return;
+      }
+
+      const origBtnText = submitBtn ? submitBtn.innerHTML : '🔒 Update Password';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>Updating Password...</span>';
       }
 
       try {
@@ -4846,24 +4878,38 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to change password');
 
+        const successMsg = data.message || 'Password changed successfully! A confirmation message has been sent to your WhatsApp.';
+
         if (alertDiv) {
-          alertDiv.textContent = data.message || 'Password updated successfully!';
+          alertDiv.innerHTML = `✅ <strong>Success:</strong> ${successMsg}`;
           alertDiv.style.display = 'block';
-          alertDiv.style.background = 'rgba(16, 185, 129, 0.15)';
-          alertDiv.style.border = '1px solid var(--accent-color)';
-          alertDiv.style.color = 'var(--accent-color)';
+          alertDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+          alertDiv.style.border = '1.5px solid #10b981';
+          alertDiv.style.color = '#34d399';
+          alertDiv.style.fontSize = '0.9rem';
+          alertDiv.style.lineHeight = '1.5';
         }
-        // Clear form
-        document.getElementById('currentPassword').value = '';
-        document.getElementById('newPassword').value = '';
-        document.getElementById('confirmNewPassword').value = '';
+
+        // Clear form fields
+        if (currentPasswordInput) currentPasswordInput.value = '';
+        if (newPasswordInput) newPasswordInput.value = '';
+        if (confirmNewPasswordInput) confirmNewPasswordInput.value = '';
+
+        // Immediate visual alert dialog
+        alert(`✅ ${successMsg}`);
       } catch (err) {
         if (alertDiv) {
-          alertDiv.textContent = err.message;
+          alertDiv.innerHTML = `❌ <strong>Error:</strong> ${err.message}`;
           alertDiv.style.display = 'block';
-          alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
-          alertDiv.style.border = '1px solid var(--error-color)';
-          alertDiv.style.color = 'var(--error-color)';
+          alertDiv.style.background = 'rgba(244, 63, 94, 0.2)';
+          alertDiv.style.border = '1.5px solid var(--error-color)';
+          alertDiv.style.color = '#fca5a5';
+        }
+        alert(`❌ ${err.message}`);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnText;
         }
       }
     }
