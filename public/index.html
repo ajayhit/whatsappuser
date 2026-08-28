@@ -393,6 +393,23 @@
       background: #d97706;
     }
 
+    .btn-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spinLoader 0.65s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 0.4rem;
+      flex-shrink: 0;
+    }
+
+    @keyframes spinLoader {
+      to { transform: rotate(360deg); }
+    }
+
     /* Billing / Wallet details */
     .wallet-box {
       background: rgba(16, 185, 129, 0.08);
@@ -4863,7 +4880,7 @@
       const origBtnText = submitBtn ? submitBtn.innerHTML : '🔒 Update Password';
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span>Updating Password...</span>';
+        submitBtn.innerHTML = '<span class="btn-spinner"></span> <span>Updating Password...</span>';
       }
 
       try {
