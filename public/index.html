@@ -2108,56 +2108,28 @@
       if (state.forgotResetStep === 'done') {
         return `
           <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 1rem 0;">
-            <div style="font-size: 2.5rem;">✅</div>
-            <div style="font-weight: 600; font-size: 1.1rem; color: var(--accent-color);">Password Reset Successful!</div>
-            <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center;">Your password has been updated. You can now sign in with your new password.</p>
+            <div style="font-size: 2.5rem;">📱</div>
+            <div style="font-weight: 600; font-size: 1.1rem; color: var(--accent-color);">Password Sent!</div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center;">
+              Your new temporary password has been sent to your registered WhatsApp number.
+              Sign in with it and change your password from Profile Settings.
+            </p>
             <button onclick="state.forgotResetStep = 'email'; switchAuthTab('login')" style="margin-top: 0.5rem;">Go to Sign In</button>
           </div>
         `;
       }
 
-      if (state.forgotResetStep === 'otp') {
-        const otpInfoBanner = state.forgotWhatsappSent
-          ? `<div style="background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: #86efac; text-align: center;">
-               ✅ OTP sent to your WhatsApp <strong>${state.forgotPhone || ''}</strong>. Check your WhatsApp and enter the code below.
-             </div>`
-          : `<div style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: var(--info-color); text-align: center;">
-               📋 A 6-digit OTP has been generated for <strong>${state.forgotEmail}</strong>. Enter it below.
-             </div>`;
-        return `
-          <form id="resetPasswordForm" onsubmit="handleResetPassword(event)" style="display: flex; flex-direction: column; gap: 1rem;">
-            ${otpInfoBanner}
-            <div class="form-group">
-              <label>6-Digit OTP Code</label>
-              <input type="text" id="resetOtp" required placeholder="Enter OTP from WhatsApp" maxlength="6" pattern="[0-9]{6}" style="text-align: center; letter-spacing: 0.5em; font-size: 1.2rem; font-weight: 700;">
-            </div>
-            <div class="form-group">
-              <label>New Password</label>
-              <input type="password" id="resetNewPassword" required placeholder="Minimum 6 characters">
-            </div>
-            <div class="form-group">
-              <label>Confirm New Password</label>
-              <input type="password" id="resetConfirmPassword" required placeholder="Re-enter new password">
-            </div>
-            <button type="submit" style="margin-top: 0.5rem;">Reset Password</button>
-            <div style="text-align: center;">
-              <a href="#" onclick="event.preventDefault(); state.forgotResetStep = 'email'; renderApp();" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">← Back</a>
-            </div>
-          </form>
-        `;
-      }
-
-      // Default: email/mobile entry step
+      // Default: email/mobile entry
       return `
         <form id="forgotPasswordForm" onsubmit="handleForgotPassword(event)" style="display: flex; flex-direction: column; gap: 1rem;">
-          <div style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: #86efac; line-height: 1.5;">
-            📱 Enter your registered email or mobile number. A 6-digit OTP will be sent to your WhatsApp from Admin.
+          <div style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: #86efac; line-height: 1.55;">
+            📱 Enter your registered email or mobile number.<br>A <strong>new temporary password</strong> will be sent to your WhatsApp from Admin.
           </div>
           <div class="form-group">
             <label>Email or Mobile Number</label>
-            <input type="text" id="forgotEmail" required placeholder="your.email@domain.com or 10-digit mobile">
+            <input type="text" id="forgotEmail" required placeholder="email@domain.com or 10-digit mobile">
           </div>
-          <button type="submit" style="margin-top: 0.5rem;">📲 Send OTP to WhatsApp</button>
+          <button type="submit" style="margin-top: 0.5rem;">📲 Send Password to WhatsApp</button>
           <div style="text-align: center;">
             <a href="#" onclick="event.preventDefault(); switchAuthTab('login')" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">← Back to Sign In</a>
           </div>
@@ -4729,7 +4701,7 @@
       const submitBtn = e.target ? e.target.querySelector('button[type="submit"]') : null;
       showAuthAlert('');
       showAuthSuccess('');
-      if (submitBtn) submitBtn.innerHTML = '<span class="btn-spinner"></span> <span>Sending OTP...</span>';
+      if (submitBtn) submitBtn.innerHTML = '<span class="btn-spinner"></span> <span>Sending...</span>';
       if (submitBtn) submitBtn.disabled = true;
 
       try {
@@ -4741,30 +4713,18 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to process request');
 
-        state.forgotEmail = identifier;
-        state.forgotWhatsappSent = data.whatsappSent || false;
-        state.forgotPhone = data.phone || '';
-
-        if (data.showOtp) {
-          state.forgotResetStep = 'otp';
+        if (data.sent) {
+          // Password delivered via WhatsApp — show success step
+          state.forgotResetStep = 'done';
           renderApp();
-          setTimeout(() => {
-            if (!data.whatsappSent && data.otp) {
-              // WhatsApp not available: pre-fill OTP so user can still reset
-              const otpInput = document.getElementById('resetOtp');
-              if (otpInput) otpInput.value = data.otp;
-              showAuthSuccess(`OTP could not be sent via WhatsApp. Your code is: ${data.otp}`);
-            } else {
-              showAuthSuccess(data.message);
-            }
-          }, 100);
         } else {
-          showAuthSuccess(data.message);
-          if (submitBtn) { submitBtn.innerHTML = '<span>📲 Send OTP to WhatsApp</span>'; submitBtn.disabled = false; }
+          // Account not found or admin offline
+          showAuthSuccess(data.message || 'Request processed.');
+          if (submitBtn) { submitBtn.innerHTML = '<span>📲 Send Password to WhatsApp</span>'; submitBtn.disabled = false; }
         }
       } catch (err) {
         showAuthAlert(err.message);
-        if (submitBtn) { submitBtn.innerHTML = '<span>📲 Send OTP to WhatsApp</span>'; submitBtn.disabled = false; }
+        if (submitBtn) { submitBtn.innerHTML = '<span>📲 Send Password to WhatsApp</span>'; submitBtn.disabled = false; }
       }
     }
 
