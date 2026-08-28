@@ -216,7 +216,13 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const userRow = await getUserByEmail(email);
+    let userRow = await getUserByEmail(email);
+    if (!userRow) {
+      const cleanPhone = email.replace(/\D/g, '');
+      if (cleanPhone && cleanPhone.length === 10) {
+        userRow = await getUserByPhone(cleanPhone);
+      }
+    }
     if (!userRow) return res.status(401).json({ error: 'Invalid email or password' });
 
     // Check block status immediately

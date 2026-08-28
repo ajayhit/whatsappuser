@@ -1141,6 +1141,42 @@
       flex-shrink: 0;
     }
 
+    @keyframes shimmerBar {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    .auth-loading-banner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 10px;
+      padding: 0.85rem 1.2rem;
+      margin-bottom: 1.2rem;
+      color: #34d399;
+      font-size: 0.9rem;
+      font-weight: 500;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    .auth-shimmer-line {
+      display: none;
+      height: 3px;
+      width: calc(100% + 4rem);
+      margin: -2rem -2rem 1.5rem -2rem;
+      background: linear-gradient(90deg, rgba(16, 185, 129, 0) 0%, #10b981 50%, #38bdf8 75%, rgba(16, 185, 129, 0) 100%);
+      background-size: 200% 100%;
+      animation: shimmerBar 1.25s infinite linear;
+    }
+
     @keyframes pulse {
       0% {
         transform: scale(0.9);
@@ -1980,12 +2016,21 @@
               <button class="auth-tab ${state.authTab === 'register' ? 'active' : ''}" id="registerTabBtn">Sign Up</button>
               <button class="auth-tab ${state.authTab === 'forgot' ? 'active' : ''}" id="forgotTabBtn">Reset</button>
             </div>
-            <div class="auth-card">
+            <div class="auth-card" style="position: relative; overflow: hidden;">
+              <!-- Shimmer progress line while loading -->
+              <div id="authProgressBar" class="auth-shimmer-line"></div>
+
               <div class="auth-header">
                 <h2>WhatsApp Messaging Studio</h2>
                 <p>${state.authTab === 'login' ? 'Sign in to access your dashboard' : state.authTab === 'register' ? 'Create an account to start automating' : 'Reset your account password'}</p>
               </div>
               
+              <!-- Active Loading Indicator with animated spinner -->
+              <div id="authLoadingBox" class="auth-loading-banner">
+                <span class="btn-spinner" style="border-top-color: #34d399; border-color: rgba(52, 211, 153, 0.25); width: 20px; height: 20px; border-width: 2.5px;"></span>
+                <span id="authLoadingMsg">Verifying credentials, please wait...</span>
+              </div>
+
               <div id="authAlert" style="display: none; background: rgba(244, 63, 94, 0.15); border: 1px solid var(--error-color); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: var(--error-color); margin-bottom: 1rem; text-align: center;"></div>
               <div id="authSuccess" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--accent-color); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: var(--accent-color); margin-bottom: 1rem; text-align: center;"></div>
               
@@ -2001,14 +2046,14 @@
       return `
         <form id="loginForm" onsubmit="handleLogin(event)" style="display: flex; flex-direction: column; gap: 1rem;">
           <div class="form-group">
-            <label>Email Address</label>
-            <input type="email" id="loginEmail" required placeholder="name@domain.com">
+            <label>Email Address / User ID</label>
+            <input type="text" id="loginEmail" required placeholder="name@domain.com or 10-digit mobile" autocomplete="username">
           </div>
           <div class="form-group">
             <label>Password</label>
-            <input type="password" id="loginPassword" required placeholder="••••••••">
+            <input type="password" id="loginPassword" required placeholder="••••••••" autocomplete="current-password">
           </div>
-          <button type="submit" id="loginSubmitBtn" style="margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+          <button type="submit" id="loginSubmitBtn" style="margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.65rem;">
             <span>Sign In</span>
           </button>
           <div style="text-align: center; margin-top: 0.25rem;">
@@ -4360,16 +4405,55 @@
       }
     }
 
-    async function handleLogin(e) {
-      e.preventDefault();
-      const email = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      const submitBtn = document.getElementById('loginSubmitBtn') || e.target.querySelector('button[type="submit"]');
+    function setAuthLoading(isLoading, message = 'Processing, please wait...', submitBtn = null, inputEls = []) {
+      const progressBar = document.getElementById('authProgressBar');
+      const loadingBox = document.getElementById('authLoadingBox');
+      const loadingMsg = document.getElementById('authLoadingMsg');
 
-      showAuthAlert('');
+      if (progressBar) progressBar.style.display = isLoading ? 'block' : 'none';
+      if (loadingBox) {
+        if (loadingMsg && message) loadingMsg.textContent = message;
+        loadingBox.style.display = isLoading ? 'flex' : 'none';
+      }
+
+      if (Array.isArray(inputEls)) {
+        inputEls.forEach(el => {
+          if (el) el.disabled = isLoading;
+        });
+      }
 
       if (submitBtn) {
-        submitBtn.disabled = true;
+        submitBtn.disabled = isLoading;
+        if (isLoading) {
+          submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Please wait...</span>`;
+          submitBtn.style.opacity = '0.85';
+          submitBtn.style.cursor = 'wait';
+        } else {
+          submitBtn.style.opacity = '1';
+          submitBtn.style.cursor = 'pointer';
+        }
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const emailInput = document.getElementById('loginEmail');
+      const passwordInput = document.getElementById('loginPassword');
+      const submitBtn = document.getElementById('loginSubmitBtn') || (e.target ? e.target.querySelector('button[type="submit"]') : null);
+
+      const email = emailInput ? emailInput.value.trim() : '';
+      const password = passwordInput ? passwordInput.value : '';
+
+      showAuthAlert('');
+      showAuthSuccess('');
+
+      if (!email || !password) {
+        showAuthAlert('Please enter your email or User ID and password');
+        return;
+      }
+
+      setAuthLoading(true, 'Signing in to your account, please wait...', submitBtn, [emailInput, passwordInput]);
+      if (submitBtn) {
         submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Signing In...</span>`;
       }
 
@@ -4392,11 +4476,12 @@
         state.transactions = [];
         state.currentTab = 'whatsappTab';
 
+        setAuthLoading(true, 'Login verified! Loading your dashboard...', submitBtn, [emailInput, passwordInput]);
         await fetchUserProfile();
       } catch (err) {
+        setAuthLoading(false, '', submitBtn, [emailInput, passwordInput]);
         showAuthAlert(err.message);
         if (submitBtn) {
-          submitBtn.disabled = false;
           submitBtn.innerHTML = `<span>Sign In</span>`;
         }
       }
@@ -4404,12 +4489,18 @@
 
     async function handleRegister(e) {
       e.preventDefault();
-      const name = document.getElementById('regName').value.trim();
-      const email = document.getElementById('regEmail').value.trim();
-      const phone = document.getElementById('regPhone').value.trim();
-      const password = document.getElementById('regPassword').value;
-      const captchaAnswer = document.getElementById('regCaptchaAnswer').value.trim();
-      const submitBtn = document.getElementById('registerSubmitBtn') || e.target.querySelector('button[type="submit"]');
+      const nameInput = document.getElementById('regName');
+      const emailInput = document.getElementById('regEmail');
+      const phoneInput = document.getElementById('regPhone');
+      const passwordInput = document.getElementById('regPassword');
+      const captchaInput = document.getElementById('regCaptchaAnswer');
+      const submitBtn = document.getElementById('registerSubmitBtn') || (e.target ? e.target.querySelector('button[type="submit"]') : null);
+
+      const name = nameInput ? nameInput.value.trim() : '';
+      const email = emailInput ? emailInput.value.trim() : '';
+      const phone = phoneInput ? phoneInput.value.trim() : '';
+      const password = passwordInput ? passwordInput.value : '';
+      const captchaAnswer = captchaInput ? captchaInput.value.trim() : '';
 
       const cleanPhone = phone.replace(/\D/g, '');
       if (!cleanPhone || cleanPhone.length !== 10) {
@@ -4418,9 +4509,10 @@
       }
 
       showAuthAlert('');
+      showAuthSuccess('');
 
+      setAuthLoading(true, 'Creating your account, please wait...', submitBtn, [nameInput, emailInput, phoneInput, passwordInput, captchaInput]);
       if (submitBtn) {
-        submitBtn.disabled = true;
         submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Creating Account...</span>`;
       }
 
@@ -4443,12 +4535,13 @@
         state.transactions = [];
         state.currentTab = 'whatsappTab';
 
+        setAuthLoading(true, 'Account created! Loading your dashboard...', submitBtn, [nameInput, emailInput, phoneInput, passwordInput, captchaInput]);
         await fetchUserProfile();
       } catch (err) {
+        setAuthLoading(false, '', submitBtn, [nameInput, emailInput, phoneInput, passwordInput, captchaInput]);
         showAuthAlert(err.message);
         loadCaptcha();
         if (submitBtn) {
-          submitBtn.disabled = false;
           submitBtn.innerHTML = `<span>Sign Up</span>`;
         }
       }
