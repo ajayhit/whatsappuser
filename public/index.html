@@ -2176,36 +2176,81 @@
       }
     }
 
+    // Helper to get formatted plan name
+    function getPlanName(planType) {
+      const names = {
+        demo: 'Demo Plan (5 Days)',
+        plan_28: 'Monthly Plan (28 Days)',
+        quarter: 'Quarter Plan (90 Days)',
+        half_year: 'Half-Year Plan (180 Days)',
+        year: 'Year Plan (365 Days)'
+      };
+      return names[planType] || (planType ? String(planType).toUpperCase() : 'Custom Plan');
+    }
+
     // USER DASHBOARD
     function renderPlanCards() {
       if (!state.planOptions || state.planOptions.length === 0) {
         return '<div style="text-align: center; color: var(--text-muted);">No plans available</div>';
       }
+      const hasActivePlan = state.plan && state.plan.status === 'active' && new Date(state.plan.expires_at) > new Date();
+      const activePlanType = hasActivePlan ? state.plan.plan_type : null;
+
       return state.planOptions.map(function (plan) {
         const isDemo = plan.type === 'demo';
+        const isCurrentActive = hasActivePlan && activePlanType === plan.type;
+
         let btnText = isDemo ? 'Claim Demo (5d)' : 'Subscribe Now';
         let btnClass = isDemo ? 'btn-secondary' : '';
         let btnAttrs = '';
+
         const alreadyClaimedDemo = isDemo && state.plans && state.plans.some(function (p) { return p.plan_type === 'demo'; });
-        if (alreadyClaimedDemo) {
+
+        if (isCurrentActive) {
+          btnText = isDemo ? '✅ Demo Active' : '⚡ Active (Extend/Renew)';
+          btnClass = 'btn-secondary';
+        } else if (alreadyClaimedDemo) {
           btnText = 'Trial Claimed';
           btnClass = 'btn-secondary';
           btnAttrs = 'disabled style="opacity:0.5;cursor:not-allowed;"';
         }
-        const borderColor = isDemo ? 'rgba(59,130,246,0.25)' : 'var(--glass-border)';
-        const nameColor = isDemo ? '#60a5fa' : 'var(--text-main)';
+
+        const borderColor = isCurrentActive 
+          ? 'rgba(16, 185, 129, 0.85)' 
+          : isDemo 
+            ? 'rgba(59,130,246,0.35)' 
+            : 'var(--glass-border)';
+
+        const cardBg = isCurrentActive 
+          ? 'linear-gradient(145deg, rgba(16, 185, 129, 0.12) 0%, rgba(15, 23, 42, 0.6) 100%)' 
+          : 'rgba(15,23,42,0.4)';
+
+        const cardShadow = isCurrentActive 
+          ? '0 0 20px rgba(16, 185, 129, 0.2)' 
+          : 'none';
+
+        const nameColor = isCurrentActive ? '#34d399' : isDemo ? '#60a5fa' : 'var(--text-main)';
+
+        const activeTag = isCurrentActive 
+          ? '<div style="background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-size:0.68rem; font-weight:800; text-transform:uppercase; padding:0.22rem 0.6rem; border-radius:12px; letter-spacing:0.06em; display:inline-flex; align-items:center; gap:0.35rem; width:fit-content; box-shadow:0 2px 8px rgba(16,185,129,0.35);"><i class="fa-solid fa-circle-check"></i> ACTIVATED</div>'
+          : isDemo
+            ? '<div style="background:rgba(59,130,246,0.2); color:#60a5fa; font-size:0.68rem; font-weight:700; text-transform:uppercase; padding:0.2rem 0.55rem; border-radius:10px; width:fit-content;">Free Trial</div>'
+            : '';
+
         const razorpayBtn = (!isDemo && plan.price > 0)
           ? '<button type="button" onclick="payWithRazorpay(\'' + plan.type + '\',' + plan.price + ')" style="width:100%;font-size:0.8rem;padding:0.4rem 0.8rem;margin-top:0.4rem;background:linear-gradient(135deg,#0284c7,#0369a1);border:none;color:#fff;border-radius:8px;cursor:pointer;font-weight:600;">📱 Pay via UPI / QR Code</button>'
           : '';
-        return '<div class="card" style="margin:0;background:rgba(15,23,42,0.4);border:1px solid ' + borderColor + ';display:flex;flex-direction:column;justify-content:space-between;gap:1rem;padding:1rem;border-radius:10px;">'
-          + '<div style="display:flex;flex-direction:column;gap:0.3rem;">'
-          + '<div style="font-weight:700;font-size:0.95rem;color:' + nameColor + ';">' + plan.name + '</div>'
-          + '<div style="font-size:0.75rem;color:var(--text-muted);">' + plan.durationDays + ' Days Duration</div>'
-          + '<div style="font-size:1.4rem;font-weight:800;color:var(--accent-color);margin-top:0.4rem;">\u20b9' + plan.price + '</div>'
+
+        return '<div class="card" style="margin:0; background:' + cardBg + '; border:1.5px solid ' + borderColor + '; box-shadow:' + cardShadow + '; display:flex; flex-direction:column; justify-content:space-between; gap:1rem; padding:1.15rem; border-radius:12px; position:relative; transition: all 0.3s ease;">'
+          + '<div style="display:flex; flex-direction:column; gap:0.35rem;">'
+          + (activeTag ? '<div style="margin-bottom:0.25rem;">' + activeTag + '</div>' : '')
+          + '<div style="font-weight:700; font-size:1rem; color:' + nameColor + ';">' + plan.name + '</div>'
+          + '<div style="font-size:0.75rem; color:var(--text-muted);">' + plan.durationDays + ' Days Duration</div>'
+          + '<div style="font-size:1.45rem; font-weight:800; color:var(--accent-color); margin-top:0.25rem;">\u20b9' + plan.price + '</div>'
           + '</div>'
-          + '<div style="display:flex;flex-direction:column;gap:0.4rem;width:100%;">'
-          + '<button type="button" class="' + btnClass + '" ' + btnAttrs + ' onclick="purchasePlan(\'' + plan.type + '\',' + plan.price + ',' + plan.durationDays + ')" style="width:100%;font-size:0.8rem;padding:0.4rem 0.8rem;margin:0;" title="Pay using your existing wallet balance">'
-          + (isDemo ? btnText : 'Use Wallet Balance (₹' + plan.price + ')')
+          + '<div style="display:flex; flex-direction:column; gap:0.4rem; width:100%;">'
+          + '<button type="button" class="' + btnClass + '" ' + btnAttrs + ' onclick="purchasePlan(\'' + plan.type + '\',' + plan.price + ',' + plan.durationDays + ')" style="width:100%; font-size:0.8rem; padding:0.45rem 0.8rem; margin:0;" title="Pay using your existing wallet balance">'
+          + (isDemo ? btnText : isCurrentActive ? '⚡ Renew / Extend (₹' + plan.price + ')' : 'Use Wallet Balance (₹' + plan.price + ')')
           + '</button>'
           + razorpayBtn
           + '</div>'
@@ -2216,7 +2261,7 @@
     function renderUserDashboard() {
       const hasActivePlan = state.plan && state.plan.status === 'active' && new Date(state.plan.expires_at) > new Date();
       const activeBadge = hasActivePlan
-        ? `<span class="badge badge-active">Active Plan</span>`
+        ? `<span class="badge badge-active">Active Plan: ${getPlanName(state.plan.plan_type)}</span>`
         : `<span class="badge badge-expired">No Active Plan</span>`;
       const planCardsHtml = renderPlanCards();
       const activeCategory = getActiveCategory(state.currentTab);
@@ -2237,13 +2282,13 @@
             <div style="display:flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.03); padding:0.35rem 0.75rem; border-radius:10px; border:1px solid var(--glass-border);">
               <span style="font-size:0.75rem; color:#94a3b8;">Plan:</span>
               ${hasActivePlan
-          ? `<span style="font-size:0.7rem; font-weight:700; color:#34d399; background:rgba(16,185,129,0.15); padding:0.15rem 0.5rem; border-radius:6px;">ACTIVE</span>`
+          ? `<span style="font-size:0.7rem; font-weight:700; color:#34d399; background:rgba(16,185,129,0.15); padding:0.15rem 0.5rem; border-radius:6px;">${getPlanName(state.plan.plan_type)} (ACTIVE)</span>`
           : `<span style="font-size:0.7rem; font-weight:700; color:#f87171; background:rgba(239,68,68,0.15); padding:0.15rem 0.5rem; border-radius:6px;">INACTIVE</span>`
         }
             </div>
             ${hasActivePlan ? `
               <div style="font-size:0.75rem; color:#fbbf24; background:rgba(245,158,11,0.1); padding:0.35rem 0.75rem; border-radius:10px; border:1px solid rgba(245,158,11,0.25);">
-                Expires: <strong>${new Date(state.plan.expires_at).toLocaleDateString()}</strong> (${Math.ceil((new Date(state.plan.expires_at) - new Date()) / (1000 * 60 * 60 * 24))}d left)
+                Expires: <strong>${new Date(state.plan.expires_at).toLocaleDateString()}</strong> (${Math.max(0, Math.ceil((new Date(state.plan.expires_at) - new Date()) / (1000 * 60 * 60 * 24)))}d left)
               </div>` : ''}
             <div class="user-profile" style="display:flex; align-items:center; gap:0.6rem;">
               <div class="user-details" onclick="switchTab('profileTab')" style="text-align:right; cursor:pointer;" title="Click to view & edit profile">
@@ -2261,7 +2306,7 @@
             <div style="font-size: 1.5rem;">⚠️</div>
             <div>
               <div class="service-banner-title">WhatsApp Messaging Locked — Subscription Expired or Inactive</div>
-              <div class="service-banner-desc">You do not have an active ₹${state.planPrice} / 28-day plan. Access to WhatsApp Session connections and APIs is currently suspended. Please transfer funds and submit payment reference details below.</div>
+              <div class="service-banner-desc">You do not have an active plan. Access to WhatsApp Session connections and APIs is currently suspended. Please choose a plan below or transfer funds to activate.</div>
             </div>
           </div>
         ` : ''}
@@ -2287,15 +2332,118 @@
 
             <!-- TAB: Subscription Plans -->
             <div id="plansTab" class="tab-content ${state.currentTab === 'plansTab' ? 'active' : ''}">
+              
+              <!-- Active Plan Status Hero Banner -->
+              ${hasActivePlan ? `
+                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 1rem;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; border-bottom: 1px solid rgba(16, 185, 129, 0.2); padding-bottom: 0.85rem;">
+                    <div style="display: flex; align-items: center; gap: 0.65rem;">
+                      <span style="font-size: 1.6rem;">⚡</span>
+                      <div>
+                        <div style="font-size: 0.75rem; color: #86efac; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Currently Active Plan</div>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: #fff;">${getPlanName(state.plan.plan_type)}</div>
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; font-weight: 700; font-size: 0.78rem; padding: 0.35rem 0.8rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background: #34d399; border-radius: 50%;"></span> ACTIVE SUBSCRIPTION
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Details Grid -->
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem;">
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 10px;">
+                      <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Activated On</div>
+                      <div style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 0.2rem;">
+                        ${state.plan.started_at ? new Date(state.plan.started_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+                      </div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 10px;">
+                      <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Expires On</div>
+                      <div style="font-size: 0.95rem; font-weight: 700; color: #fbbf24; margin-top: 0.2rem;">
+                        ${new Date(state.plan.expires_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 10px;">
+                      <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Validity Remaining</div>
+                      <div style="font-size: 0.95rem; font-weight: 800; color: #34d399; margin-top: 0.2rem;">
+                        ${Math.max(0, Math.ceil((new Date(state.plan.expires_at) - new Date()) / (1000 * 60 * 60 * 24)))} Days Left
+                      </div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 10px;">
+                      <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">WhatsApp Status</div>
+                      <div style="font-size: 0.95rem; font-weight: 700; color: #38bdf8; margin-top: 0.2rem;">
+                        ✅ Full Access Unlocked
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ` : `
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+                  <div style="font-size: 1.6rem; color: #ef4444;">⚠️</div>
+                  <div>
+                    <div style="font-size: 0.95rem; font-weight: 700; color: #fca5a5;">No Active Subscription Plan</div>
+                    <div style="font-size: 0.8rem; color: #cbd5e1; margin-top: 0.2rem;">Your account currently does not have an active plan. Select a subscription below or claim the Free Demo Plan to unlock WhatsApp messaging.</div>
+                  </div>
+                </div>
+              `}
+
+              <!-- Available Plans Grid -->
               <div style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); padding: 1.25rem; border-radius: 12px;">
                 <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 1rem; color: #a5b4fc; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-                  <span style="display: flex; align-items: center; gap: 0.5rem;">💎 Choose a Subscription Plan</span>
-                  ${activeBadge}
+                  <span style="display: flex; align-items: center; gap: 0.5rem;">💎 Choose / Renew Subscription Plan</span>
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">${hasActivePlan ? 'Currently active plan highlighted with green border' : ''}</span>
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
                   ${planCardsHtml}
                 </div>
               </div>
+
+              <!-- Subscription History List if available -->
+              ${state.plans && state.plans.length > 0 ? `
+                <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); padding: 1.25rem; border-radius: 12px;">
+                  <div style="font-weight: 600; font-size: 1rem; margin-bottom: 0.85rem; color: #cbd5e1; display: flex; align-items: center; gap: 0.5rem;">
+                    📜 Subscription History
+                  </div>
+                  <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left;">
+                      <thead>
+                        <tr style="border-bottom: 1px solid var(--glass-border); color: var(--text-muted);">
+                          <th style="padding: 0.6rem 0.75rem;">Plan Name</th>
+                          <th style="padding: 0.6rem 0.75rem;">Duration</th>
+                          <th style="padding: 0.6rem 0.75rem;">Amount</th>
+                          <th style="padding: 0.6rem 0.75rem;">Started</th>
+                          <th style="padding: 0.6rem 0.75rem;">Expires</th>
+                          <th style="padding: 0.6rem 0.75rem;">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${state.plans.map(p => {
+                          const isActive = p.status === 'active' && new Date(p.expires_at) > new Date();
+                          return `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                              <td style="padding: 0.6rem 0.75rem; font-weight: 600; color: #fff;">${getPlanName(p.plan_type)}</td>
+                              <td style="padding: 0.6rem 0.75rem;">${p.duration_days || '-'} Days</td>
+                              <td style="padding: 0.6rem 0.75rem; color: var(--accent-color); font-weight: 700;">₹${p.price}</td>
+                              <td style="padding: 0.6rem 0.75rem; color: var(--text-muted);">${p.started_at ? new Date(p.started_at).toLocaleDateString() : '-'}</td>
+                              <td style="padding: 0.6rem 0.75rem; color: var(--text-muted);">${p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '-'}</td>
+                              <td style="padding: 0.6rem 0.75rem;">
+                                ${isActive 
+                                  ? `<span style="background: rgba(16,185,129,0.15); color: #34d399; padding: 0.15rem 0.5rem; border-radius: 6px; font-weight: 700; font-size: 0.75rem;">ACTIVE</span>` 
+                                  : `<span style="background: rgba(255,255,255,0.05); color: var(--text-muted); padding: 0.15rem 0.5rem; border-radius: 6px; font-size: 0.75rem;">EXPIRED</span>`}
+                              </td>
+                            </tr>
+                          `;
+                        }).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ` : ''}
             </div>
 
             <!-- TAB: Bank Accounts -->
