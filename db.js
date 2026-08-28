@@ -1230,7 +1230,7 @@ export async function activatePlan(userId, planType = 'plan_28', durationDays = 
 
 export async function getPlanDetails(planType) {
   const prices = {
-    demo: { name: 'Demo Plan', durationDays: 10, settingKey: 'plan_price_demo', defaultPrice: 0 },
+    demo: { name: 'Demo Plan', durationDays: 5, settingKey: 'plan_price_demo', defaultPrice: 0 },
     plan_28: { name: 'Monthly Plan', durationDays: 28, settingKey: 'plan_price_28', defaultPrice: 199 },
     quarter: { name: 'Quarter Plan', durationDays: 90, settingKey: 'plan_price_quarter', defaultPrice: 549 },
     half_year: { name: 'Half-Year Plan', durationDays: 180, settingKey: 'plan_price_half_year', defaultPrice: 999 },

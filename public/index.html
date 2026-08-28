@@ -1508,7 +1508,7 @@
       const plans = (state.planOptions && state.planOptions.length > 0)
         ? state.planOptions
         : [
-          { type: 'demo', name: 'Demo Plan', durationDays: 10, price: 0 },
+          { type: 'demo', name: 'Demo Plan', durationDays: 5, price: 0 },
           { type: 'plan_28', name: 'Monthly Plan', durationDays: 28, price: 199 },
           { type: 'quarter', name: 'Quarter Plan', durationDays: 90, price: 549 },
           { type: 'half_year', name: 'Half-Year Plan', durationDays: 180, price: 999 },
@@ -1516,7 +1516,7 @@
         ];
 
       const featuresMap = {
-        demo: ['Full WhatsApp Studio Access', 'Excel Campaign Messaging', 'Media & Document Broadcasts', '10 Days Validity'],
+        demo: ['Full WhatsApp Studio Access', 'Excel Campaign Messaging', 'Media & Document Broadcasts', '5 Days Validity'],
         plan_28: ['Full WhatsApp Studio Access', 'Unlimited Contacts & Groups', 'Excel Bulk Messaging', 'Media & Document Broadcast', '28 Days Validity'],
         quarter: ['Full WhatsApp Studio Access', 'Unlimited Contacts & Groups', 'Excel Bulk Messaging', 'Priority Delivery Speed', '90 Days Validity'],
         half_year: ['Full WhatsApp Studio Access', 'Unlimited Contacts & Groups', 'Excel Bulk Messaging', 'Priority Delivery & Support', '180 Days Validity'],
@@ -2182,7 +2182,7 @@
       }
       return state.planOptions.map(function (plan) {
         const isDemo = plan.type === 'demo';
-        let btnText = isDemo ? 'Claim Demo (10d)' : 'Subscribe Now';
+        let btnText = isDemo ? 'Claim Demo (5d)' : 'Subscribe Now';
         let btnClass = isDemo ? 'btn-secondary' : '';
         let btnAttrs = '';
         const alreadyClaimedDemo = isDemo && state.plans && state.plans.some(function (p) { return p.plan_type === 'demo'; });
@@ -5039,7 +5039,7 @@
 
     async function purchasePlan(planType, price, durationDays) {
       if (planType === 'demo') {
-        if (!confirm('Are you sure you want to claim your 10-day Free Demo Plan? This can only be claimed once.')) return;
+        if (!confirm('Are you sure you want to claim your 5-day Free Demo Plan? This can only be claimed once.')) return;
       } else {
         const planName = planType === 'plan_28' ? 'Monthly' : planType === 'quarter' ? 'Quarter' : planType === 'half_year' ? 'Half-Year' : 'Year';
         if (!confirm(`Are you sure you want to subscribe to the ${planName} Plan for ₹${price}?`)) return;
