@@ -49,7 +49,43 @@ GET /api/session/status
 
 ---
 
-## 2. Logout Session
+## 2. Request 8-Digit Mobile Pairing Code (Mobile-Friendly)
+
+Generate an 8-character pairing code to link your WhatsApp account on mobile browsers without scanning a QR code.
+
+- **URL:** `POST /api/session/pairing-code`
+- **Method:** `POST`
+- **Headers:** `Authorization: Bearer <token>`, `Content-Type: application/json`
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `phoneNumber` | string | Optional | Mobile number with country code (e.g. `919876543210`). Defaults to your registered phone. |
+
+**Example Request Body:**
+
+```json
+{
+  "phoneNumber": "919876543210"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "status": "PAIRING_CODE",
+  "pairingCode": "ABCD1234",
+  "formattedCode": "ABCD-1234",
+  "message": "Pairing code generated. Enter this 8-digit code in WhatsApp on your mobile."
+}
+```
+
+---
+
+## 3. Logout Session
 
 Disconnect and clear your WhatsApp session credentials.
 

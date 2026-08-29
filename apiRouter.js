@@ -2,6 +2,7 @@ import express from 'express';
 import {
   initSession,
   getSessionStatus,
+  requestPairingCode,
   logoutSession,
   sendMessageToJid,
   getProfileInfo,
@@ -40,20 +41,60 @@ router.use(planMiddleware);
  */
 router.post('/session/login', async (req, res) => {
   const userId = String(req.user.id);
+  const phoneNumber = req.body?.phoneNumber || req.body?.phone;
   try {
+    if (phoneNumber) {
+      const codeResult = await requestPairingCode(userId, phoneNumber);
+      return res.json({
+        message: 'Pairing code generated successfully. Enter it in WhatsApp > Linked Devices.',
+        userId,
+        ...codeResult
+      });
+    }
+
     initSession(userId).catch(err => console.error(`[InitSession Async] user ${userId}:`, err));
-    const sessionInfo = await waitForSessionState(userId, ['CONNECTED', 'QR'], 1000);
+    const sessionInfo = await waitForSessionState(userId, ['CONNECTED', 'QR', 'PAIRING_CODE'], 1000);
     return res.json({
       message: sessionInfo.status === 'CONNECTED'
         ? 'Session connected successfully'
         : sessionInfo.status === 'QR'
         ? 'Scan the QR code to log in'
+        : sessionInfo.status === 'PAIRING_CODE'
+        ? 'Pairing code is active'
         : 'Session is initializing in background',
       userId,
       ...sessionInfo
     });
   } catch (err) {
     console.error(`Login error for user ${userId}:`, err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Route: POST /api/session/pairing-code
+ * Requests an 8-digit mobile pairing code for WhatsApp Web linking.
+ */
+router.post('/session/pairing-code', async (req, res) => {
+  const userId = String(req.user.id);
+  let phoneNumber = req.body?.phoneNumber || req.body?.phone;
+  if (!phoneNumber && req.user?.phone) {
+    phoneNumber = req.user.phone;
+  }
+  if (!phoneNumber) {
+    return res.status(400).json({ error: 'Phone number is required to generate a pairing code' });
+  }
+
+  try {
+    const result = await requestPairingCode(userId, phoneNumber);
+    return res.json({
+      success: true,
+      message: 'Pairing code generated. Enter this 8-digit code in WhatsApp on your mobile.',
+      userId,
+      ...result
+    });
+  } catch (err) {
+    console.error(`Pairing code error for user ${userId}:`, err.message);
     return res.status(500).json({ error: err.message });
   }
 });

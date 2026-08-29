@@ -22,6 +22,7 @@ import {
 export const sessions = new Map();
 export const sessionStatus = new Map();
 export const qrCodes = new Map();
+export const pairingCodes = new Map();
 const reconnectCount = new Map();
 const lastWelcomeSentMap = new Map();
 const lastAwaySentMap = new Map();
@@ -401,6 +402,7 @@ export async function initSession(userId) {
     if (connection === 'open') {
       sessionStatus.set(userId, 'CONNECTED');
       qrCodes.delete(userId);
+      pairingCodes.delete(userId);
       reconnectCount.delete(userId);
       // Sync immediately on connection open
       queueSessionDbSync(userId, 1000);
@@ -411,6 +413,15 @@ export async function initSession(userId) {
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       
+      // 440 means connection replaced by another client (e.g. user opened web.whatsapp.com elsewhere)
+      if (statusCode === 440 || statusCode === DisconnectReason.connectionReplaced) {
+        console.log(`[Session Replaced] Another WhatsApp Web session opened elsewhere for userId: ${userId}. Halting socket to prevent collision loop.`);
+        sessionStatus.set(userId, 'DISCONNECTED');
+        cleanupSocket(userId);
+        pairingCodes.delete(userId);
+        return;
+      }
+
       // 405 means Method Not Allowed / Rejected connection (frequently due to corrupted credentials or ban check)
       // 401 means Logged Out
       // 403 means Forbidden
@@ -438,6 +449,7 @@ export async function initSession(userId) {
           console.log(`[Max Reconnects Reached] userId: ${userId}`);
           sessionStatus.set(userId, 'DISCONNECTED');
           cleanupSocket(userId);
+          pairingCodes.delete(userId);
         }
       } else {
         // Manual or forced logout, or a critical error (like 405 / corrupted credentials)
@@ -445,6 +457,7 @@ export async function initSession(userId) {
         sessionStatus.set(userId, 'DISCONNECTED');
         cleanupSocket(userId);
         qrCodes.delete(userId);
+        pairingCodes.delete(userId);
         try {
           await fs.rm(sessionDir, { recursive: true, force: true });
         } catch (e) {
@@ -465,21 +478,33 @@ export async function initSession(userId) {
   return { status: 'CONNECTING' };
 }
 
+export function formatPairingCode(code) {
+  if (!code) return '';
+  const clean = String(code).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  if (clean.length === 8) {
+    return `${clean.slice(0, 4)}-${clean.slice(4)}`;
+  }
+  return clean;
+}
+
 /**
  * Retrieves the current status details of a WhatsApp session.
  * @param {string} userId 
- * @returns {{status: string, qr?: string, user?: {id: string, name: string, phone: string}}}
+ * @returns {{status: string, qr?: string, pairingCode?: string, formattedCode?: string, user?: {id: string, name: string, phone: string}}}
  */
 export function getSessionStatus(userId) {
   const status = sessionStatus.get(userId);
+  const activePairingCode = pairingCodes.get(userId);
 
   // If the socket isn't in the map yet (initSession still running its awaits),
-  // still report the real status (CONNECTING / QR) so the frontend keeps polling.
+  // still report the real status (CONNECTING / QR / PAIRING_CODE) so the frontend keeps polling.
   if (!sessions.has(userId)) {
     if (status && status !== 'DISCONNECTED') {
       return {
         status,
-        qr: status === 'QR' ? qrCodes.get(userId) : undefined
+        qr: status === 'QR' ? qrCodes.get(userId) : undefined,
+        pairingCode: activePairingCode || undefined,
+        formattedCode: activePairingCode ? formatPairingCode(activePairingCode) : undefined
       };
     }
     return { status: 'DISCONNECTED' };
@@ -495,8 +520,72 @@ export function getSessionStatus(userId) {
   return {
     status: status || 'DISCONNECTED',
     qr: status === 'QR' ? qrCodes.get(userId) : undefined,
+    pairingCode: activePairingCode || undefined,
+    formattedCode: activePairingCode ? formatPairingCode(activePairingCode) : undefined,
     user: details
   };
+}
+
+/**
+ * Request an 8-character pairing code for linking with a mobile phone number.
+ * @param {string} userId
+ * @param {string} phoneNumber
+ */
+export async function requestPairingCode(userId, phoneNumber) {
+  const uid = String(userId);
+  let cleanPhone = String(phoneNumber || '').replace(/\D/g, '');
+  if (!cleanPhone) {
+    throw new Error('Valid mobile phone number is required to generate a pairing code.');
+  }
+  if (cleanPhone.length === 10) {
+    cleanPhone = '91' + cleanPhone; // Auto prepend 91 for 10-digit Indian numbers
+  }
+  if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+    throw new Error('Invalid mobile phone number length. Must be 10-15 digits.');
+  }
+
+  // If already connected, return connected status
+  if (sessions.has(uid) && sessionStatus.get(uid) === 'CONNECTED') {
+    return getSessionStatus(uid);
+  }
+
+  // Ensure socket session is initialized
+  if (!sessions.has(uid) || sessionStatus.get(uid) === 'DISCONNECTED') {
+    initSession(uid).catch(err => console.error(`[PairingCode Init Async] user ${uid}:`, err));
+    for (let i = 0; i < 50; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      if (sessions.has(uid)) break;
+    }
+  }
+
+  const sock = sessions.get(uid);
+  if (!sock) {
+    throw new Error('Unable to initialize WhatsApp connection. Please try again.');
+  }
+
+  // Give socket event loop a brief moment to connect
+  await new Promise(r => setTimeout(r, 500));
+
+  if (sock.authState?.creds?.registered) {
+    return getSessionStatus(uid);
+  }
+
+  try {
+    const rawCode = await sock.requestPairingCode(cleanPhone);
+    pairingCodes.set(uid, rawCode);
+    sessionStatus.set(uid, 'PAIRING_CODE');
+    const formatted = formatPairingCode(rawCode);
+    console.log(`[Pairing Code] Generated code for user ${uid} (${cleanPhone}): ${formatted}`);
+    return {
+      status: 'PAIRING_CODE',
+      pairingCode: rawCode,
+      formattedCode: formatted,
+      phoneNumber: cleanPhone
+    };
+  } catch (err) {
+    console.error(`[Pairing Code Error] Failed for user ${uid}:`, err.message);
+    throw new Error(`Failed to generate WhatsApp pairing code: ${err.message}`);
+  }
 }
 
 /**
@@ -511,6 +600,7 @@ export async function logoutSession(userId) {
 
   sessionStatus.set(userId, 'DISCONNECTED');
   qrCodes.delete(userId);
+  pairingCodes.delete(userId);
   sessionFilesSyncedState.delete(String(userId));
 
   if (sock && status === 'CONNECTED') {

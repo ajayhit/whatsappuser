@@ -11,7 +11,7 @@ import {
   getDbPath, checkpointDb, closeDb, reloadDb
 } from './db.js';
 import {
-  initSession, getSessionStatus, logoutSession,
+  initSession, getSessionStatus, requestPairingCode, logoutSession,
   sendMessageToJid, waitForSessionState, hasSessionFiles
 } from './sessionManager.js';
 import fs from 'fs';
@@ -42,22 +42,59 @@ router.use(adminMiddleware);
  * Start or resume the admin WhatsApp session (shows QR if not connected)
  */
 router.post('/session/login', async (req, res) => {
+  const phoneNumber = req.body?.phoneNumber || req.body?.phone;
   try {
+    if (phoneNumber) {
+      const codeResult = await requestPairingCode('admin', phoneNumber);
+      return res.json({
+        message: 'Admin pairing code generated successfully. Enter it in WhatsApp > Linked Devices.',
+        ...codeResult
+      });
+    }
+
     initSession('admin').catch(err =>
       console.error('[Admin WA] initSession error:', err)
     );
-    const sessionInfo = await waitForSessionState('admin', ['CONNECTED', 'QR'], 1500);
+    const sessionInfo = await waitForSessionState('admin', ['CONNECTED', 'QR', 'PAIRING_CODE'], 1500);
     return res.json({
       message:
         sessionInfo.status === 'CONNECTED'
           ? 'Admin WhatsApp session is connected'
           : sessionInfo.status === 'QR'
           ? 'Scan the QR code with the admin WhatsApp number'
+          : sessionInfo.status === 'PAIRING_CODE'
+          ? 'Admin pairing code is active'
           : 'Session is initializing — try again in a moment',
       ...sessionInfo
     });
   } catch (err) {
     console.error('[Admin WA] session/login error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /admin/session/pairing-code
+ * Request an 8-digit pairing code for admin WhatsApp session
+ */
+router.post('/session/pairing-code', async (req, res) => {
+  let phoneNumber = req.body?.phoneNumber || req.body?.phone;
+  if (!phoneNumber) {
+    phoneNumber = await getAdminPhone();
+  }
+  if (!phoneNumber) {
+    return res.status(400).json({ error: 'Phone number is required for admin WhatsApp pairing code' });
+  }
+
+  try {
+    const result = await requestPairingCode('admin', phoneNumber);
+    return res.json({
+      success: true,
+      message: 'Admin pairing code generated. Enter this 8-digit code in WhatsApp on your mobile.',
+      ...result
+    });
+  } catch (err) {
+    console.error('[Admin WA] Pairing code error:', err.message);
     return res.status(500).json({ error: err.message });
   }
 });
