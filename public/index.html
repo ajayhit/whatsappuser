@@ -9559,14 +9559,16 @@
     }, 15000);
 
     // Pause / Resume UI heartbeats when tab is hidden/visible to prevent 24/7 DB queries
-    document.addEventListener('visibilitychange', () => {
+    function handleTabResume() {
       if (!document.hidden && state.token) {
         // Tab just became active: do an immediate refresh of relevant status
         if (typeof checkWhatsappStatus === 'function') checkWhatsappStatus();
         if (state.currentTab === 'campaignsTab' && typeof fetchCampaigns === 'function') fetchCampaigns();
         if (state.currentTab === 'remindersTab' && typeof fetchReminders === 'function') fetchReminders();
       }
-    });
+    }
+    document.addEventListener('visibilitychange', handleTabResume);
+    window.addEventListener('focus', handleTabResume);
 
     // ─── New Sidebar Tab Helper Functions ────────────────────────────────────────
 

@@ -319,8 +319,8 @@ setInterval(() => {
  * @returns {Promise<{status: string, qr?: string}>}
  */
 export async function initSession(userId) {
-  // Check if session already exists or is currently connecting
-  if (sessions.has(userId) || sessionStatus.get(userId) === 'CONNECTING') {
+  // Check if active session socket already exists
+  if (sessions.has(userId)) {
     const status = sessionStatus.get(userId) || 'CONNECTING';
     if (status === 'CONNECTED') {
       return { status: 'CONNECTED' };
@@ -349,7 +349,7 @@ export async function initSession(userId) {
     auth: state,
     logger: pino({ level: 'silent' }), // Suppress Baileys verbose logs
     printQRInTerminal: false,
-    browser: Browsers.macOS('Desktop'), // Mimic a standard desktop client to prevent 405 blocks
+    browser: Browsers.ubuntu('Chrome'), // Standard tested browser profile compatible with mobile pairing code & QR
     syncFullHistory: false, // CRITICAL: Disable full chat history sync to drastically reduce RAM usage
     markOnlineOnConnect: false, // Save CPU and keepalive bandwidth
     generateHighQualityLinkPreview: false,
@@ -389,7 +389,10 @@ export async function initSession(userId) {
 
     // Handle QR Code emission
     if (qr) {
-      sessionStatus.set(userId, 'QR');
+      // Do not overwrite PAIRING_CODE status if user is waiting for mobile pairing
+      if (sessionStatus.get(userId) !== 'PAIRING_CODE' && !pairingCodes.has(userId)) {
+        sessionStatus.set(userId, 'QR');
+      }
       try {
         const qrImage = await QRCode.toDataURL(qr);
         qrCodes.set(userId, qrImage);
@@ -412,6 +415,7 @@ export async function initSession(userId) {
     // Handle connection closures
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const isRestartRequired = statusCode === 515 || statusCode === DisconnectReason.restartRequired;
       
       // 440 means connection replaced by another client (e.g. user opened web.whatsapp.com elsewhere)
       if (statusCode === 440 || statusCode === DisconnectReason.connectionReplaced) {
@@ -428,23 +432,21 @@ export async function initSession(userId) {
       const isCriticalError = [401, 403, 405].includes(statusCode);
       const shouldReconnect = !isCriticalError && statusCode !== DisconnectReason.loggedOut;
 
-      console.log(`[Session Closed] userId: ${userId}, statusCode: ${statusCode}, shouldReconnect: ${shouldReconnect}`);
+      console.log(`[Session Closed] userId: ${userId}, statusCode: ${statusCode}, shouldReconnect: ${shouldReconnect}, isRestart: ${isRestartRequired}`);
 
       if (shouldReconnect) {
         const retries = reconnectCount.get(userId) || 0;
-        if (retries < 5) {
+        if (retries < 8) {
           reconnectCount.set(userId, retries + 1);
-          console.log(`[Reconnecting] userId: ${userId}, attempt: ${retries + 1}...`);
+          const delayMs = isRestartRequired ? 600 : 2500;
+          console.log(`[Reconnecting] userId: ${userId}, attempt: ${retries + 1}, delay: ${delayMs}ms...`);
           
           setTimeout(() => {
-            // Check if the session wasn't explicitly logged out/deleted in the meantime
-            if (sessions.has(userId)) {
-              cleanupSocket(userId);
-              initSession(userId).catch(err => {
-                console.error(`Reconnection initialization failed for ${userId}:`, err);
-              });
-            }
-          }, 3000);
+            cleanupSocket(userId);
+            initSession(userId).catch(err => {
+              console.error(`Reconnection initialization failed for ${userId}:`, err);
+            });
+          }, delayMs);
         } else {
           console.log(`[Max Reconnects Reached] userId: ${userId}`);
           sessionStatus.set(userId, 'DISCONNECTED');
@@ -534,6 +536,8 @@ export function getSessionStatus(userId) {
 export async function requestPairingCode(userId, phoneNumber) {
   const uid = String(userId);
   let cleanPhone = String(phoneNumber || '').replace(/\D/g, '');
+  // Strip leading zeros common in local phone number typing
+  cleanPhone = cleanPhone.replace(/^0+/, '');
   if (!cleanPhone) {
     throw new Error('Valid mobile phone number is required to generate a pairing code.');
   }
@@ -541,7 +545,7 @@ export async function requestPairingCode(userId, phoneNumber) {
     cleanPhone = '91' + cleanPhone; // Auto prepend 91 for 10-digit Indian numbers
   }
   if (cleanPhone.length < 10 || cleanPhone.length > 15) {
-    throw new Error('Invalid mobile phone number length. Must be 10-15 digits.');
+    throw new Error('Invalid mobile phone number length. Must be 10-15 digits with country code.');
   }
 
   // If already connected, return connected status
@@ -552,10 +556,12 @@ export async function requestPairingCode(userId, phoneNumber) {
   // Ensure socket session is initialized
   if (!sessions.has(uid) || sessionStatus.get(uid) === 'DISCONNECTED') {
     initSession(uid).catch(err => console.error(`[PairingCode Init Async] user ${uid}:`, err));
-    for (let i = 0; i < 50; i++) {
-      await new Promise(r => setTimeout(r, 100));
-      if (sessions.has(uid)) break;
-    }
+  }
+
+  // Wait for socket instance to be initialized
+  for (let i = 0; i < 60; i++) {
+    if (sessions.has(uid)) break;
+    await new Promise(r => setTimeout(r, 100));
   }
 
   const sock = sessions.get(uid);
@@ -563,8 +569,8 @@ export async function requestPairingCode(userId, phoneNumber) {
     throw new Error('Unable to initialize WhatsApp connection. Please try again.');
   }
 
-  // Give socket event loop a brief moment to connect
-  await new Promise(r => setTimeout(r, 500));
+  // Give socket event loop a brief moment to stabilize connection
+  await new Promise(r => setTimeout(r, 800));
 
   if (sock.authState?.creds?.registered) {
     return getSessionStatus(uid);
