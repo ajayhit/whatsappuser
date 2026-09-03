@@ -856,6 +856,9 @@ async function resolveAutoPlaceholders(text, userId, fromPhone) {
  * Processes incoming WhatsApp messages for Welcome & Away auto-responses
  */
 async function handleIncomingAutoResponse(userId, sock, msg) {
+  if (!userId || isNaN(Number(userId))) {
+    return;
+  }
   const fromJid = msg.key.remoteJid;
   if (!fromJid || fromJid.endsWith('@g.us') || fromJid === 'status@broadcast' || msg.key.fromMe) {
     return;

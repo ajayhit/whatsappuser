@@ -57,10 +57,13 @@ export function getPgPool() {
     pgPool = new pg.Pool({
       connectionString: databaseUrl,
       ssl: isLocalhost ? false : { rejectUnauthorized: false },
-      max: 2, // Minimal connection pool for low memory and fast idle suspend on Neon
-      idleTimeoutMillis: 3000, // Drop idle connections after 3s to allow Neon to auto-suspend
-      connectionTimeoutMillis: 10000,
-      allowExitOnIdle: true
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 30000,
+      allowExitOnIdle: false
+    });
+    pgPool.on('error', (err) => {
+      console.warn('[PostgreSQL Pool Notice]:', err.message);
     });
   }
   return pgPool;
@@ -240,7 +243,22 @@ export async function execute(sql, params = []) {
 export async function initDb() {
   if (isPg()) {
     const pool = getPgPool();
-    const client = await pool.connect();
+    let client = null;
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        client = await pool.connect();
+        break;
+      } catch (connErr) {
+        console.warn(`[DB] PostgreSQL connection attempt ${attempts}/${maxAttempts} failed: ${connErr.message}. Retrying in ${attempts * 2}s...`);
+        if (attempts >= maxAttempts) throw connErr;
+        await new Promise(r => setTimeout(r, attempts * 2000));
+      }
+    }
+
     try {
       console.log('[DB] Initializing PostgreSQL schema...');
       await client.query(`
@@ -1086,12 +1104,25 @@ export async function getUserByEmail(email) {
 
 export async function getUserByPhone(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
-  if (!digits || digits.length < 10) return null;
-  const last10 = digits.slice(-10);
-  return await queryOne(`
+  if (!digits || digits.length < 7) return null;
+
+  // 1. Exact match on full digits (with country code or local)
+  let user = await queryOne(`
     SELECT * FROM users 
-    WHERE replace(replace(phone, '+', ''), ' ', '') LIKE '%' || ?
-  `, [last10]);
+    WHERE replace(replace(phone, '+', ''), ' ', '') = ?
+  `, [digits]);
+  if (user) return user;
+
+  // 2. Suffix match on last 10 digits (e.g. searching 10-digit mobile when saved with country code 91...)
+  if (digits.length >= 10) {
+    const last10 = digits.slice(-10);
+    user = await queryOne(`
+      SELECT * FROM users 
+      WHERE replace(replace(phone, '+', ''), ' ', '') LIKE '%' || ?
+    `, [last10]);
+    if (user) return user;
+  }
+  return null;
 }
 
 export async function getUserById(id) {

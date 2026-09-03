@@ -1317,6 +1317,164 @@
       return isMobileUA || (isTouchScreen && isSmallScreen);
     }
 
+    const WORLD_COUNTRIES = [
+      { name: 'India', code: '+91', flag: '🇮🇳' },
+      { name: 'United States', code: '+1', flag: '🇺🇸' },
+      { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+      { name: 'United Arab Emirates', code: '+971', flag: '🇦🇪' },
+      { name: 'Saudi Arabia', code: '+966', flag: '🇸🇦' },
+      { name: 'Qatar', code: '+974', flag: '🇶🇦' },
+      { name: 'Kuwait', code: '+965', flag: '🇰🇼' },
+      { name: 'Oman', code: '+968', flag: '🇴🇲' },
+      { name: 'Bahrain', code: '+973', flag: '🇧🇭' },
+      { name: 'Singapore', code: '+65', flag: '🇸🇬' },
+      { name: 'Malaysia', code: '+60', flag: '🇲🇾' },
+      { name: 'Australia', code: '+61', flag: '🇦🇺' },
+      { name: 'Canada', code: '+1', flag: '🇨🇦' },
+      { name: 'New Zealand', code: '+64', flag: '🇳🇿' },
+      { name: 'Bangladesh', code: '+880', flag: '🇧🇩' },
+      { name: 'Pakistan', code: '+92', flag: '🇵🇰' },
+      { name: 'Nepal', code: '+977', flag: '🇳🇵' },
+      { name: 'Sri Lanka', code: '+94', flag: '🇱🇰' },
+      { name: 'Germany', code: '+49', flag: '🇩🇪' },
+      { name: 'France', code: '+33', flag: '🇫🇷' },
+      { name: 'Italy', code: '+39', flag: '🇮🇹' },
+      { name: 'Spain', code: '+34', flag: '🇪🇸' },
+      { name: 'Netherlands', code: '+31', flag: '🇳🇱' },
+      { name: 'Switzerland', code: '+41', flag: '🇨🇭' },
+      { name: 'Sweden', code: '+46', flag: '🇸🇪' },
+      { name: 'Norway', code: '+47', flag: '🇳🇴' },
+      { name: 'Denmark', code: '+45', flag: '🇩🇰' },
+      { name: 'Finland', code: '+358', flag: '🇫🇮' },
+      { name: 'Ireland', code: '+353', flag: '🇮🇪' },
+      { name: 'Poland', code: '+48', flag: '🇵🇱' },
+      { name: 'Portugal', code: '+351', flag: '🇵🇹' },
+      { name: 'Austria', code: '+43', flag: '🇦🇹' },
+      { name: 'Belgium', code: '+32', flag: '🇧🇪' },
+      { name: 'Greece', code: '+30', flag: '🇬🇷' },
+      { name: 'Turkey', code: '+90', flag: '🇹🇷' },
+      { name: 'Russia', code: '+7', flag: '🇷🇺' },
+      { name: 'Ukraine', code: '+380', flag: '🇺🇦' },
+      { name: 'South Africa', code: '+27', flag: '🇿🇦' },
+      { name: 'Nigeria', code: '+234', flag: '🇳🇬' },
+      { name: 'Egypt', code: '+20', flag: '🇪🇬' },
+      { name: 'Kenya', code: '+254', flag: '🇰🇪' },
+      { name: 'Ghana', code: '+233', flag: '🇬🇭' },
+      { name: 'Tanzania', code: '+255', flag: '🇹🇿' },
+      { name: 'Uganda', code: '+256', flag: '🇺🇬' },
+      { name: 'Ethiopia', code: '+251', flag: '🇪🇹' },
+      { name: 'Philippines', code: '+63', flag: '🇵🇭' },
+      { name: 'Indonesia', code: '+62', flag: '🇮🇩' },
+      { name: 'Vietnam', code: '+84', flag: '🇻🇳' },
+      { name: 'Thailand', code: '+66', flag: '🇹🇭' },
+      { name: 'Japan', code: '+81', flag: '🇯🇵' },
+      { name: 'South Korea', code: '+82', flag: '🇰🇷' },
+      { name: 'China', code: '+86', flag: '🇨🇳' },
+      { name: 'Hong Kong', code: '+852', flag: '🇭🇰' },
+      { name: 'Taiwan', code: '+886', flag: '🇹🇼' },
+      { name: 'Brazil', code: '+55', flag: '🇧🇷' },
+      { name: 'Mexico', code: '+52', flag: '🇲🇽' },
+      { name: 'Argentina', code: '+54', flag: '🇦🇷' },
+      { name: 'Chile', code: '+56', flag: '🇨🇱' },
+      { name: 'Colombia', code: '+57', flag: '🇨🇴' },
+      { name: 'Peru', code: '+51', flag: '🇵🇪' },
+      { name: 'Israel', code: '+972', flag: '🇮🇱' },
+      { name: 'Jordan', code: '+962', flag: '🇯🇴' },
+      { name: 'Lebanon', code: '+961', flag: '🇱🇧' },
+      { name: 'Iraq', code: '+964', flag: '🇮🇶' },
+      { name: 'Iran', code: '+98', flag: '🇮🇷' },
+      { name: 'Afghanistan', code: '+93', flag: '🇦🇫' },
+      { name: 'Albania', code: '+355', flag: '🇦🇱' },
+      { name: 'Algeria', code: '+213', flag: '🇩🇿' },
+      { name: 'Andorra', code: '+376', flag: '🇦🇩' },
+      { name: 'Angola', code: '+244', flag: '🇦🇴' },
+      { name: 'Armenia', code: '+374', flag: '🇦🇲' },
+      { name: 'Azerbaijan', code: '+994', flag: '🇦🇿' },
+      { name: 'Belarus', code: '+375', flag: '🇧🇾' },
+      { name: 'Belize', code: '+501', flag: '🇧🇿' },
+      { name: 'Benin', code: '+229', flag: '🇧🇯' },
+      { name: 'Bhutan', code: '+975', flag: '🇧🇹' },
+      { name: 'Bolivia', code: '+591', flag: '🇧🇴' },
+      { name: 'Bosnia', code: '+387', flag: '🇧🇦' },
+      { name: 'Botswana', code: '+267', flag: '🇧🇼' },
+      { name: 'Bulgaria', code: '+359', flag: '🇧🇬' },
+      { name: 'Cambodia', code: '+855', flag: '🇰🇭' },
+      { name: 'Cameroon', code: '+237', flag: '🇨🇲' },
+      { name: 'Costa Rica', code: '+506', flag: '🇨🇷' },
+      { name: 'Croatia', code: '+385', flag: '🇭🇷' },
+      { name: 'Cuba', code: '+53', flag: '🇨🇺' },
+      { name: 'Cyprus', code: '+357', flag: '🇨🇾' },
+      { name: 'Czech Republic', code: '+420', flag: '🇨🇿' },
+      { name: 'Ecuador', code: '+593', flag: '🇪🇨' },
+      { name: 'El Salvador', code: '+503', flag: '🇸🇻' },
+      { name: 'Estonia', code: '+372', flag: '🇪🇪' },
+      { name: 'Georgia', code: '+995', flag: '🇬🇪' },
+      { name: 'Guatemala', code: '+502', flag: '🇬🇹' },
+      { name: 'Hungary', code: '+36', flag: '🇭🇺' },
+      { name: 'Iceland', code: '+354', flag: '🇮🇸' },
+      { name: 'Kazakhstan', code: '+7', flag: '🇰🇿' },
+      { name: 'Kyrgyzstan', code: '+996', flag: '🇰🇬' },
+      { name: 'Latvia', code: '+371', flag: '🇱🇻' },
+      { name: 'Libya', code: '+218', flag: '🇱🇾' },
+      { name: 'Lithuania', code: '+370', flag: '🇱🇹' },
+      { name: 'Luxembourg', code: '+352', flag: '🇱🇺' },
+      { name: 'Maldives', code: '+960', flag: '🇲🇻' },
+      { name: 'Malta', code: '+356', flag: '🇲🇹' },
+      { name: 'Mauritius', code: '+230', flag: '🇲🇺' },
+      { name: 'Moldova', code: '+373', flag: '🇲🇩' },
+      { name: 'Monaco', code: '+377', flag: '🇲🇨' },
+      { name: 'Mongolia', code: '+976', flag: '🇲🇳' },
+      { name: 'Morocco', code: '+212', flag: '🇲🇦' },
+      { name: 'Myanmar', code: '+95', flag: '🇲🇲' },
+      { name: 'Panama', code: '+507', flag: '🇵🇦' },
+      { name: 'Paraguay', code: '+595', flag: '🇵🇾' },
+      { name: 'Romania', code: '+40', flag: '🇷🇴' },
+      { name: 'Rwanda', code: '+250', flag: '🇷🇼' },
+      { name: 'Senegal', code: '+221', flag: '🇸🇳' },
+      { name: 'Serbia', code: '+381', flag: '🇷🇸' },
+      { name: 'Slovakia', code: '+421', flag: '🇸🇰' },
+      { name: 'Slovenia', code: '+386', flag: '🇸🇮' },
+      { name: 'Sudan', code: '+249', flag: '🇸🇩' },
+      { name: 'Syria', code: '+963', flag: '🇸🇾' },
+      { name: 'Tunisia', code: '+216', flag: '🇹🇳' },
+      { name: 'Uruguay', code: '+598', flag: '🇺🇾' },
+      { name: 'Uzbekistan', code: '+998', flag: '🇺🇿' },
+      { name: 'Venezuela', code: '+58', flag: '🇻🇪' },
+      { name: 'Yemen', code: '+967', flag: '🇾🇪' },
+      { name: 'Zambia', code: '+260', flag: '🇿🇲' },
+      { name: 'Zimbabwe', code: '+263', flag: '🇿🇼' }
+    ];
+
+    function parsePhoneNumber(fullPhone) {
+      const digits = String(fullPhone || '').replace(/\D/g, '');
+      if (!digits) {
+        return { code: '+91', localPhone: '', label: '🇮🇳 India (+91)' };
+      }
+      const sorted = [...WORLD_COUNTRIES].sort((a, b) => b.code.length - a.code.length);
+      for (const c of sorted) {
+        const cDigits = c.code.replace('+', '');
+        if (digits.startsWith(cDigits) && digits.length > cDigits.length) {
+          return {
+            code: c.code,
+            localPhone: digits.slice(cDigits.length),
+            label: `${c.flag} ${c.name} (${c.code})`
+          };
+        }
+      }
+      if (digits.length === 10) {
+        return {
+          code: '+91',
+          localPhone: digits,
+          label: '🇮🇳 India (+91)'
+        };
+      }
+      return {
+        code: '+',
+        localPhone: digits,
+        label: `🌐 Other (+${digits})`
+      };
+    }
+
     // App State
     let state = {
       token: localStorage.getItem('token') || null,
@@ -2168,8 +2326,36 @@
             <input type="email" id="regEmail" required placeholder="john@example.com">
           </div>
           <div class="form-group">
-            <label>Phone Number (10 Digits) *</label>
-            <input type="tel" id="regPhone" required placeholder="e.g. 9509116337" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="10" minlength="10" pattern="[0-9]{10}">
+            <label>Mobile Number *</label>
+            <div style="display: flex; gap: 0.5rem; align-items: stretch; position: relative;">
+              <!-- Searchable Country Code Dropdown Trigger & Popover -->
+              <div style="position: relative; flex-shrink: 0;" id="countryPickerWrapper">
+                <button type="button" id="countryPickerBtn" onclick="toggleCountryDropdown(event)" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; height: 100%; min-height: 42px; width: 145px; padding: 0.55rem 0.65rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.86rem; cursor: pointer; white-space: nowrap;" aria-haspopup="listbox" aria-expanded="false" title="Search and choose country">
+                  <span id="countryPickerLabel" style="display: flex; align-items: center; gap: 0.35rem; overflow: hidden; text-overflow: ellipsis;">🇮🇳 India (+91)</span>
+                  <i class="fa-solid fa-chevron-down" style="font-size: 0.68rem; opacity: 0.7;"></i>
+                </button>
+
+                <!-- Searchable Popover Menu -->
+                <div id="countryPickerDropdown" style="display: none; position: absolute; top: calc(100% + 5px); left: 0; width: 280px; max-height: 320px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.7); z-index: 10000; flex-direction: column; overflow: hidden;" role="listbox">
+                  <div style="padding: 0.55rem; border-bottom: 1px solid #1e293b; background: #0f172a; position: sticky; top: 0; z-index: 2;">
+                    <div style="position: relative; display: flex; align-items: center;">
+                      <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 0.65rem; color: #94a3b8; font-size: 0.78rem; pointer-events: none;"></i>
+                      <input type="text" id="countrySearchInput" placeholder="Type country or code..." oninput="filterCountryList(this.value)" autocomplete="off" style="width: 100%; padding: 0.45rem 0.5rem 0.45rem 1.85rem; font-size: 0.82rem; background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 6px; outline: none;">
+                    </div>
+                  </div>
+                  <div id="countryListContainer" style="overflow-y: auto; max-height: 250px; padding: 0.25rem 0;">
+                    <!-- Filled by JavaScript renderCountryList -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Textable / Editable Country Code Input -->
+              <input type="text" id="regCountryCode" value="+91" required placeholder="+91" oninput="formatCountryCodeInput(this)" style="width: 76px; min-width: 66px; text-align: center; font-weight: 600; padding: 0.55rem 0.4rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.88rem;" title="Country dial code (editable)">
+
+              <!-- Mobile Number Input -->
+              <input type="tel" id="regPhone" required placeholder="Mobile number" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="15" minlength="6" style="flex: 1; min-width: 130px;">
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.25rem;">Search and select your country or type any custom code in the code box.</div>
           </div>
           <div class="form-group">
             <label>Password</label>
@@ -2362,7 +2548,7 @@
             <div class="user-profile" style="display:flex; align-items:center; gap:0.6rem;">
               <div class="user-details" onclick="switchTab('profileTab')" style="text-align:right; cursor:pointer;" title="Click to view & edit profile">
                 <div class="user-name" style="font-weight:600; font-size:0.85rem;">${state.user.name} 👤</div>
-                <div class="user-role" style="font-size:0.7rem; color:#86efac;">${state.user.phone ? `📱 ${state.user.phone}` : 'SUBSCRIBER'}</div>
+                <div class="user-role" style="font-size:0.7rem; color:#86efac;">${state.user.phone ? `📱 +${state.user.phone.replace(/^\+/, '')}` : 'SUBSCRIBER'}</div>
               </div>
               <button onclick="switchTab('profileTab')" style="padding:0.35rem 0.7rem; font-size:0.8rem; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#fff; border-radius:8px; cursor:pointer;">👤 Profile</button>
               <button class="btn-logout" onclick="handleLogout()" style="padding:0.4rem 0.8rem; font-size:0.8rem;">Sign Out</button>
@@ -3883,7 +4069,33 @@
                     </div>
                     <div class="form-group">
                       <label>WhatsApp / Mobile Number</label>
-                      <input type="tel" id="profileEditPhone" value="${state.user?.phone || ''}" placeholder="10-digit mobile number e.g. 9876543210">
+                      <div style="display: flex; gap: 0.5rem; align-items: stretch; position: relative;">
+                        <!-- Searchable Country Code Dropdown Trigger & Popover -->
+                        <div style="position: relative; flex-shrink: 0;" id="profileCountryPickerWrapper">
+                          <button type="button" id="profileCountryPickerBtn" onclick="toggleProfileCountryDropdown(event)" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; height: 100%; min-height: 42px; width: 145px; padding: 0.55rem 0.65rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.86rem; cursor: pointer; white-space: nowrap;" aria-haspopup="listbox" aria-expanded="false" title="Search and choose country">
+                            <span id="profileCountryPickerLabel" style="display: flex; align-items: center; gap: 0.35rem; overflow: hidden; text-overflow: ellipsis;">${parsePhoneNumber(state.user?.phone).label}</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size: 0.68rem; opacity: 0.7;"></i>
+                          </button>
+
+                          <!-- Searchable Popover Menu -->
+                          <div id="profileCountryPickerDropdown" style="display: none; position: absolute; top: calc(100% + 5px); left: 0; width: 280px; max-height: 320px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.7); z-index: 10000; flex-direction: column; overflow: hidden;" role="listbox">
+                            <div style="padding: 0.55rem; border-bottom: 1px solid #1e293b; background: #0f172a; position: sticky; top: 0; z-index: 2;">
+                              <div style="position: relative; display: flex; align-items: center;">
+                                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 0.65rem; color: #94a3b8; font-size: 0.78rem; pointer-events: none;"></i>
+                                <input type="text" id="profileCountrySearchInput" placeholder="Type country or code..." oninput="filterProfileCountryList(this.value)" autocomplete="off" style="width: 100%; padding: 0.45rem 0.5rem 0.45rem 1.85rem; font-size: 0.82rem; background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 6px; outline: none;">
+                              </div>
+                            </div>
+                            <div id="profileCountryListContainer" style="overflow-y: auto; max-height: 250px; padding: 0.25rem 0;">
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Textable / Editable Country Code Input -->
+                        <input type="text" id="profileCountryCode" value="${parsePhoneNumber(state.user?.phone).code}" required placeholder="+91" oninput="formatProfileCountryCodeInput(this)" style="width: 76px; min-width: 66px; text-align: center; font-weight: 600; padding: 0.55rem 0.4rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.88rem;" title="Country dial code (editable)">
+
+                        <!-- Mobile Number Input -->
+                        <input type="tel" id="profileEditPhone" value="${parsePhoneNumber(state.user?.phone).localPhone}" placeholder="Mobile number" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="15" minlength="6" style="flex: 1; min-width: 130px;">
+                      </div>
                       <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">
                         📱 Used for receiving payment confirmation alerts & automated notifications.
                       </div>
@@ -3944,7 +4156,7 @@
           <div class="user-profile" style="display:flex; align-items:center; gap:0.6rem;">
             <div class="user-details" onclick="switchTab('adminProfileTab')" style="cursor:pointer; text-align:right;" title="Click to view & edit admin profile">
               <div class="user-name">${state.user.name} 👤</div>
-              <div class="user-role" style="color: var(--warning-color); font-size:0.75rem;">${state.user.phone ? `📱 ${state.user.phone}` : 'SYSTEM ADMIN'}</div>
+              <div class="user-role" style="color: var(--warning-color); font-size:0.75rem;">${state.user.phone ? `📱 +${state.user.phone.replace(/^\+/, '')}` : 'SYSTEM ADMIN'}</div>
             </div>
             <button onclick="switchTab('adminProfileTab')" style="padding:0.35rem 0.7rem; font-size:0.8rem; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#fff; border-radius:8px; cursor:pointer;">👤 Profile</button>
             <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
@@ -4554,7 +4766,33 @@
                     </div>
                     <div class="form-group">
                       <label>Admin WhatsApp / Mobile Number</label>
-                      <input type="tel" id="profileEditPhone" value="${state.user.phone || ''}" placeholder="e.g. 919876543210 (with country code)">
+                      <div style="display: flex; gap: 0.5rem; align-items: stretch; position: relative;">
+                        <!-- Searchable Country Code Dropdown Trigger & Popover -->
+                        <div style="position: relative; flex-shrink: 0;" id="profileCountryPickerWrapper">
+                          <button type="button" id="profileCountryPickerBtn" onclick="toggleProfileCountryDropdown(event)" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; height: 100%; min-height: 42px; width: 145px; padding: 0.55rem 0.65rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.86rem; cursor: pointer; white-space: nowrap;" aria-haspopup="listbox" aria-expanded="false" title="Search and choose country">
+                            <span id="profileCountryPickerLabel" style="display: flex; align-items: center; gap: 0.35rem; overflow: hidden; text-overflow: ellipsis;">${parsePhoneNumber(state.user?.phone).label}</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size: 0.68rem; opacity: 0.7;"></i>
+                          </button>
+
+                          <!-- Searchable Popover Menu -->
+                          <div id="profileCountryPickerDropdown" style="display: none; position: absolute; top: calc(100% + 5px); left: 0; width: 280px; max-height: 320px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.7); z-index: 10000; flex-direction: column; overflow: hidden;" role="listbox">
+                            <div style="padding: 0.55rem; border-bottom: 1px solid #1e293b; background: #0f172a; position: sticky; top: 0; z-index: 2;">
+                              <div style="position: relative; display: flex; align-items: center;">
+                                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 0.65rem; color: #94a3b8; font-size: 0.78rem; pointer-events: none;"></i>
+                                <input type="text" id="profileCountrySearchInput" placeholder="Type country or code..." oninput="filterProfileCountryList(this.value)" autocomplete="off" style="width: 100%; padding: 0.45rem 0.5rem 0.45rem 1.85rem; font-size: 0.82rem; background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 6px; outline: none;">
+                              </div>
+                            </div>
+                            <div id="profileCountryListContainer" style="overflow-y: auto; max-height: 250px; padding: 0.25rem 0;">
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Textable / Editable Country Code Input -->
+                        <input type="text" id="profileCountryCode" value="${parsePhoneNumber(state.user?.phone).code}" required placeholder="+91" oninput="formatProfileCountryCodeInput(this)" style="width: 76px; min-width: 66px; text-align: center; font-weight: 600; padding: 0.55rem 0.4rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.88rem;" title="Country dial code (editable)">
+
+                        <!-- Mobile Number Input -->
+                        <input type="tel" id="profileEditPhone" value="${parsePhoneNumber(state.user?.phone).localPhone}" placeholder="Mobile number" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="15" minlength="6" style="flex: 1; min-width: 130px;">
+                      </div>
                       <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">
                         📱 Deposit notifications will be sent to this WhatsApp mobile number.
                       </div>
@@ -4730,10 +4968,269 @@
       }
     }
 
+    // Registration Country Dropdown Helpers
+    window.toggleCountryDropdown = function(event) {
+      if (event) event.stopPropagation();
+      const dropdown = document.getElementById('countryPickerDropdown');
+      const btn = document.getElementById('countryPickerBtn');
+      if (!dropdown) return;
+      const isVisible = dropdown.style.display === 'flex';
+      if (isVisible) {
+        dropdown.style.display = 'none';
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      } else {
+        dropdown.style.display = 'flex';
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+        const searchInput = document.getElementById('countrySearchInput');
+        if (searchInput) {
+          searchInput.value = '';
+          setTimeout(() => searchInput.focus(), 50);
+        }
+        renderCountryList('');
+      }
+    };
+
+    window.renderCountryList = function(filter = '') {
+      const container = document.getElementById('countryListContainer');
+      if (!container) return;
+      const cleanFilter = filter.trim().toLowerCase().replace(/^\+/, '');
+
+      const matches = WORLD_COUNTRIES.filter(c => {
+        if (!cleanFilter) return true;
+        const nameMatch = c.name.toLowerCase().includes(cleanFilter);
+        const codeMatch = c.code.replace('+', '').includes(cleanFilter);
+        return nameMatch || codeMatch;
+      });
+
+      let html = '';
+      if (matches.length === 0) {
+        html += `<div style="padding: 0.75rem 0.6rem; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No matching country found.</div>`;
+      } else {
+        html += matches.map(c => `
+          <div onclick="selectCountry('${c.code}', '${c.flag} ${c.name}')" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.82rem; color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s;" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='transparent'">
+            <span style="display: flex; align-items: center; gap: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span style="font-size: 1.05rem;">${c.flag}</span>
+              <span>${c.name}</span>
+            </span>
+            <span style="color: #38bdf8; font-weight: 700; font-size: 0.8rem; margin-left: 0.5rem; flex-shrink: 0;">${c.code}</span>
+          </div>
+        `).join('');
+      }
+
+      html += `
+        <div onclick="selectOtherCountry()" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0.75rem; cursor: pointer; font-size: 0.82rem; color: #a7f3d0; background: rgba(16,185,129,0.08); border-top: 1px solid #1e293b; margin-top: 0.25rem; font-weight: 600;" onmouseover="this.style.background='rgba(16,185,129,0.2)'" onmouseout="this.style.background='rgba(16,185,129,0.08)'">
+          <span style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>🌐</span>
+            <span>Other (Custom Code)</span>
+          </span>
+          <span style="font-size: 0.75rem; opacity: 0.8;">Manual</span>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    };
+
+    window.filterCountryList = function(val) {
+      renderCountryList(val);
+    };
+
+    window.selectCountry = function(code, label) {
+      const codeInput = document.getElementById('regCountryCode');
+      const labelSpan = document.getElementById('countryPickerLabel');
+      const dropdown = document.getElementById('countryPickerDropdown');
+      const btn = document.getElementById('countryPickerBtn');
+
+      if (codeInput) codeInput.value = code;
+      if (labelSpan) labelSpan.textContent = `${label} (${code})`;
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+
+      const phoneInput = document.getElementById('regPhone');
+      if (phoneInput) phoneInput.focus();
+    };
+
+    window.selectOtherCountry = function() {
+      const codeInput = document.getElementById('regCountryCode');
+      const labelSpan = document.getElementById('countryPickerLabel');
+      const dropdown = document.getElementById('countryPickerDropdown');
+      const btn = document.getElementById('countryPickerBtn');
+
+      if (codeInput) {
+        codeInput.value = '+';
+        codeInput.focus();
+      }
+      if (labelSpan) labelSpan.textContent = '🌐 Other';
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    };
+
+    window.formatCountryCodeInput = function(input) {
+      let val = input.value.trim();
+      if (!val) {
+        val = '+';
+      } else if (!val.startsWith('+')) {
+        val = '+' + val.replace(/\D/g, '');
+      } else {
+        val = '+' + val.slice(1).replace(/\D/g, '');
+      }
+      if (val.length > 5) val = val.slice(0, 5);
+      input.value = val;
+
+      const labelSpan = document.getElementById('countryPickerLabel');
+      if (labelSpan) {
+        const found = WORLD_COUNTRIES.find(c => c.code === val);
+        if (found) {
+          labelSpan.textContent = `${found.flag} ${found.name} (${found.code})`;
+        } else {
+          labelSpan.textContent = `🌐 Other (${val})`;
+        }
+      }
+    };
+
+    // User Profile Country Dropdown Helpers
+    window.toggleProfileCountryDropdown = function(event) {
+      if (event) event.stopPropagation();
+      const dropdown = document.getElementById('profileCountryPickerDropdown');
+      const btn = document.getElementById('profileCountryPickerBtn');
+      if (!dropdown) return;
+      const isVisible = dropdown.style.display === 'flex';
+      if (isVisible) {
+        dropdown.style.display = 'none';
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      } else {
+        dropdown.style.display = 'flex';
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+        const searchInput = document.getElementById('profileCountrySearchInput');
+        if (searchInput) {
+          searchInput.value = '';
+          setTimeout(() => searchInput.focus(), 50);
+        }
+        renderProfileCountryList('');
+      }
+    };
+
+    window.renderProfileCountryList = function(filter = '') {
+      const container = document.getElementById('profileCountryListContainer');
+      if (!container) return;
+      const cleanFilter = filter.trim().toLowerCase().replace(/^\+/, '');
+
+      const matches = WORLD_COUNTRIES.filter(c => {
+        if (!cleanFilter) return true;
+        const nameMatch = c.name.toLowerCase().includes(cleanFilter);
+        const codeMatch = c.code.replace('+', '').includes(cleanFilter);
+        return nameMatch || codeMatch;
+      });
+
+      let html = '';
+      if (matches.length === 0) {
+        html += `<div style="padding: 0.75rem 0.6rem; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No matching country found.</div>`;
+      } else {
+        html += matches.map(c => `
+          <div onclick="selectProfileCountry('${c.code}', '${c.flag} ${c.name}')" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.82rem; color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s;" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='transparent'">
+            <span style="display: flex; align-items: center; gap: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span style="font-size: 1.05rem;">${c.flag}</span>
+              <span>${c.name}</span>
+            </span>
+            <span style="color: #38bdf8; font-weight: 700; font-size: 0.8rem; margin-left: 0.5rem; flex-shrink: 0;">${c.code}</span>
+          </div>
+        `).join('');
+      }
+
+      html += `
+        <div onclick="selectProfileOtherCountry()" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0.75rem; cursor: pointer; font-size: 0.82rem; color: #a7f3d0; background: rgba(16,185,129,0.08); border-top: 1px solid #1e293b; margin-top: 0.25rem; font-weight: 600;" onmouseover="this.style.background='rgba(16,185,129,0.2)'" onmouseout="this.style.background='rgba(16,185,129,0.08)'">
+          <span style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>🌐</span>
+            <span>Other (Custom Code)</span>
+          </span>
+          <span style="font-size: 0.75rem; opacity: 0.8;">Manual</span>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    };
+
+    window.filterProfileCountryList = function(val) {
+      renderProfileCountryList(val);
+    };
+
+    window.selectProfileCountry = function(code, label) {
+      const codeInput = document.getElementById('profileCountryCode');
+      const labelSpan = document.getElementById('profileCountryPickerLabel');
+      const dropdown = document.getElementById('profileCountryPickerDropdown');
+      const btn = document.getElementById('profileCountryPickerBtn');
+
+      if (codeInput) codeInput.value = code;
+      if (labelSpan) labelSpan.textContent = `${label} (${code})`;
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+
+      const phoneInput = document.getElementById('profileEditPhone');
+      if (phoneInput) phoneInput.focus();
+    };
+
+    window.selectProfileOtherCountry = function() {
+      const codeInput = document.getElementById('profileCountryCode');
+      const labelSpan = document.getElementById('profileCountryPickerLabel');
+      const dropdown = document.getElementById('profileCountryPickerDropdown');
+      const btn = document.getElementById('profileCountryPickerBtn');
+
+      if (codeInput) {
+        codeInput.value = '+';
+        codeInput.focus();
+      }
+      if (labelSpan) labelSpan.textContent = '🌐 Other';
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    };
+
+    window.formatProfileCountryCodeInput = function(input) {
+      let val = input.value.trim();
+      if (!val) {
+        val = '+';
+      } else if (!val.startsWith('+')) {
+        val = '+' + val.replace(/\D/g, '');
+      } else {
+        val = '+' + val.slice(1).replace(/\D/g, '');
+      }
+      if (val.length > 5) val = val.slice(0, 5);
+      input.value = val;
+
+      const labelSpan = document.getElementById('profileCountryPickerLabel');
+      if (labelSpan) {
+        const found = WORLD_COUNTRIES.find(c => c.code === val);
+        if (found) {
+          labelSpan.textContent = `${found.flag} ${found.name} (${found.code})`;
+        } else {
+          labelSpan.textContent = `🌐 Other (${val})`;
+        }
+      }
+    };
+
+    // Global listener to close both registration and profile country dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+      const wrapper = document.getElementById('countryPickerWrapper');
+      const dropdown = document.getElementById('countryPickerDropdown');
+      const btn = document.getElementById('countryPickerBtn');
+      if (dropdown && dropdown.style.display === 'flex' && wrapper && !wrapper.contains(e.target)) {
+        dropdown.style.display = 'none';
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
+
+      const profileWrapper = document.getElementById('profileCountryPickerWrapper');
+      const profileDropdown = document.getElementById('profileCountryPickerDropdown');
+      const profileBtn = document.getElementById('profileCountryPickerBtn');
+      if (profileDropdown && profileDropdown.style.display === 'flex' && profileWrapper && !profileWrapper.contains(e.target)) {
+        profileDropdown.style.display = 'none';
+        if (profileBtn) profileBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
     async function handleRegister(e) {
       e.preventDefault();
       const nameInput = document.getElementById('regName');
       const emailInput = document.getElementById('regEmail');
+      const countryPickerBtn = document.getElementById('countryPickerBtn');
+      const countryCodeInput = document.getElementById('regCountryCode');
       const phoneInput = document.getElementById('regPhone');
       const passwordInput = document.getElementById('regPassword');
       const captchaInput = document.getElementById('regCaptchaAnswer');
@@ -4741,20 +5238,39 @@
 
       const name = nameInput ? nameInput.value.trim() : '';
       const email = emailInput ? emailInput.value.trim() : '';
-      const phone = phoneInput ? phoneInput.value.trim() : '';
+      const countryCode = countryCodeInput ? countryCodeInput.value.trim() : '+91';
+      const rawPhone = phoneInput ? phoneInput.value.trim() : '';
       const password = passwordInput ? passwordInput.value : '';
       const captchaAnswer = captchaInput ? captchaInput.value.trim() : '';
 
-      const cleanPhone = phone.replace(/\D/g, '');
-      if (!cleanPhone || cleanPhone.length !== 10) {
-        showAuthAlert('Please enter a valid 10-digit mobile number');
+      const cleanCode = countryCode.replace(/\D/g, '');
+      const cleanPhone = rawPhone.replace(/\D/g, '');
+
+      if (!cleanCode) {
+        showAuthAlert('Please enter a valid country code (e.g. +91, +1, +44)');
         return;
       }
+
+      if (!cleanPhone) {
+        showAuthAlert('Please enter your mobile number');
+        return;
+      }
+
+      if (cleanCode === '91' && cleanPhone.length !== 10) {
+        showAuthAlert('Please enter a valid 10-digit mobile number for India (+91)');
+        return;
+      } else if (cleanPhone.length < 6 || cleanPhone.length > 15) {
+        showAuthAlert('Please enter a valid mobile number (6-15 digits)');
+        return;
+      }
+
+      // Combine country code and local mobile number
+      const fullPhone = cleanCode + cleanPhone;
 
       showAuthAlert('');
       showAuthSuccess('');
 
-      setAuthLoading(true, 'Creating your account, please wait...', submitBtn, [nameInput, emailInput, phoneInput, passwordInput, captchaInput]);
+      setAuthLoading(true, 'Creating your account, please wait...', submitBtn, [nameInput, emailInput, countryPickerBtn, countryCodeInput, phoneInput, passwordInput, captchaInput]);
       if (submitBtn) {
         submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Creating Account...</span>`;
       }
@@ -4763,7 +5279,16 @@
         const res = await fetch('/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, phone, password, captchaId: state.captchaId, captchaAnswer })
+          body: JSON.stringify({
+            name,
+            email,
+            phone: fullPhone,
+            countryCode,
+            localPhone: cleanPhone,
+            password,
+            captchaId: state.captchaId,
+            captchaAnswer
+          })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Registration failed');
@@ -4778,10 +5303,10 @@
         state.transactions = [];
         state.currentTab = 'whatsappTab';
 
-        setAuthLoading(true, 'Account created! Loading your dashboard...', submitBtn, [nameInput, emailInput, phoneInput, passwordInput, captchaInput]);
+        setAuthLoading(true, 'Account created! Loading your dashboard...', submitBtn, [nameInput, emailInput, countryPickerBtn, countryCodeInput, phoneInput, passwordInput, captchaInput]);
         await fetchUserProfile();
       } catch (err) {
-        setAuthLoading(false, '', submitBtn, [nameInput, emailInput, phoneInput, passwordInput, captchaInput]);
+        setAuthLoading(false, '', submitBtn, [nameInput, emailInput, countryPickerBtn, countryCodeInput, phoneInput, passwordInput, captchaInput]);
         showAuthAlert(err.message);
         loadCaptcha();
         if (submitBtn) {
@@ -4878,11 +5403,50 @@
     async function handleProfileUpdate(e) {
       e.preventDefault();
       const nameInput = document.getElementById('profileEditName');
+      const countryCodeInput = document.getElementById('profileCountryCode');
       const phoneInput = document.getElementById('profileEditPhone');
       const alertDiv = document.getElementById('profileAlert');
 
       const name = nameInput ? nameInput.value.trim() : '';
-      const phone = phoneInput ? phoneInput.value.trim() : '';
+      const countryCode = countryCodeInput ? countryCodeInput.value.trim() : '+91';
+      const rawPhone = phoneInput ? phoneInput.value.trim() : '';
+
+      const cleanCode = countryCode.replace(/\D/g, '');
+      const cleanPhone = rawPhone.replace(/\D/g, '');
+
+      let fullPhone = '';
+      if (cleanPhone) {
+        if (!cleanCode) {
+          if (alertDiv) {
+            alertDiv.textContent = 'Please enter a valid country code (e.g. +91, +1)';
+            alertDiv.style.display = 'block';
+            alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+            alertDiv.style.border = '1px solid var(--error-color)';
+            alertDiv.style.color = 'var(--error-color)';
+          }
+          return;
+        }
+        if (cleanCode === '91' && cleanPhone.length !== 10) {
+          if (alertDiv) {
+            alertDiv.textContent = 'Please enter a valid 10-digit mobile number for India (+91)';
+            alertDiv.style.display = 'block';
+            alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+            alertDiv.style.border = '1px solid var(--error-color)';
+            alertDiv.style.color = 'var(--error-color)';
+          }
+          return;
+        } else if (cleanPhone.length < 6 || cleanPhone.length > 15) {
+          if (alertDiv) {
+            alertDiv.textContent = 'Please enter a valid mobile number (6-15 digits)';
+            alertDiv.style.display = 'block';
+            alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+            alertDiv.style.border = '1px solid var(--error-color)';
+            alertDiv.style.color = 'var(--error-color)';
+          }
+          return;
+        }
+        fullPhone = cleanCode + cleanPhone;
+      }
 
       if (alertDiv) alertDiv.style.display = 'none';
 
@@ -4893,7 +5457,12 @@
             'Authorization': `Bearer ${state.token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ name, phone })
+          body: JSON.stringify({
+            name,
+            phone: fullPhone,
+            countryCode,
+            localPhone: cleanPhone
+          })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to update profile');
@@ -6288,7 +6857,7 @@
           <td><strong>${state.user.name}</strong></td>
           <td>
             ${state.user.email}<br>
-            <span style="color: var(--text-muted); font-size: 0.75rem;">${state.user.phone || 'No phone'}</span>
+            <span style="color: var(--text-muted); font-size: 0.75rem;">${state.user.phone ? '+' + state.user.phone.replace(/^\+/, '') : 'No phone'}</span>
           </td>
           <td>${expiresDateFormatted}</td>
           <td>${timeRemainingStr}</td>

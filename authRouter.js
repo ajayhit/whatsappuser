@@ -174,13 +174,29 @@ router.get('/public-plans', async (req, res) => {
  * Create a new user account
  */
 router.post('/register', async (req, res) => {
-  const { name, email, phone, password, captchaId, captchaAnswer } = req.body;
-  if (!name || !email || !password || !phone) {
+  const { name, email, phone, countryCode, localPhone, password, captchaId, captchaAnswer } = req.body;
+  if (!name || !email || !password || (!phone && !localPhone)) {
     return res.status(400).json({ error: 'Name, email, phone number, and password are required' });
   }
-  const phoneDigits = String(phone || '').replace(/\D/g, '');
-  if (!phoneDigits || phoneDigits.length !== 10) {
-    return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
+
+  // Determine full phone with country code
+  let phoneDigits = '';
+  if (countryCode && localPhone) {
+    const codeDigits = String(countryCode).replace(/\D/g, '');
+    const numDigits = String(localPhone).replace(/\D/g, '');
+    if (codeDigits && numDigits) {
+      phoneDigits = codeDigits + numDigits;
+    }
+  } else {
+    phoneDigits = String(phone || '').replace(/\D/g, '');
+    // If passed as 10-digit number without country code, default to 91 (India) prefix
+    if (phoneDigits.length === 10) {
+      phoneDigits = '91' + phoneDigits;
+    }
+  }
+
+  if (!phoneDigits || phoneDigits.length < 7 || phoneDigits.length > 16) {
+    return res.status(400).json({ error: 'Please enter a valid mobile number with country code' });
   }
   if (password.length < 6) {
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
@@ -219,7 +235,7 @@ router.post('/login', async (req, res) => {
     let userRow = await getUserByEmail(email);
     if (!userRow) {
       const cleanPhone = email.replace(/\D/g, '');
-      if (cleanPhone && cleanPhone.length === 10) {
+      if (cleanPhone && cleanPhone.length >= 7) {
         userRow = await getUserByPhone(cleanPhone);
       }
     }
@@ -503,14 +519,22 @@ router.get('/orders', authMiddleware, async (req, res) => {
  * Update user/admin profile details (Name, Phone Number)
  */
 router.post('/profile', authMiddleware, async (req, res) => {
-  const { name, phone } = req.body;
+  const { name, phone, countryCode, localPhone } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Name is required' });
   }
 
-  const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
-  if (phone && cleanPhone.length > 0 && cleanPhone.length < 10) {
-    return res.status(400).json({ error: 'Please enter a valid 10+ digit mobile number' });
+  let cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
+  if (countryCode && localPhone) {
+    const codeDigits = String(countryCode).replace(/\D/g, '');
+    const numDigits = String(localPhone).replace(/\D/g, '');
+    if (codeDigits && numDigits) {
+      cleanPhone = codeDigits + numDigits;
+    }
+  }
+
+  if (phone && cleanPhone.length > 0 && cleanPhone.length < 7) {
+    return res.status(400).json({ error: 'Please enter a valid mobile number with country code' });
   }
 
   try {
@@ -612,11 +636,11 @@ router.post('/forgot-password', async (req, res) => {
   }
 
   try {
-    // Look up user by email or 10-digit phone
+    // Look up user by email or phone number
     let user = await getUserByEmail(email);
     if (!user) {
       const cleanPhone = String(email).replace(/\D/g, '');
-      if (cleanPhone && cleanPhone.length === 10) {
+      if (cleanPhone && cleanPhone.length >= 7) {
         user = await getUserByPhone(cleanPhone);
       }
     }
