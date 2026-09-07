@@ -535,7 +535,7 @@ router.post('/send-message', async (req, res) => {
     } else if (targetType === 'custom') {
       const digits = String(phone || '').replace(/\D/g, '');
       if (!digits || digits.length < 10) {
-        return res.status(400).json({ error: 'Please enter a valid mobile number with country code (e.g. 919509116337)' });
+        return res.status(400).json({ error: 'Please enter a valid mobile number with country code (e.g. 917597550701)' });
       }
 
       const success = await sendAdminSessionMsg(digits, msgText);

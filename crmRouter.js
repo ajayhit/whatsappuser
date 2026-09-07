@@ -5,16 +5,16 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import xlsx from 'xlsx';
-import { sendMessageToJid, getSessionStatus } from './sessionManager.js';
+import { sendMessageToJid, getSessionStatus, sendTypingPresence, parseSpintax } from './sessionManager.js';
 import { triggerCampaignsPoller } from './index.js';
 import {
   getCatalogByUserId, getServicesByCatalogId, upsertCatalog,
   createService, updateService, deleteService,
-  getContactsByUser, upsertContact, deleteContact, toggleContactExclude,
+  getContactsByUser, upsertContact, upsertContactsBatch, deleteContact, toggleContactExclude,
   getRemindersByUser, createReminder, deleteReminder, calculateNextScheduleDate,
   getTemplatesByUser, createTemplate, updateTemplate, deleteTemplate,
   getUserById, getAutomationSettings, upsertAutomationSettings,
-  getCampaignsByUser, getCampaignRecipients, createCampaign, updateCampaignStatus, getCampaignById,
+  getCampaignsByUser, getCampaignRecipients, createCampaign, updateCampaignStatus, getCampaignById, deleteCampaign,
   getContactGroupsByUser, getContactGroupById, createContactGroup, updateContactGroup, deleteContactGroup,
   getContactGroupMembers, addContactsToGroup, removeContactFromGroup, getContactsNotInGroup,
   getBirthdayWishesByUser, createBirthdayWish, updateBirthdayWish, deleteBirthdayWish,
@@ -375,7 +375,7 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Could not find a phone number column in the Excel file (e.g. phone, mobile, number)' });
     }
 
-    let importCount = 0;
+    const contactsToInsert = [];
     for (const row of rows) {
       const rawPhone = String(row[phoneKey] || '').trim();
       const phone = normalizePhone(rawPhone);
@@ -384,19 +384,31 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
       const name = String(row[nameKey] || phone).trim();
       const shopName = shopKey ? String(row[shopKey] || '').trim() : '';
 
-      await upsertContact({
+      contactsToInsert.push({
         user_id: req.user.id,
         name,
         mobile: phone,
-        shop_name: shopName
+        shop_name: shopName,
+        is_excluded: 0
       });
-      importCount++;
     }
+
+    if (contactsToInsert.length === 0) {
+      return res.status(400).json({ error: 'No valid phone numbers found in the uploaded file.' });
+    }
+
+    const importCount = await upsertContactsBatch(contactsToInsert);
 
     // Clean up uploaded file
     try { fs.unlinkSync(req.file.path); } catch (e) { }
 
-    return res.json({ success: true, message: `Successfully imported ${importCount} contacts!`, count: importCount });
+    return res.json({
+      success: true,
+      message: `Successfully imported ${importCount} contacts!`,
+      count: importCount,
+      fileName: req.file.originalname,
+      totalRows: rows.length
+    });
   } catch (err) {
     // Clean up uploaded file in case of error
     try { fs.unlinkSync(req.file.path); } catch (e) { }
@@ -644,7 +656,14 @@ router.post('/templates/send-bulk', async (req, res) => {
       personalizedMsg = personalizedMsg.replace(/\{email\}/gi, emailVal);
       personalizedMsg = personalizedMsg.replace(/\[email\]/gi, emailVal);
 
+      // Apply Spintax variation
+      personalizedMsg = parseSpintax(personalizedMsg);
+
       try {
+        // Typing simulation (1.5s - 3s)
+        const typingDuration = Math.floor(Math.random() * 1500) + 1500;
+        await sendTypingPresence(userId, contact.mobile, typingDuration);
+
         await sendMessageToJid(userId, contact.mobile, personalizedMsg);
         successCount++;
         results.push({ mobile: contact.mobile, name: contact.name, status: 'SENT' });
@@ -653,9 +672,10 @@ router.post('/templates/send-bulk', async (req, res) => {
         results.push({ mobile: contact.mobile, name: contact.name, status: 'FAILED', error: err.message });
       }
 
-      // Add delay between sends if multiple recipients
-      if (contacts.length > 1 && delayMs > 0) {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+      // Add safe delay between sends if multiple recipients
+      if (contacts.length > 1) {
+        const safeDelay = Math.max(delayMs, 8000) + Math.floor(Math.random() * 4000);
+        await new Promise(resolve => setTimeout(resolve, safeDelay));
       }
     }
 
@@ -685,7 +705,8 @@ router.get('/automation-settings', async (req, res) => {
 router.post('/automation-settings', upload.single('welcome_media'), async (req, res) => {
   const {
     welcome_active, welcome_text,
-    away_active, away_text, away_schedule_type, away_start_time, away_end_time
+    away_active, away_text, away_schedule_type, away_start_time, away_end_time,
+    daily_campaign_limit
   } = req.body;
 
   try {
@@ -701,8 +722,10 @@ router.post('/automation-settings', upload.single('welcome_media'), async (req, 
       away_text: away_text !== undefined ? away_text.trim() : undefined,
       away_schedule_type: away_schedule_type !== undefined ? away_schedule_type : undefined,
       away_start_time: away_start_time !== undefined ? away_start_time : undefined,
-      away_end_time: away_end_time !== undefined ? away_end_time : undefined
+      away_end_time: away_end_time !== undefined ? away_end_time : undefined,
+      daily_campaign_limit: daily_campaign_limit !== undefined ? parseInt(daily_campaign_limit) || 200 : undefined
     });
+
 
     return res.json({ message: 'Automation settings updated successfully', settings: updated });
   } catch (err) {
@@ -785,6 +808,20 @@ router.put('/campaigns/:id/status', async (req, res) => {
     }
 
     return res.json({ message: 'Campaign status updated', campaign: updated });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/campaigns/:id', async (req, res) => {
+  try {
+    const campaign = await getCampaignById(req.params.id);
+    if (!campaign || campaign.user_id !== req.user.id) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+
+    await deleteCampaign(req.params.id);
+    return res.json({ message: 'Campaign deleted successfully' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

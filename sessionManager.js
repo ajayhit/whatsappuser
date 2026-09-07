@@ -14,7 +14,10 @@ import {
   deleteSessionFilesSpecific,
   getSessionFiles,
   deleteSessionFiles,
-  getAllSessionUserIdsFromDb
+  getAllSessionUserIdsFromDb,
+  excludeContactByMobile,
+  execute,
+  invalidateCache
 } from './db.js';
 
 
@@ -638,6 +641,49 @@ export async function logoutSession(userId) {
 }
 
 /**
+ * Resolves Spintax formats like {Hi|Hello|Hey} into randomized variations.
+ * Ensures outgoing messages are not byte-for-byte identical.
+ * @param {string} text
+ * @returns {string}
+ */
+export function parseSpintax(text) {
+  if (!text || typeof text !== 'string') return text || '';
+  const spintaxRegex = /\{([^{}|]+(?:\|[^{}|]+)+)\}/g;
+  let matches;
+  while ((matches = text.match(spintaxRegex)) !== null) {
+    for (const match of matches) {
+      const options = match.slice(1, -1).split('|');
+      const choice = options[Math.floor(Math.random() * options.length)];
+      text = text.replace(match, choice);
+    }
+  }
+  return text;
+}
+
+/**
+ * Sends a typing/composing presence update to simulate human behavior before sending.
+ * @param {string} userId
+ * @param {string} to
+ * @param {number} durationMs
+ */
+export async function sendTypingPresence(userId, to, durationMs = 2500) {
+  try {
+    const sock = sessions.get(userId);
+    const status = sessionStatus.get(userId);
+    if (!sock || status !== 'CONNECTED') return;
+
+    const jid = normalizeTargetJid(to);
+    await sock.sendPresenceUpdate('composing', jid);
+    if (durationMs > 0) {
+      await new Promise(r => setTimeout(r, durationMs));
+      await sock.sendPresenceUpdate('paused', jid).catch(() => {});
+    }
+  } catch (err) {
+    // Non-fatal presence error
+  }
+}
+
+/**
  * Sends a text message to a specific number or group.
  * @param {string} userId 
  * @param {string} to 
@@ -865,6 +911,49 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
   }
 
   const fromPhone = fromJid.split('@')[0];
+
+  // ─── 0. STOP / Opt-Out Keyword Handler (Anti-Ban: highest priority) ───────
+  // If a contact replies with any opt-out keyword, immediately:
+  //   a) Mark them as excluded in the DB (stops all future campaign messages)
+  //   b) Send a polite unsubscribe confirmation
+  //   c) Return early — skip all other auto-responses
+  // This prevents frustrated users from clicking WhatsApp's "Report Spam" button.
+  const incomingText = (
+    msg.message?.conversation ||
+    msg.message?.extendedTextMessage?.text ||
+    msg.message?.imageMessage?.caption ||
+    ''
+  ).trim().toUpperCase();
+
+  const OPT_OUT_KEYWORDS = ['STOP', 'UNSUBSCRIBE', 'CANCEL', 'OPTOUT', 'OPT OUT', 'REMOVE', 'NO MORE', 'HATAO', 'BAND KRO', 'BAND KARO'];
+  if (OPT_OUT_KEYWORDS.some(kw => incomingText === kw || incomingText.startsWith(kw))) {
+    try {
+      console.log(`[Opt-Out] Contact ${fromPhone} sent opt-out keyword "${incomingText}" to user ${userId}. Excluding from all campaigns.`);
+      await excludeContactByMobile(userId, fromPhone);
+      // Send polite confirmation so they know it worked (stops them hitting 'Report Spam')
+      await sendMessageToJid(userId, fromJid,
+        `✅ You have been successfully unsubscribed and will not receive any more messages from us.\n\nIf this was a mistake, please reply *JOIN* to re-subscribe.`
+      );
+    } catch (optErr) {
+      console.error(`[Opt-Out Error] Failed to exclude ${fromPhone} for user ${userId}:`, optErr.message);
+    }
+    return; // Do not process welcome/away messages for opted-out contacts
+  }
+
+  // ─── Re-subscribe handler ─────────────────────────────────────────────────
+  if (incomingText === 'JOIN') {
+    try {
+      await execute('UPDATE contacts SET is_excluded = 0 WHERE user_id = ? AND mobile = ?', [userId, fromPhone]);
+      invalidateCache(`excluded_${userId}_${fromPhone}`);
+      console.log(`[Re-subscribe] Contact ${fromPhone} re-subscribed for user ${userId}.`);
+      await sendMessageToJid(userId, fromJid,
+        `✅ You have been successfully re-subscribed! You will now receive our updates again.`
+      );
+    } catch (resubErr) {
+      console.error(`[Re-subscribe Error] Failed for ${fromPhone}:`, resubErr.message);
+    }
+    return;
+  }
 
   // 1. Check if contact is excluded/blocked
   if (await isContactExcluded(userId, fromPhone)) {

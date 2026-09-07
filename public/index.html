@@ -101,6 +101,11 @@
       padding: 0;
     }
 
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
     body {
       font-family: 'Outfit', sans-serif;
       background: var(--bg-gradient);
@@ -1498,6 +1503,9 @@
       // Dynamic lists fetched on profile sync
       banks: [],
       contacts: [],
+      contactSearchQuery: '',
+      contactsPage: 1,
+      contactsPageSize: 25,
       contactGroups: [],
       activeGroupId: null, // group currently open in member panel
       autoReplies: [], // removed feature placeholder
@@ -3228,6 +3236,11 @@
                   </tbody>
                 </table>
               </div>
+
+              <!-- Pagination Controls -->
+              <div id="contactsPaginationControls" style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; flex-wrap:wrap; gap:0.75rem; padding:0.75rem 1rem; background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:10px; font-size:0.85rem;">
+                ${renderContactsPaginationBar()}
+              </div>
             </div>
 
             <!-- TAB: Contact Groups -->
@@ -3450,11 +3463,6 @@
 
                     <div class="form-group">
                       <label>Away Message Text</label>
-                      <textarea id="awayText" rows="5" required placeholder="Type away message...">${state.automationSettings?.away_text || 'Thank you for contacting us! We are currently away and will reply to your message as soon as possible.'}</textarea>
-                      
-                      <div style="margin-top:0.5rem;">
-                        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:</div>
-                        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
                           <button type="button" onclick="insertPlaceholder('{Name}', 'awayText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Name}</button>
                           <button type="button" onclick="insertPlaceholder('{ShopName}', 'awayText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {ShopName}</button>
                         </div>
@@ -3484,8 +3492,34 @@
                   </form>
                 </div>
 
+                 <!-- Anti-Ban: Daily Campaign Limit -->
+                 <div class="card" style="border:1px solid rgba(251,146,60,0.35);margin-top:0.5rem;">
+                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                     <div>
+                       <div style="font-size:1rem;font-weight:700;">🛡️ Anti-Ban: Daily Message Limit</div>
+                       <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem;">Max campaign messages sent per day. Campaign auto-pauses &amp; resumes next day. Recommended: 200 for aged numbers, 50 for new numbers.</div>
+                     </div>
+                     <span style="background:rgba(251,146,60,0.2);color:#fb923c;padding:0.25rem 0.6rem;border-radius:12px;font-size:0.78rem;font-weight:700;white-space:nowrap;">
+                       ${state.automationSettings?.daily_campaign_limit || 200}/day
+                     </span>
+                   </div>
+                   <form onsubmit="saveDailyLimit(event)" style="display:flex;gap:1rem;align-items:flex-end;">
+                     <div class="form-group" style="flex:1;margin:0;">
+                       <label>Daily Sending Limit (messages/day)</label>
+                       <input type="number" id="dailyCampaignLimit" min="10" max="1000" step="10"
+                         value="${state.automationSettings?.daily_campaign_limit || 200}"
+                         placeholder="200" style="width:100%;">
+                     </div>
+                     <button type="submit" style="background:rgba(251,146,60,0.85);border:none;color:#fff;padding:0.65rem 1.25rem;border-radius:8px;cursor:pointer;white-space:nowrap;font-weight:600;">Save Limit</button>
+                   </form>
+                   <div style="margin-top:0.75rem;padding:0.6rem 0.85rem;background:rgba(251,146,60,0.07);border-radius:8px;font-size:0.77rem;color:var(--text-muted);">
+                     <b>💡 Warm-up Guide:</b> New SIM → 30-50/day &nbsp;|&nbsp; 1-week old → 80-100/day &nbsp;|&nbsp; 1-month+ → 200-300/day
+                   </div>
+                 </div>
+
               </div>
             </div>
+
 
             <!-- TAB: Campaigns Dashboard -->
             <div id="campaignsTab" class="tab-content ${state.currentTab === 'campaignsTab' ? 'active' : ''}">
@@ -8524,23 +8558,71 @@
     }
 
     // ─── CRM rendering lists & items functions ───────────────────────────────
-    function renderContactsRows() {
-      const list = state.contacts || [];
-      if (list.length === 0) {
-        return `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No contacts found. Click Import or Add Contact to get started.</td></tr>`;
+    function getFilteredContacts() {
+      const q = (state.contactSearchQuery || '').trim().toLowerCase();
+      let list = state.contacts || [];
+
+      if (q) {
+        list = list.filter(c => {
+          const name = (c.name || '').toLowerCase();
+          const mobile = (c.mobile || '').toLowerCase();
+          const shop = (c.shop_name || '').toLowerCase();
+          return name.includes(q) || mobile.includes(q) || shop.includes(q);
+        });
       }
+      return list;
+    }
+
+    function getPaginatedContacts() {
+      const filtered = getFilteredContacts();
+      const pageSize = state.contactsPageSize || 25;
+      const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+      
+      if (state.contactsPage > totalPages) {
+        state.contactsPage = totalPages;
+      }
+      if (state.contactsPage < 1) {
+        state.contactsPage = 1;
+      }
+
+      const startIndex = (state.contactsPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      return {
+        items: filtered.slice(startIndex, endIndex),
+        total: filtered.length,
+        startIndex,
+        endIndex: Math.min(endIndex, filtered.length),
+        page: state.contactsPage,
+        totalPages,
+        pageSize
+      };
+    }
+
+    function renderContactsRows() {
+      const paginated = getPaginatedContacts();
+      const list = paginated.items;
+
+      if (paginated.total === 0) {
+        const msg = state.contactSearchQuery 
+          ? `No contacts match "${state.contactSearchQuery}".` 
+          : 'No contacts found. Click Import or Add Contact to get started.';
+        return `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">${msg}</td></tr>`;
+      }
+
       return list.map(c => {
         const isExcluded = c.is_excluded === 1;
         const btnText = isExcluded ? 'Excluded (Blocked)' : 'Active (Exclude)';
         const btnColor = isExcluded ? 'var(--error-color)' : 'var(--accent-color)';
         const isChecked = state.selectedContactIds.includes(c.id);
+        const createdDate = c.created_at ? new Date(c.created_at).toLocaleDateString() : '-';
+
         return `
           <tr>
             <td style="text-align:center;"><input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''} onchange="toggleContactCheck(${c.id}, this.checked)" style="width:auto;"></td>
-            <td>${c.name}</td>
-            <td>${c.mobile}</td>
+            <td><strong>${c.name || 'Unnamed'}</strong></td>
+            <td><span style="font-family:monospace;color:#93c5fd;">${c.mobile}</span></td>
             <td>${c.shop_name || '-'}</td>
-            <td>${new Date(c.created_at).toLocaleDateString()}</td>
+            <td style="font-size:0.8rem;color:var(--text-muted);">${createdDate}</td>
             <td>
               <button onclick="toggleExcludeContact(${c.id}, ${!isExcluded})" style="background:${btnColor};padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;min-width:120px;">
                 ${btnText}
@@ -8549,12 +8631,54 @@
             <td>
               <div style="display:flex; gap:0.3rem;">
                 <button onclick="openBroadcastTemplateModal(${c.id})" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;background:#6366f1;">✉️ Send Msg</button>
-                <button onclick="deleteContactEntry(${c.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️</button>
+                <button onclick="deleteContactEntry(${c.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;" title="Delete Contact">🗑️</button>
               </div>
             </td>
           </tr>
         `;
       }).join('');
+    }
+
+    function renderContactsPaginationBar() {
+      const paginated = getPaginatedContacts();
+      const { total, startIndex, endIndex, page, totalPages, pageSize } = paginated;
+
+      if (total === 0) {
+        return `<div style="color:var(--text-muted);">0 contacts found</div>`;
+      }
+
+      const isFirst = page <= 1;
+      const isLast = page >= totalPages;
+
+      return `
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+          <span style="color:var(--text-muted);">
+            Showing <strong style="color:#f8fafc;">${startIndex + 1} - ${endIndex}</strong> of <strong style="color:#34d399;">${total.toLocaleString()}</strong> contacts
+          </span>
+          <div style="display:flex; align-items:center; gap:0.4rem;">
+            <label style="color:var(--text-muted); font-size:0.8rem; margin:0;">Per page:</label>
+            <select onchange="changeContactsPageSize(this.value)" style="padding:0.25rem 0.5rem; font-size:0.8rem; width:auto; background:#1e293b; color:#fff; border:1px solid var(--glass-border); border-radius:6px; cursor:pointer;">
+              <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
+              <option value="25" ${pageSize === 25 ? 'selected' : ''}>25</option>
+              <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+              <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
+              <option value="250" ${pageSize === 250 ? 'selected' : ''}>250</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+          <button onclick="goToContactsPage(1)" ${isFirst ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''} style="background:rgba(255,255,255,0.06); padding:0.3rem 0.6rem; font-size:0.8rem; width:auto; border-radius:6px;">⏮ First</button>
+          <button onclick="goToContactsPage(${page - 1})" ${isFirst ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''} style="background:rgba(255,255,255,0.06); padding:0.3rem 0.6rem; font-size:0.8rem; width:auto; border-radius:6px;">◀ Prev</button>
+          
+          <span style="color:#e2e8f0; font-weight:600; padding:0 0.4rem; font-size:0.82rem; background:rgba(255,255,255,0.04); border-radius:6px; height:28px; display:inline-flex; align-items:center;">
+            Page ${page} / ${totalPages}
+          </span>
+
+          <button onclick="goToContactsPage(${page + 1})" ${isLast ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''} style="background:rgba(255,255,255,0.06); padding:0.3rem 0.6rem; font-size:0.8rem; width:auto; border-radius:6px;">Next ▶</button>
+          <button onclick="goToContactsPage(${totalPages})" ${isLast ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''} style="background:rgba(255,255,255,0.06); padding:0.3rem 0.6rem; font-size:0.8rem; width:auto; border-radius:6px;">Last ⏭</button>
+        </div>
+      `;
     }
 
     function renderReminderRows() {
@@ -8640,7 +8764,6 @@
       }).join('');
     }
 
-    // ─── CRM fetch APIs functions ─────────────────────────────────────────────
     async function fetchContacts() {
       try {
         const res = await fetch('/api/crm/contacts', {
@@ -8649,7 +8772,12 @@
         const data = await res.json();
         if (res.ok) {
           state.contacts = data.contacts || [];
-          renderApp();
+          if (state.currentTab === 'contactsTab') {
+            refreshContactsTable();
+            updateContactCheckCount();
+          } else {
+            renderApp();
+          }
         }
       } catch (err) {
         console.error('Error fetching contacts:', err);
@@ -9253,9 +9381,28 @@
       }).catch(err => console.error('Error loading group members for broadcast:', err));
     }
 
+    function showExcelImportModal(fileName) {
+      const modal = document.getElementById('excelImportModal');
+      const loadState = document.getElementById('excelImportLoadingState');
+      const succState = document.getElementById('excelImportSuccessState');
+      const errState = document.getElementById('excelImportErrorState');
+      
+      document.getElementById('excelImportFileName').innerText = fileName ? `File: ${fileName}` : 'Processing file...';
+      loadState.style.display = 'flex';
+      succState.style.display = 'none';
+      errState.style.display = 'none';
+      modal.style.display = 'flex';
+    }
+
+    function closeExcelImportModal() {
+      document.getElementById('excelImportModal').style.display = 'none';
+    }
+
     async function importContactsExcel(e) {
       const file = e.target.files[0];
       if (!file) return;
+
+      showExcelImportModal(file.name);
 
       const formData = new FormData();
       formData.append('file', file);
@@ -9267,11 +9414,20 @@
           body: formData
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        alert(data.message || 'Contacts imported successfully');
+        if (!res.ok) throw new Error(data.error || 'Failed to import contacts');
+
+        // Transition modal to rich success state
+        document.getElementById('excelImportLoadingState').style.display = 'none';
+        document.getElementById('excelImportSuccessState').style.display = 'flex';
+        document.getElementById('excelSuccessFileName').innerText = data.fileName || file.name;
+        document.getElementById('excelSuccessTotalRows').innerText = data.totalRows !== undefined ? data.totalRows : (data.count || 0);
+        document.getElementById('excelSuccessCount').innerText = `${data.count || 0} Contacts`;
+
         fetchContacts();
       } catch (err) {
-        alert(err.message);
+        document.getElementById('excelImportLoadingState').style.display = 'none';
+        document.getElementById('excelImportErrorState').style.display = 'flex';
+        document.getElementById('excelImportErrorMsg').innerText = err.message || 'An error occurred during Excel import.';
       } finally {
         e.target.value = '';
       }
@@ -9323,17 +9479,93 @@
       }
     }
 
+    function refreshContactsTable() {
+      const tbody = document.getElementById('contactsTableBody');
+      if (tbody) {
+        tbody.innerHTML = renderContactsRows();
+      }
+      const pagin = document.getElementById('contactsPaginationControls');
+      if (pagin) {
+        pagin.innerHTML = renderContactsPaginationBar();
+      }
+      updateSelectAllContactsCheckbox();
+    }
+
+    function goToContactsPage(pageNum) {
+      state.contactsPage = parseInt(pageNum) || 1;
+      refreshContactsTable();
+    }
+
+    function changeContactsPageSize(newSize) {
+      state.contactsPageSize = parseInt(newSize) || 25;
+      state.contactsPage = 1;
+      refreshContactsTable();
+    }
+
     function filterContactsList(query) {
-      const q = query.trim().toLowerCase();
-      const rows = document.querySelectorAll('#contactsTableBody tr');
-      rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        if (text.includes(q) || row.innerHTML.includes('No contacts found')) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
+      state.contactSearchQuery = query || '';
+      state.contactsPage = 1;
+      refreshContactsTable();
+    }
+
+    function toggleSelectAllContacts(isChecked) {
+      const paginated = getPaginatedContacts();
+      const pageContactIds = paginated.items.map(c => c.id);
+      
+      if (isChecked) {
+        const currentSet = new Set(state.selectedContactIds || []);
+        pageContactIds.forEach(id => currentSet.add(id));
+        state.selectedContactIds = Array.from(currentSet);
+      } else {
+        const pageSet = new Set(pageContactIds);
+        state.selectedContactIds = (state.selectedContactIds || []).filter(id => !pageSet.has(id));
+      }
+      
+      updateContactCheckCount();
+      refreshContactsTable();
+    }
+
+    function toggleContactCheck(contactId, isChecked) {
+      if (isChecked) {
+        if (!state.selectedContactIds.includes(contactId)) {
+          state.selectedContactIds.push(contactId);
         }
-      });
+      } else {
+        state.selectedContactIds = (state.selectedContactIds || []).filter(id => id !== contactId);
+      }
+      updateContactCheckCount();
+      updateSelectAllContactsCheckbox();
+    }
+
+    function updateContactCheckCount() {
+      const countEl = document.getElementById('contactCheckCount');
+      if (countEl) {
+        countEl.innerText = (state.selectedContactIds || []).length;
+      }
+    }
+
+    function updateSelectAllContactsCheckbox() {
+      const selectAllCb = document.getElementById('selectAllContactsCheck');
+      if (!selectAllCb) return;
+      const paginated = getPaginatedContacts();
+      if (paginated.items.length === 0) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+        return;
+      }
+      const pageIds = paginated.items.map(c => c.id);
+      const selectedOnPage = pageIds.filter(id => state.selectedContactIds.includes(id));
+      
+      if (selectedOnPage.length === pageIds.length) {
+        selectAllCb.checked = true;
+        selectAllCb.indeterminate = false;
+      } else if (selectedOnPage.length > 0) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = true;
+      } else {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+      }
     }
 
     // ─── CRM Reminders handlers ──────────────────────────────────────────────
@@ -9860,6 +10092,31 @@
       }
     }
 
+    async function saveDailyLimit(e) {
+      e.preventDefault();
+      const daily_campaign_limit = parseInt(document.getElementById('dailyCampaignLimit').value) || 200;
+      if (daily_campaign_limit < 10) { alert('Minimum daily limit is 10 messages.'); return; }
+
+      const formData = new FormData();
+      formData.append('daily_campaign_limit', daily_campaign_limit);
+
+      try {
+        const res = await fetch('/api/crm/automation-settings', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(`✅ Daily limit set to ${daily_campaign_limit} messages/day. Campaigns will auto-pause when this limit is reached.`);
+        fetchAutomationSettings();
+        render();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
     function clearConsole(consoleId) {
       const el = document.getElementById(consoleId);
       if (el) el.innerHTML = '<div class="console-line system">[System] Console logs cleared.</div>';
@@ -9868,6 +10125,20 @@
     // Bootstrap
     renderApp();
     // ─── Campaigns Functions ──────────────────────────────────────────
+
+    let campaignsPollInterval = null;
+    function startCampaignsLivePolling() {
+      if (campaignsPollInterval) clearInterval(campaignsPollInterval);
+      campaignsPollInterval = setInterval(() => {
+        if (state.token && state.currentTab === 'campaignsTab') {
+          const hasActive = (state.campaigns || []).some(c => c.status === 'running' || c.status === 'pending');
+          if (hasActive) {
+            fetchCampaigns();
+          }
+        }
+      }, 6000);
+    }
+    startCampaignsLivePolling();
 
     async function fetchCampaigns() {
       try {
@@ -9903,11 +10174,15 @@
         } else if (c.status === 'paused') {
           statusBadge = `<span style="background:rgba(245,158,11,0.2);color:#fbbf24;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">PAUSED</span>`;
           actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">Resume</button>`;
+        } else if (c.status === 'daily_limit_reached') {
+          statusBadge = `<span style="background:rgba(251,146,60,0.2);color:#fb923c;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;" title="Daily safety cap reached. Auto-resumes tomorrow.">⏸ DAILY LIMIT</span>`;
+          actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">Resume Now</button>`;
         } else if (c.status === 'completed') {
           statusBadge = `<span style="background:rgba(16,185,129,0.2);color:#34d399;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">COMPLETED</span>`;
         } else {
           statusBadge = `<span style="background:rgba(239,68,68,0.2);color:#f87171;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">${c.status.toUpperCase()}</span>`;
         }
+
 
         const scheduledDate = c.scheduled_at ? new Date(c.scheduled_at).toLocaleString() : 'Immediate';
         const totalProcessed = c.successful_deliveries + c.failed_deliveries;
@@ -9920,9 +10195,10 @@
             <div style="font-size:1.1rem;font-weight:600;display:flex;align-items:center;gap:0.5rem;">${c.name} ${statusBadge}</div>
             <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Scheduled: ${scheduledDate}</div>
           </div>
-          <div style="display:flex;gap:0.5rem;">
+          <div style="display:flex;gap:0.5rem;align-items:center;">
             ${actionBtn}
             <button onclick="openCampaignRecipientsModal(${c.id})" style="background:rgba(255,255,255,0.1);padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">View Status</button>
+            <button onclick="deleteCampaignItem(${c.id})" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;cursor:pointer;" title="Delete Campaign">🗑️ Delete</button>
           </div>
         </div>
         
@@ -9966,26 +10242,87 @@
       }
     }
 
+    function updateCampaignSelectedCount() {
+      const allCbs = document.querySelectorAll('input[name="campaignContact"]');
+      const checkedCbs = document.querySelectorAll('input[name="campaignContact"]:checked');
+      
+      const countEl = document.getElementById('campaignSelectedCount');
+      const totalEl = document.getElementById('campaignTotalCount');
+      const selectAllCb = document.getElementById('campaignSelectAllCheckbox');
+      
+      if (countEl) countEl.innerText = checkedCbs.length;
+      if (totalEl) totalEl.innerText = allCbs.length;
+      
+      if (selectAllCb) {
+        if (allCbs.length === 0) {
+          selectAllCb.checked = false;
+          selectAllCb.indeterminate = false;
+        } else if (checkedCbs.length === allCbs.length) {
+          selectAllCb.checked = true;
+          selectAllCb.indeterminate = false;
+        } else if (checkedCbs.length > 0) {
+          selectAllCb.checked = false;
+          selectAllCb.indeterminate = true;
+        } else {
+          selectAllCb.checked = false;
+          selectAllCb.indeterminate = false;
+        }
+      }
+    }
+
     function renderCampaignContactsSelector() {
       const container = document.getElementById('campaignContactsGrid');
-      if (state.contacts.length === 0) {
-        container.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;">No contacts available.</div>`;
+      const searchInput = document.getElementById('campaignContactSearchInput');
+      if (searchInput) searchInput.value = '';
+
+      if (!state.contacts || state.contacts.length === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;">No contacts available. Please add or import contacts first.</div>`;
+        updateCampaignSelectedCount();
         return;
       }
+
       container.innerHTML = state.contacts.map(c => `
-    <label style="display:flex;align-items:center;gap:0.5rem;background:rgba(255,255,255,0.03);padding:0.5rem;border-radius:6px;cursor:pointer;">
-      <input type="checkbox" name="campaignContact" value="${c.id}" checked style="width:auto;">
-      <div style="font-size:0.85rem;line-height:1.2;">
-        <div style="color:#fff;">${c.name}</div>
-        <div style="color:var(--text-muted);font-size:0.75rem;">${c.mobile}</div>
-      </div>
-    </label>
-  `).join('');
+        <label class="campaign-contact-item" data-search="${(c.name || '').toLowerCase()} ${(c.mobile || '').toLowerCase()} ${(c.shop_name || '').toLowerCase()}" style="display:flex;align-items:center;gap:0.5rem;background:rgba(255,255,255,0.03);padding:0.5rem;border-radius:6px;cursor:pointer;">
+          <input type="checkbox" name="campaignContact" value="${c.id}" checked style="width:auto;" onchange="updateCampaignSelectedCount()">
+          <div style="font-size:0.85rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;">
+            <div style="color:#fff;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name || 'Unnamed'}</div>
+            <div style="color:var(--text-muted);font-size:0.75rem;font-family:monospace;">${c.mobile}</div>
+          </div>
+        </label>
+      `).join('');
+
+      updateCampaignSelectedCount();
     }
 
     function toggleCampaignContactsSelectAll(checkbox) {
+      const isChecked = checkbox.checked;
       const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
-      checkboxes.forEach(cb => cb.checked = checkbox.checked);
+      checkboxes.forEach(cb => {
+        const item = cb.closest('.campaign-contact-item');
+        if (!item || item.style.display !== 'none') {
+          cb.checked = isChecked;
+        }
+      });
+      updateCampaignSelectedCount();
+    }
+
+    function clearCampaignContactsSelection() {
+      const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
+      checkboxes.forEach(cb => cb.checked = false);
+      updateCampaignSelectedCount();
+    }
+
+    function filterCampaignContactsSelector(query) {
+      const q = (query || '').trim().toLowerCase();
+      const items = document.querySelectorAll('.campaign-contact-item');
+      items.forEach(item => {
+        const text = item.getAttribute('data-search') || '';
+        if (!q || text.includes(q)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
     }
 
     async function handleCreateCampaignSubmit(e) {
@@ -10063,6 +10400,24 @@
         }
       } catch (err) {
         alert('An error occurred');
+      }
+    }
+
+    async function deleteCampaignItem(campaignId) {
+      if (!confirm('Are you sure you want to delete this campaign? All recipient logs and campaign history will be permanently deleted.')) return;
+      try {
+        const res = await fetch(`/api/crm/campaigns/${campaignId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          fetchCampaigns();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Failed to delete campaign');
+        }
+      } catch (err) {
+        alert('An error occurred while deleting the campaign');
       }
     }
 
@@ -10814,6 +11169,12 @@
               <button type="button" onclick="insertPlaceholder('{Email}', 'campaignMsgContent')"
                 style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+
                 {Email}</button>
+              <button type="button" onclick="insertPlaceholder('{Hi|Hello|Hey}', 'campaignMsgContent')"
+                style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#6ee7b7;width:auto;margin:0;" title="Spintax randomizes greetings per contact to prevent spam detection">+
+                🎲 Spintax {Hi|Hello|Hey}</button>
+            </div>
+            <div style="margin-top:0.6rem; padding:0.6rem 0.8rem; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.25); border-radius:8px; font-size:0.74rem; color:#6ee7b7; line-height:1.4;">
+              🛡️ <strong>Anti-Ban Engine Active:</strong> Campaigns automatically use randomized human typing presence (2-4s), safe interval delays (10-20s), and batch cool-down periods to protect your WhatsApp account.
             </div>
           </div>
         </div>
@@ -10843,16 +11204,29 @@
 
         <!-- Contact Selection -->
         <div class="form-group">
-          <label style="display:flex;align-items:center;justify-content:space-between;">
-            <span>Select Recipients</span>
-            <label
-              style="font-size:0.8rem;font-weight:normal;display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;">
-              <input type="checkbox" checked onchange="toggleCampaignContactsSelectAll(this)" style="width:auto;">
-              Select All
-            </label>
-          </label>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem;flex-wrap:wrap;gap:0.5rem;">
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+              <span style="font-weight:600;color:#f8fafc;">Select Recipients</span>
+              <span id="campaignSelectedBadge" style="background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.35);color:#34d399;font-weight:700;padding:0.18rem 0.6rem;border-radius:12px;font-size:0.75rem;">
+                <span id="campaignSelectedCount">0</span> / <span id="campaignTotalCount">0</span> Selected
+              </span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+              <label style="font-size:0.8rem;font-weight:normal;display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;color:#a5b4fc;">
+                <input type="checkbox" id="campaignSelectAllCheckbox" checked onchange="toggleCampaignContactsSelectAll(this)" style="width:auto;">
+                Select All
+              </label>
+              <button type="button" onclick="clearCampaignContactsSelection()" style="background:none;border:none;color:#f87171;font-size:0.75rem;cursor:pointer;padding:0;text-decoration:underline;width:auto;">Clear</button>
+            </div>
+          </div>
+
+          <!-- Quick Search Filter within Campaign Contacts -->
+          <div style="margin-bottom:0.5rem;position:relative;">
+            <input type="text" id="campaignContactSearchInput" placeholder="🔍 Filter contacts by name or phone..." oninput="filterCampaignContactsSelector(this.value)" style="padding:0.45rem 0.75rem;font-size:0.8rem;width:100%;background:rgba(0,0,0,0.35);border:1px solid var(--glass-border);border-radius:6px;color:#fff;">
+          </div>
+
           <div id="campaignContactsGrid"
-            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.5rem;max-height:180px;overflow-y:auto;padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid var(--border-color);">
+            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.5rem;max-height:200px;overflow-y:auto;padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid var(--border-color);">
             <div style="color:var(--text-muted);font-size:0.85rem;">Loading contacts...</div>
           </div>
         </div>
@@ -10878,6 +11252,61 @@
         style="display:flex; flex-direction:column; gap:0.6rem; overflow-y:auto; flex:1;">
         <div style="text-align:center; padding:1rem; color:var(--text-muted);">Loading...</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Excel Contact Import Progress / Result Modal -->
+  <div id="excelImportModal"
+    style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.8); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:1.5rem;">
+    <div style="background:linear-gradient(135deg,#0f172a,#1e1b4b); border:1px solid rgba(99,102,241,0.5); border-radius:18px; padding:2rem; max-width:480px; width:100%; box-shadow:0 25px 70px rgba(0,0,0,0.6); text-align:center;">
+      
+      <!-- Loading State -->
+      <div id="excelImportLoadingState" style="display:flex; flex-direction:column; align-items:center; gap:1.2rem;">
+        <div style="width:54px; height:54px; border:4px solid rgba(99,102,241,0.2); border-top-color:#818cf8; border-radius:50%; animation:spin 1s linear infinite;"></div>
+        <div>
+          <div style="font-size:1.15rem; font-weight:700; color:#f8fafc;">Importing Contacts Spreadsheet...</div>
+          <div id="excelImportFileName" style="font-size:0.85rem; color:#a5b4fc; margin-top:0.4rem; word-break:break-all;">Processing file...</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:0.75rem 1rem; width:100%; font-size:0.8rem; color:#cbd5e1; text-align:left; line-height:1.5;">
+          ⏳ Uploading file, detecting phone numbers, and syncing contacts into your CRM directory...
+        </div>
+      </div>
+
+      <!-- Success State -->
+      <div id="excelImportSuccessState" style="display:none; flex-direction:column; align-items:center; gap:1.2rem;">
+        <div style="width:60px; height:60px; background:rgba(16,185,129,0.15); border:2px solid #10b981; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:#10b981;">
+          ✓
+        </div>
+        <div>
+          <div style="font-size:1.25rem; font-weight:700; color:#f8fafc;">Contacts Imported Successfully!</div>
+          <div style="font-size:0.85rem; color:#94a3b8; margin-top:0.3rem;">Your contacts list is now updated and ready for campaigns.</div>
+        </div>
+        <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:12px; padding:1rem; width:100%; text-align:left; display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem;">
+          <div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8;">File:</span> <strong id="excelSuccessFileName" style="color:#e2e8f0;">-</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8;">Total Rows Processed:</span> <strong id="excelSuccessTotalRows" style="color:#e2e8f0;">0</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8;">Imported / Updated Contacts:</span> <strong id="excelSuccessCount" style="color:#34d399; font-size:1rem;">0</strong></div>
+        </div>
+        <div style="display:flex; gap:0.75rem; width:100%;">
+          <button onclick="closeExcelImportModal()" style="flex:1; background:rgba(255,255,255,0.1); border:1px solid var(--border-color); color:#fff; padding:0.75rem; border-radius:8px; font-weight:600; cursor:pointer;">Close & View Contacts</button>
+          <button onclick="closeExcelImportModal(); openCreateCampaignModal();" style="flex:1; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; padding:0.75rem; border-radius:8px; font-weight:600; border:none; cursor:pointer;">📢 Create Campaign</button>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div id="excelImportErrorState" style="display:none; flex-direction:column; align-items:center; gap:1.2rem;">
+        <div style="width:60px; height:60px; background:rgba(239,68,68,0.15); border:2px solid #ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:#ef4444;">
+          ✕
+        </div>
+        <div>
+          <div style="font-size:1.25rem; font-weight:700; color:#f8fafc;">Import Failed</div>
+          <div id="excelImportErrorMsg" style="font-size:0.85rem; color:#f87171; margin-top:0.4rem; line-height:1.4;">An error occurred while reading the Excel file.</div>
+        </div>
+        <div style="display:flex; gap:0.75rem; width:100%;">
+          <button onclick="closeExcelImportModal()" style="flex:1; background:rgba(255,255,255,0.1); border:1px solid var(--border-color); color:#fff; padding:0.75rem; border-radius:8px; font-weight:600; cursor:pointer;">Close</button>
+          <button onclick="closeExcelImportModal(); downloadSampleContactsExcel();" style="flex:1; background:linear-gradient(135deg,#0284c7,#0369a1); color:#fff; padding:0.75rem; border-radius:8px; font-weight:600; border:none; cursor:pointer;">📄 Download Sample Excel</button>
+        </div>
+      </div>
+
     </div>
   </div>
 

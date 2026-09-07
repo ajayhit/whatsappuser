@@ -9,7 +9,7 @@ import authRouter from './authRouter.js';
 import adminRouter from './adminRouter.js';
 import crmRouter from './crmRouter.js';
 import razorpayRouter from './razorpayRouter.js';
-import { restoreAllSessions, getSessionStatus, sendMessageToJid, sendMediaToJid } from './sessionManager.js';
+import { restoreAllSessions, getSessionStatus, sendMessageToJid, sendMediaToJid, sendTypingPresence, parseSpintax } from './sessionManager.js';
 import {
   initDb, getDb, queryAll, queryOne, execute, getUserByEmail, createUser, getUserById,
   getCatalogByUserId, getAllCatalogs, getServicesByCatalogId,
@@ -19,7 +19,8 @@ import {
   getContactsByUser,
   getDueBirthdayWishes, markBirthdayWishSent, markBirthdayWishFailed,
   updatePaymentReminderStatus,
-  getAllUsers, getPlansByUser, canSendExpiryNotification, logExpiryNotification
+  getAllUsers, getPlansByUser, canSendExpiryNotification, logExpiryNotification,
+  getCampaignDailySentCount, getDailyMessageLimit, excludeContactByMobile
 } from './db.js';
 
 dotenv.config();
@@ -467,8 +468,27 @@ async function processPendingReminders() {
   }
 }
 
-// ─── Adaptive Event-Driven Campaigns Poller ─────────────────────────────────
+// ─── Adaptive Event-Driven Campaigns Poller (With Anti-Ban Protection) ─────────
 let isProcessingCampaigns = false;
+
+// Helper to sleep while periodically checking campaign cancellation
+async function interruptibleSleep(ms, campaignId) {
+  const stepMs = 1000;
+  let elapsed = 0;
+  while (elapsed < ms) {
+    const sleepChunk = Math.min(stepMs, ms - elapsed);
+    await new Promise(r => setTimeout(r, sleepChunk));
+    elapsed += sleepChunk;
+
+    if (campaignId) {
+      const camp = await getCampaignById(campaignId);
+      if (!camp || camp.status !== 'running') {
+        return false; // Interrupted by user pause/cancel
+      }
+    }
+  }
+  return true;
+}
 
 export async function triggerCampaignsPoller() {
   if (isProcessingCampaigns) return;
@@ -484,9 +504,15 @@ export async function triggerCampaignsPoller() {
         if (campaign.status === 'pending') {
           await updateCampaignStatus(campaign.id, 'running');
         }
+        // Auto-resume campaigns paused by daily cap on a new day
+        if (campaign.status === 'daily_limit_reached') {
+          await updateCampaignStatus(campaign.id, 'running');
+          console.log(`[Anti-Ban Daily Cap] New day detected - resuming campaign #${campaign.id} for user ${campaign.user_id}`);
+        }
 
         const currentCampaign = await getCampaignById(campaign.id);
         if (currentCampaign.status !== 'running') continue;
+
 
         // Fetch up to 50 pending recipients per batch
         const recipients = await getPendingRecipients(campaign.id, 50);
@@ -499,6 +525,7 @@ export async function triggerCampaignsPoller() {
         }
 
         processedAny = true;
+        let batchSendCounter = 0;
 
         for (const rec of recipients) {
           const reCheck = await getCampaignById(campaign.id);
@@ -513,19 +540,30 @@ export async function triggerCampaignsPoller() {
               throw new Error('User subscription is inactive or expired');
             }
 
-            // 2. Check if recipient contact is blocked
+            // 2. ─── Daily Safety Cap (Anti-Ban) ──────────────────────────────
+            // Count how many messages this user has already sent today across ALL campaigns.
+            // If the daily limit is reached, pause this campaign until tomorrow.
+            const dailySent = await getCampaignDailySentCount(campaign.user_id);
+            const dailyLimit = await getDailyMessageLimit(campaign.user_id);
+            if (dailySent >= dailyLimit) {
+              console.log(`[Anti-Ban Daily Cap] User ${campaign.user_id} has sent ${dailySent}/${dailyLimit} messages today. Pausing campaign #${campaign.id} until tomorrow.`);
+              await updateCampaignStatus(campaign.id, 'daily_limit_reached');
+              break; // Stop processing this campaign for today
+            }
+
+            // 3. Check if recipient contact is blocked/opted-out
             const isExcluded = await isContactExcluded(campaign.user_id, rec.mobile);
             if (isExcluded) {
               throw new Error('Recipient contact is excluded/blocked');
             }
 
-            // 3. Check WhatsApp session status
+            // 4. Check WhatsApp session status
             const session = getSessionStatus(String(campaign.user_id));
             if (session.status !== 'CONNECTED') {
               throw new Error('WhatsApp session is disconnected');
             }
 
-            // 4. Resolve placeholders
+            // 4. Resolve placeholders & Spintax variation
             let text = campaign.message_text;
             const user = await getUserById(campaign.user_id);
             const emailVal = user?.email || '';
@@ -537,26 +575,45 @@ export async function triggerCampaignsPoller() {
             text = text.replace(/\[mobile\]/gi, rec.mobile || '');
             text = text.replace(/\{email\}/gi, emailVal);
             text = text.replace(/\[email\]/gi, emailVal);
+            
+            // Apply Spintax randomization to prevent identical message signatures
+            text = parseSpintax(text);
 
-            // 5. Send message
+            // 5. Simulate realistic typing indicator before dispatch (1.8s - 3.5s)
+            const typingDuration = Math.floor(Math.random() * 1700) + 1800;
+            await sendTypingPresence(String(campaign.user_id), rec.mobile, typingDuration);
+
+            // 6. Send message / media
             if (campaign.media_path && campaign.media_type) {
               await sendMediaToJid(String(campaign.user_id), rec.mobile, campaign.media_path, campaign.media_type, text);
             } else {
               await sendMessageToJid(String(campaign.user_id), rec.mobile, text);
             }
 
-            // 6. Update status
+            // 7. Update status
             await updateCampaignRecipientStatus(rec.id, 'sent');
             await incrementCampaignSuccess(campaign.id);
-            console.log(`[Campaigns Poller] Sent campaign #${campaign.id} message to ${rec.mobile}`);
+            batchSendCounter++;
+            console.log(`[Campaigns Poller] Sent campaign #${campaign.id} message to ${rec.mobile} (Batch count: ${batchSendCounter})`);
           } catch (err) {
             console.error(`[Campaigns Poller Failed] Campaign #${campaign.id} recipient #${rec.id} failed: ${err.message}`);
             await updateCampaignRecipientStatus(rec.id, 'failed', err.message);
             await incrementCampaignFailure(campaign.id);
           }
 
-          // Small delay between sends to prevent rate-limiting by Baileys/WhatsApp
-          await new Promise(r => setTimeout(r, 1000));
+          // 8. Anti-Ban Batch Cooldown Check
+          // After every 20-25 messages, pause for 2-3 minutes to simulate natural human rest periods
+          if (batchSendCounter > 0 && batchSendCounter % 20 === 0) {
+            const cooldownSeconds = Math.floor(Math.random() * 60) + 120; // 120 - 180 seconds
+            console.log(`[Campaigns Anti-Ban] Cooling down for ${cooldownSeconds}s after batch of ${batchSendCounter} messages on campaign #${campaign.id}...`);
+            const shouldContinue = await interruptibleSleep(cooldownSeconds * 1000, campaign.id);
+            if (!shouldContinue) break;
+          } else {
+            // 9. Randomized delay between individual messages (10 - 20 seconds jitter)
+            const randomDelayMs = Math.floor(Math.random() * 10000) + 10000; // 10,000ms - 20,000ms
+            const shouldContinue = await interruptibleSleep(randomDelayMs, campaign.id);
+            if (!shouldContinue) break;
+          }
         }
       }
 

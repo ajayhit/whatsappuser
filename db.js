@@ -599,6 +599,9 @@ export async function initDb() {
         CREATE INDEX IF NOT EXISTS idx_digital_catalog_user_id ON digital_catalog(user_id);
       `);
 
+      // PG Column Migrations (ADD COLUMN IF NOT EXISTS is safe and idempotent)
+      await client.query(`ALTER TABLE automation_settings ADD COLUMN IF NOT EXISTS daily_campaign_limit INTEGER DEFAULT 200`);
+
       const defaultPrices = {
         plan_price: '199',
         plan_price_demo: '0',
@@ -1062,6 +1065,8 @@ export async function initDb() {
   try { db.exec("ALTER TABLE reminders ADD COLUMN send_time TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE orders ADD COLUMN razorpay_order_id TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT"); } catch (e) {}
+  // Anti-ban: daily campaign limit per user (defaults to 200 if not set)
+  try { db.exec("ALTER TABLE automation_settings ADD COLUMN daily_campaign_limit INTEGER DEFAULT 200"); } catch (e) {}
 
   try {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@whatsapp.local';
@@ -1774,6 +1779,50 @@ export async function upsertContact({ user_id, name, mobile, shop_name, is_exclu
   return await queryOne('SELECT * FROM contacts WHERE user_id = ? AND mobile = ?', [user_id, mobile]);
 }
 
+export async function upsertContactsBatch(contactsList) {
+  if (!contactsList || contactsList.length === 0) return 0;
+
+  if (isPg()) {
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < contactsList.length; i += CHUNK_SIZE) {
+      const chunk = contactsList.slice(i, i + CHUNK_SIZE);
+      const values = [];
+      const placeholders = [];
+      let idx = 1;
+      for (const item of chunk) {
+        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
+        values.push(item.user_id, item.name, item.mobile, item.shop_name || null, item.is_excluded || 0);
+      }
+      const sql = `
+        INSERT INTO contacts (user_id, name, mobile, shop_name, is_excluded)
+        VALUES ${placeholders.join(', ')}
+        ON CONFLICT (user_id, mobile) DO UPDATE SET
+          name = EXCLUDED.name,
+          shop_name = COALESCE(EXCLUDED.shop_name, contacts.shop_name),
+          is_excluded = COALESCE(EXCLUDED.is_excluded, contacts.is_excluded)
+      `;
+      await getPgPool().query(sql, values);
+    }
+  } else {
+    const db = getDb();
+    const insertStmt = db.prepare(`
+      INSERT INTO contacts (user_id, name, mobile, shop_name, is_excluded)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, mobile) DO UPDATE SET
+        name = excluded.name,
+        shop_name = COALESCE(excluded.shop_name, shop_name),
+        is_excluded = COALESCE(excluded.is_excluded, is_excluded)
+    `);
+    const insertMany = db.transaction((items) => {
+      for (const item of items) {
+        insertStmt.run(item.user_id, item.name, item.mobile, item.shop_name || null, item.is_excluded || 0);
+      }
+    });
+    insertMany(contactsList);
+  }
+  return contactsList.length;
+}
+
 export async function getContactByMobile(userId, mobile) {
   return await queryOne('SELECT * FROM contacts WHERE user_id = ? AND mobile = ?', [userId, mobile]);
 }
@@ -2067,6 +2116,7 @@ export async function upsertAutomationSettings(userId, settings) {
           away_schedule_type = COALESCE(@away_schedule_type, away_schedule_type),
           away_start_time = COALESCE(@away_start_time, away_start_time),
           away_end_time = COALESCE(@away_end_time, away_end_time),
+          daily_campaign_limit = COALESCE(@daily_campaign_limit, daily_campaign_limit),
           updated_at = NOW()
       WHERE user_id = @user_id
     `, {
@@ -2079,16 +2129,19 @@ export async function upsertAutomationSettings(userId, settings) {
       away_text: settings.away_text ?? null,
       away_schedule_type: settings.away_schedule_type ?? null,
       away_start_time: settings.away_start_time ?? null,
-      away_end_time: settings.away_end_time ?? null
+      away_end_time: settings.away_end_time ?? null,
+      daily_campaign_limit: settings.daily_campaign_limit ?? null
     });
   } else {
     await execute(`
       INSERT INTO automation_settings (
         user_id, welcome_active, welcome_text, welcome_media_path, welcome_media_type,
-        away_active, away_text, away_schedule_type, away_start_time, away_end_time
+        away_active, away_text, away_schedule_type, away_start_time, away_end_time,
+        daily_campaign_limit
       ) VALUES (
         @user_id, @welcome_active, @welcome_text, @welcome_media_path, @welcome_media_type,
-        @away_active, @away_text, @away_schedule_type, @away_start_time, @away_end_time
+        @away_active, @away_text, @away_schedule_type, @away_start_time, @away_end_time,
+        @daily_campaign_limit
       )
     `, {
       user_id: userId,
@@ -2100,10 +2153,12 @@ export async function upsertAutomationSettings(userId, settings) {
       away_text: settings.away_text || 'Thank you for contacting us! We are currently away and will reply to your message as soon as possible.',
       away_schedule_type: settings.away_schedule_type || 'always',
       away_start_time: settings.away_start_time || '19:00',
-      away_end_time: settings.away_end_time || '09:00'
+      away_end_time: settings.away_end_time || '09:00',
+      daily_campaign_limit: settings.daily_campaign_limit ?? 200
     });
   }
   return await getAutomationSettings(userId);
+
 }
 
 export async function getCampaignsByUser(userId) {
@@ -2141,6 +2196,11 @@ export async function updateCampaignStatus(campaignId, status) {
   return await queryOne('SELECT * FROM campaigns WHERE id = ?', [campaignId]);
 }
 
+export async function deleteCampaign(campaignId) {
+  await execute('DELETE FROM campaign_recipients WHERE campaign_id = ?', [campaignId]);
+  return await execute('DELETE FROM campaigns WHERE id = ?', [campaignId]);
+}
+
 export async function updateCampaignRecipientStatus(recipientId, status, errorMsg = null) {
   await execute(`
     UPDATE campaign_recipients 
@@ -2157,11 +2217,74 @@ export async function incrementCampaignFailure(campaignId) {
   await execute('UPDATE campaigns SET failed_deliveries = failed_deliveries + 1 WHERE id = ?', [campaignId]);
 }
 
+/**
+ * Marks a contact as excluded (opted out) by their mobile number.
+ * Used by the STOP keyword auto-opt-out handler.
+ * If the contact doesn't exist in the DB yet, this is a no-op (contact never stored).
+ */
+export async function excludeContactByMobile(userId, mobile) {
+  invalidateCache(`excluded_${userId}_${mobile}`);
+  await execute(
+    `UPDATE contacts SET is_excluded = 1 WHERE user_id = ? AND mobile = ?`,
+    [userId, mobile]
+  );
+}
+
+/**
+ * Returns the number of campaign messages successfully sent by a user today (UTC).
+ * Used by the daily safety cap check in the campaign poller.
+ */
+export async function getCampaignDailySentCount(userId) {
+  const cacheKey = `daily_sent_${userId}_${new Date().toISOString().slice(0, 10)}`;
+  const cached = getCached(cacheKey, 60000); // 1-minute cache
+  if (cached !== undefined) return cached;
+
+  let row;
+  if (isPg()) {
+    row = await queryOne(
+      `SELECT COALESCE(SUM(successful_deliveries), 0) AS today_count
+       FROM campaigns
+       WHERE user_id = $1
+         AND DATE(created_at AT TIME ZONE 'UTC') = CURRENT_DATE`,
+      [userId]
+    );
+  } else {
+    row = await queryOne(
+      `SELECT COALESCE(SUM(successful_deliveries), 0) AS today_count
+       FROM campaigns
+       WHERE user_id = ?
+         AND DATE(created_at) = DATE('now')`,
+      [userId]
+    );
+  }
+
+  const count = row ? parseInt(row.today_count) || 0 : 0;
+  setCached(cacheKey, count);
+  return count;
+}
+
+/**
+ * Returns the configured daily message limit for a user from automation_settings.
+ * Defaults to 200 if the user hasn't set a custom limit.
+ */
+export async function getDailyMessageLimit(userId) {
+  const row = await queryOne(
+    'SELECT daily_campaign_limit FROM automation_settings WHERE user_id = ?',
+    [userId]
+  );
+  if (row && row.daily_campaign_limit && parseInt(row.daily_campaign_limit) > 0) {
+    return parseInt(row.daily_campaign_limit);
+  }
+  return 200; // Safe default: 200 messages/day
+}
+
 export async function getPendingCampaigns() {
   const now = new Date().toISOString();
+  // Also pick up 'daily_limit_reached' campaigns so they auto-resume the next day
   return await queryAll(`
     SELECT * FROM campaigns 
     WHERE status = 'running' 
+       OR status = 'daily_limit_reached'
        OR (status = 'pending' AND (scheduled_at IS NULL OR scheduled_at <= ?))
   `, [now]);
 }
