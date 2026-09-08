@@ -15,7 +15,7 @@ import {
   getCatalogByUserId, getAllCatalogs, getServicesByCatalogId,
   getPendingReminders, updateReminderStatus, isContactExcluded, getActivePlan, calculateNextScheduleDate,
   getPendingCampaigns, getPendingRecipients, updateCampaignStatus, updateCampaignRecipientStatus,
-  incrementCampaignSuccess, incrementCampaignFailure, getCampaignById,
+  incrementCampaignSuccess, incrementCampaignFailure, getCampaignById, claimNextPendingRecipient,
   getContactsByUser,
   getDueBirthdayWishes, markBirthdayWishSent, markBirthdayWishFailed,
   updatePaymentReminderStatus,
@@ -501,69 +501,99 @@ export async function triggerCampaignsPoller() {
       let processedAny = false;
 
       for (const campaign of campaigns) {
+        // ── 1. Transition status ──────────────────────────────────────────────
         if (campaign.status === 'pending') {
           await updateCampaignStatus(campaign.id, 'running');
         }
         // Auto-resume campaigns paused by daily cap on a new day
         if (campaign.status === 'daily_limit_reached') {
           await updateCampaignStatus(campaign.id, 'running');
-          console.log(`[Anti-Ban Daily Cap] New day detected - resuming campaign #${campaign.id} for user ${campaign.user_id}`);
+          console.log(`[Anti-Ban Daily Cap] New day detected – resuming campaign #${campaign.id}`);
         }
 
-        const currentCampaign = await getCampaignById(campaign.id);
-        if (currentCampaign.status !== 'running') continue;
-
-
-        // Fetch up to 50 pending recipients per batch
-        const recipients = await getPendingRecipients(campaign.id, 50);
-        
-        if (recipients.length === 0) {
-          await updateCampaignStatus(campaign.id, 'completed');
-          console.log(`[Campaigns Poller] Campaign #${campaign.id} completed!`);
-          processedAny = true;
+        // ── 2. Re-read fresh status (could have been paused/stopped/deleted) ─
+        const freshCampaign = await getCampaignById(campaign.id);
+        if (!freshCampaign) {
+          // Campaign was DELETED from backend – stop immediately
+          console.log(`[Campaigns Poller] Campaign #${campaign.id} no longer exists – stopping.`);
           continue;
         }
+        if (freshCampaign.status !== 'running') continue;
 
         processedAny = true;
-        let batchSendCounter = 0;
 
-        for (const rec of recipients) {
-          const reCheck = await getCampaignById(campaign.id);
-          if (reCheck.status !== 'running') {
+        // ── 3. Process recipients one at a time ───────────────────────────────
+        let consecutiveErrors = 0;          // Track back-to-back send failures
+        const BAN_ERROR_THRESHOLD = 3;      // After 3 consecutive errors → cooling
+        const COOLING_PERIOD_MS = 5 * 60 * 1000; // 5 minutes cooling when ban suspected
+
+        while (true) {
+          // ── 3a. Re-check campaign still alive before every claim ──────────
+          const campaignCheck = await getCampaignById(campaign.id);
+          if (!campaignCheck) {
+            console.log(`[Campaigns Poller] Campaign #${campaign.id} deleted – aborting.`);
+            break;
+          }
+          if (campaignCheck.status !== 'running') {
+            console.log(`[Campaigns Poller] Campaign #${campaign.id} status changed to '${campaignCheck.status}' – stopping recipient loop.`);
+            break;
+          }
+
+          // ── 3b. Claim ONE recipient atomically ────────────────────────────
+          const rec = await claimNextPendingRecipient(campaign.id);
+          if (!rec) {
+            // No more pending recipients → campaign complete
+            await updateCampaignStatus(campaign.id, 'completed');
+            console.log(`[Campaigns Poller] Campaign #${campaign.id} completed!`);
             break;
           }
 
           try {
-            // 1. Check user subscription status
+            // ── 3c. Subscription check ──────────────────────────────────────
             const plan = await getActivePlan(campaign.user_id);
             if (!plan || new Date(plan.expires_at) < new Date()) {
               throw new Error('User subscription is inactive or expired');
             }
 
-            // 2. ─── Daily Safety Cap (Anti-Ban) ──────────────────────────────
-            // Count how many messages this user has already sent today across ALL campaigns.
-            // If the daily limit is reached, pause this campaign until tomorrow.
+            // ── 3d. Daily safety cap (anti-ban) ────────────────────────────
             const dailySent = await getCampaignDailySentCount(campaign.user_id);
             const dailyLimit = await getDailyMessageLimit(campaign.user_id);
             if (dailySent >= dailyLimit) {
-              console.log(`[Anti-Ban Daily Cap] User ${campaign.user_id} has sent ${dailySent}/${dailyLimit} messages today. Pausing campaign #${campaign.id} until tomorrow.`);
+              console.log(`[Anti-Ban Daily Cap] User ${campaign.user_id} hit daily limit (${dailySent}/${dailyLimit}). Pausing campaign #${campaign.id}.`);
+              // Return claimed recipient back to pending so it isn't lost
+              await updateCampaignRecipientStatus(rec.id, 'pending');
               await updateCampaignStatus(campaign.id, 'daily_limit_reached');
-              break; // Stop processing this campaign for today
+              break;
             }
 
-            // 3. Check if recipient contact is blocked/opted-out
+            // ── 3e. Opt-out / exclusion check ──────────────────────────────
             const isExcluded = await isContactExcluded(campaign.user_id, rec.mobile);
             if (isExcluded) {
-              throw new Error('Recipient contact is excluded/blocked');
+              await updateCampaignRecipientStatus(rec.id, 'failed', 'Contact opted-out or excluded');
+              await incrementCampaignFailure(campaign.id);
+              consecutiveErrors = 0; // Opt-out is not a ban signal
+              continue;
             }
 
-            // 4. Check WhatsApp session status
-            const session = getSessionStatus(String(campaign.user_id));
+            // ── 3f. WhatsApp session check (wait up to 30s for reconnect) ──
+            let session = getSessionStatus(String(campaign.user_id));
             if (session.status !== 'CONNECTED') {
-              throw new Error('WhatsApp session is disconnected');
+              console.log(`[Campaigns Poller] Session ${campaign.user_id} is ${session.status}. Waiting up to 30s…`);
+              let reconnected = false;
+              for (let w = 0; w < 10; w++) {
+                await new Promise(r => setTimeout(r, 3000));
+                session = getSessionStatus(String(campaign.user_id));
+                if (session.status === 'CONNECTED') { reconnected = true; break; }
+              }
+              if (!reconnected) {
+                console.warn(`[Campaigns Poller] Session still down – pausing campaign #${campaign.id}. Recipient #${rec.id} returned to pending.`);
+                await updateCampaignRecipientStatus(rec.id, 'pending');
+                await updateCampaignStatus(campaign.id, 'paused');
+                break;
+              }
             }
 
-            // 4. Resolve placeholders & Spintax variation
+            // ── 3g. Build personalised message ─────────────────────────────
             let text = campaign.message_text;
             const user = await getUserById(campaign.user_id);
             const emailVal = user?.email || '';
@@ -575,47 +605,79 @@ export async function triggerCampaignsPoller() {
             text = text.replace(/\[mobile\]/gi, rec.mobile || '');
             text = text.replace(/\{email\}/gi, emailVal);
             text = text.replace(/\[email\]/gi, emailVal);
-            
-            // Apply Spintax randomization to prevent identical message signatures
             text = parseSpintax(text);
 
-            // 5. Simulate realistic typing indicator before dispatch (1.8s - 3.5s)
+            // ── 3h. Typing indicator (human-like) ──────────────────────────
             const typingDuration = Math.floor(Math.random() * 1700) + 1800;
             await sendTypingPresence(String(campaign.user_id), rec.mobile, typingDuration);
 
-            // 6. Send message / media
+            // ── 3i. Send message / media ────────────────────────────────────
             if (campaign.media_path && campaign.media_type) {
               await sendMediaToJid(String(campaign.user_id), rec.mobile, campaign.media_path, campaign.media_type, text);
             } else {
               await sendMessageToJid(String(campaign.user_id), rec.mobile, text);
             }
 
-            // 7. Update status
+            // ── 3j. Mark sent ───────────────────────────────────────────────
             await updateCampaignRecipientStatus(rec.id, 'sent');
             await incrementCampaignSuccess(campaign.id);
-            batchSendCounter++;
-            console.log(`[Campaigns Poller] Sent campaign #${campaign.id} message to ${rec.mobile} (Batch count: ${batchSendCounter})`);
+            consecutiveErrors = 0; // Reset ban counter on success
+            console.log(`[Campaigns Poller] ✓ Campaign #${campaign.id} → ${rec.mobile}`);
+
           } catch (err) {
-            console.error(`[Campaigns Poller Failed] Campaign #${campaign.id} recipient #${rec.id} failed: ${err.message}`);
-            await updateCampaignRecipientStatus(rec.id, 'failed', err.message);
-            await incrementCampaignFailure(campaign.id);
+            console.error(`[Campaigns Poller] ✗ Campaign #${campaign.id} → ${rec.mobile}: ${err.message}`);
+            consecutiveErrors++;
+
+            // ── BAN SIGNAL DETECTION ────────────────────────────────────────
+            // Patterns that may indicate WhatsApp is rate-limiting / blocking
+            const isBanSignal = /rate.?limit|too many|spam|blocked|forbidden|policy|429|403|405|not-authorized|bad session|lost connection|connection closed/i.test(err.message);
+            const isConnectionDrop = /connection (closed|lost)|socket closed|disconnected|ECONNRESET/i.test(err.message);
+
+            if (isConnectionDrop || isBanSignal || consecutiveErrors >= BAN_ERROR_THRESHOLD) {
+              const reason = isConnectionDrop
+                ? 'Connection drop'
+                : isBanSignal
+                  ? `Possible ban signal: ${err.message}`
+                  : `${consecutiveErrors} consecutive errors`;
+
+              console.warn(`[Campaigns Poller] ⚠ ${reason} on campaign #${campaign.id}. Cooling for ${COOLING_PERIOD_MS / 60000} min before resuming.`);
+
+              // Return claimed recipient to pending so it retries after cooling
+              await updateCampaignRecipientStatus(rec.id, 'pending');
+
+              // Wait the cooling period – re-check if campaign was stopped/deleted every 30s
+              let cooled = 0;
+              while (cooled < COOLING_PERIOD_MS) {
+                await new Promise(r => setTimeout(r, 30_000));
+                cooled += 30_000;
+                const coolingCheck = await getCampaignById(campaign.id);
+                if (!coolingCheck || coolingCheck.status === 'cancelled' || coolingCheck.status === 'stopped') {
+                  console.log(`[Campaigns Poller] Campaign #${campaign.id} stopped/deleted during cooling. Aborting.`);
+                  break;
+                }
+                if (coolingCheck.status === 'paused') {
+                  console.log(`[Campaigns Poller] Campaign #${campaign.id} paused by user during cooling.`);
+                  break;
+                }
+              }
+              consecutiveErrors = 0;
+              break; // Break recipient loop; outer while will re-evaluate campaign
+            } else {
+              // Non-ban error (e.g., wrong number, opt-out timing) – mark failed and continue
+              await updateCampaignRecipientStatus(rec.id, 'failed', err.message);
+              await incrementCampaignFailure(campaign.id);
+            }
           }
 
-          // 8. Anti-Ban Batch Cooldown Check
-          // After every 20-25 messages, pause for 2-3 minutes to simulate natural human rest periods
-          if (batchSendCounter > 0 && batchSendCounter % 20 === 0) {
-            const cooldownSeconds = Math.floor(Math.random() * 60) + 120; // 120 - 180 seconds
-            console.log(`[Campaigns Anti-Ban] Cooling down for ${cooldownSeconds}s after batch of ${batchSendCounter} messages on campaign #${campaign.id}...`);
-            const shouldContinue = await interruptibleSleep(cooldownSeconds * 1000, campaign.id);
-            if (!shouldContinue) break;
-          } else {
-            // 9. Randomized delay between individual messages (10 - 20 seconds jitter)
-            const randomDelayMs = Math.floor(Math.random() * 10000) + 10000; // 10,000ms - 20,000ms
-            const shouldContinue = await interruptibleSleep(randomDelayMs, campaign.id);
-            if (!shouldContinue) break;
-          }
-        }
-      }
+          // ── 3k. Wait configured interval between recipients ───────────────
+          // Re-read interval from DB (admin may have updated it during the run)
+          const intervalSec = (await getCampaignById(campaign.id))?.message_interval ?? 15;
+          // Jitter ±30% to appear more human
+          const jitterMs = Math.floor(intervalSec * 1000 * (0.7 + Math.random() * 0.6));
+          const shouldContinue = await interruptibleSleep(jitterMs, campaign.id);
+          if (!shouldContinue) break;
+        } // end while (recipient loop)
+      } // end for (campaign loop)
 
       if (!processedAny) break;
     }

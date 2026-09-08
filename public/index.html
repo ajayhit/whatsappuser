@@ -10167,16 +10167,31 @@
 
         if (c.status === 'pending') {
           statusBadge = `<span style="background:rgba(245,158,11,0.2);color:#fbbf24;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">PENDING</span>`;
-          actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'paused')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">Pause</button>`;
+          actionBtn = `
+            <button onclick="updateCampaignStatus(${c.id}, 'paused')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏸ Pause</button>
+            <button onclick="updateCampaignStatus(${c.id}, 'stopped')" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#f87171;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏹ Stop</button>
+          `;
         } else if (c.status === 'running') {
           statusBadge = `<span style="background:rgba(99,102,241,0.2);color:#818cf8;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">RUNNING</span>`;
-          actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'paused')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">Pause</button>`;
+          actionBtn = `
+            <button onclick="updateCampaignStatus(${c.id}, 'paused')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏸ Pause</button>
+            <button onclick="updateCampaignStatus(${c.id}, 'stopped')" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#f87171;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏹ Stop</button>
+          `;
         } else if (c.status === 'paused') {
           statusBadge = `<span style="background:rgba(245,158,11,0.2);color:#fbbf24;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">PAUSED</span>`;
-          actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">Resume</button>`;
+          actionBtn = `
+            <button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">▶ Resume</button>
+            <button onclick="updateCampaignStatus(${c.id}, 'stopped')" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#f87171;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏹ Stop</button>
+          `;
         } else if (c.status === 'daily_limit_reached') {
           statusBadge = `<span style="background:rgba(251,146,60,0.2);color:#fb923c;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;" title="Daily safety cap reached. Auto-resumes tomorrow.">⏸ DAILY LIMIT</span>`;
-          actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">Resume Now</button>`;
+          actionBtn = `
+            <button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">▶ Resume</button>
+            <button onclick="updateCampaignStatus(${c.id}, 'stopped')" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#f87171;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏹ Stop</button>
+          `;
+        } else if (c.status === 'stopped') {
+          statusBadge = `<span style="background:rgba(239,68,68,0.2);color:#f87171;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">STOPPED</span>`;
+          actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#34d399;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;" title="Restart remaining recipients">▶ Restart</button>`;
         } else if (c.status === 'completed') {
           statusBadge = `<span style="background:rgba(16,185,129,0.2);color:#34d399;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">COMPLETED</span>`;
         } else {

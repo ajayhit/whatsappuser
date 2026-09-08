@@ -796,14 +796,16 @@ router.put('/campaigns/:id/status', async (req, res) => {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 
-    const validStatuses = ['pending', 'paused', 'cancelled'];
+    // 'stopped' = permanent stop, 'paused' = resumable, 'running'/'pending' = resume
+    const validStatuses = ['pending', 'running', 'paused', 'stopped', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status update' });
     }
 
     const updated = await updateCampaignStatus(req.params.id, status);
 
-    if (status === 'pending') {
+    // Resume: kick the poller if transitioning to pending or running
+    if (status === 'pending' || status === 'running') {
       triggerCampaignsPoller().catch(err => console.error('[Campaign Trigger Error]', err));
     }
 
@@ -820,6 +822,9 @@ router.delete('/campaigns/:id', async (req, res) => {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 
+    // Mark stopped BEFORE deleting so the poller loop detects cancellation
+    // (poller does getCampaignById; null result also signals stop)
+    await updateCampaignStatus(req.params.id, 'stopped');
     await deleteCampaign(req.params.id);
     return res.json({ message: 'Campaign deleted successfully' });
   } catch (err) {

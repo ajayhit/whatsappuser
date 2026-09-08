@@ -32,6 +32,20 @@ const lastAwaySentMap = new Map();
 const dbSyncTimers = new Map();
 // Cache of synced files: Map<userId, Map<fileName, { mtimeMs: number, size: number }>>
 const sessionFilesSyncedState = new Map();
+// In-memory cache of recent messages for answering retry / re-encryption requests (LRU, max 1000)
+const recentMessagesCache = new Map();
+const msgRetryCounterMap = new Map();
+
+export function storeRecentMessage(jid, messageId, messageContent) {
+  if (!jid || !messageId || !messageContent) return;
+  const key = `${jid}:${messageId}`;
+  recentMessagesCache.set(key, messageContent);
+  recentMessagesCache.set(messageId, messageContent);
+  if (recentMessagesCache.size > 1000) {
+    const oldestKey = recentMessagesCache.keys().next().value;
+    recentMessagesCache.delete(oldestKey);
+  }
+}
 
 const sessionsDir = process.env.SESSION_DIR || './sessions';
 
@@ -248,31 +262,7 @@ function normalizeTargetJid(to) {
   return jid;
 }
 
-async function prepareDirectMessageSession(sock, jid) {
-  if (jid.endsWith('@g.us')) return;
-
-  try {
-    const lookup = await sock.onWhatsApp(jid);
-    const matched = lookup?.find(item => item.exists);
-    if (!matched) {
-      console.log(`[Warning] Recipient ${jid.split('@')[0]} not verified by onWhatsApp lookup. Proceeding to send anyway.`);
-    }
-  } catch (err) {
-    console.log(`[Warning] onWhatsApp check failed for ${jid.split('@')[0]}: ${err.message}. Proceeding to send anyway.`);
-  }
-
-  try {
-    await sock.presenceSubscribe(jid);
-  } catch (e) {}
-
-  try {
-    await sock.assertSessions([jid], true);
-  } catch (e) {
-    console.log(`[Warning] assertSessions failed for ${jid.split('@')[0]}: ${e.message}`);
-  }
-}
-
-let cachedBaileysVersion = [2, 3000, 1017539728];
+let cachedBaileysVersion = [2, 3000, 1043857760];
 let versionLastFetchedAt = 0;
 
 async function getCachedBaileysVersion() {
@@ -356,28 +346,39 @@ export async function initSession(userId) {
     syncFullHistory: false, // CRITICAL: Disable full chat history sync to drastically reduce RAM usage
     markOnlineOnConnect: false, // Save CPU and keepalive bandwidth
     generateHighQualityLinkPreview: false,
-    fireInitQueries: false, // Prevents loading all chat/contact records into memory on connect
+    fireInitQueries: true, // Allow proper initialization of privacy and account settings
     emitOwnEvents: false, // Reduces event loop object allocations
     cachedGroupMetadata: async () => undefined, // Prevents buffering large group metadata in memory
     appStateMacVerification: { patch: false, snapshot: false }, // Avoids storing crypto patch verification buffers
     shouldIgnoreJid: (jid) => !jid || jid.endsWith('@broadcast') || jid.includes('newsletter') || jid.endsWith('@call'),
-    getMessage: async () => undefined, // Prevent buffering messages in Node memory
+    msgRetryCounterCache: {
+      get: (key) => msgRetryCounterMap.get(key),
+      set: (key, value) => msgRetryCounterMap.set(key, value),
+      del: (key) => msgRetryCounterMap.delete(key),
+    },
+    getMessage: async (key) => {
+      const fullKey = `${key.remoteJid}:${key.id}`;
+      return recentMessagesCache.get(fullKey) || recentMessagesCache.get(key.id) || undefined;
+    },
     connectTimeoutMs: 60000,
-    keepAliveIntervalMs: 60000, // Increased from 30s to 60s to reduce constant I/O
+    keepAliveIntervalMs: 25000, // 25s ping prevents WebSocket drops during message send delays
   });
 
   sessions.set(userId, sock);
 
   sock.ev.on('creds.update', async () => {
     await saveCreds();
-    // Batch background credential changes to once every 60s to avoid waking PostgreSQL continuously
-    queueSessionDbSync(userId, 60000);
+    // Batch background credential changes to 15s to keep DB state fresh
+    queueSessionDbSync(userId, 15000);
   });
 
   sock.ev.on('messages.upsert', async (m) => {
     if (m.type !== 'notify') return;
     for (const msg of m.messages) {
       try {
+        if (msg.key?.id && msg.message) {
+          storeRecentMessage(msg.key.remoteJid, msg.key.id, msg.message);
+        }
         console.log(`[Message Received] from: ${msg.key.remoteJid}, isFromMe: ${msg.key.fromMe}`);
         await handleIncomingAutoResponse(userId, sock, msg);
       } catch (err) {
@@ -429,23 +430,25 @@ export async function initSession(userId) {
         return;
       }
 
-      // 405 means Method Not Allowed / Rejected connection (frequently due to corrupted credentials or ban check)
-      // 401 means Logged Out
-      // 403 means Forbidden
-      const isCriticalError = [401, 403, 405].includes(statusCode);
-      const shouldReconnect = !isCriticalError && statusCode !== DisconnectReason.loggedOut;
+      // ONLY 401 (loggedOut) is a genuine unrecoverable logout from WhatsApp servers.
+      // Codes like 403, 405, 408, 428, 500, 503, 515 are connection/protocol/temporary issues and should reconnect.
+      const isLoggedOut = statusCode === 401 || statusCode === DisconnectReason.loggedOut;
+      const shouldReconnect = !isLoggedOut;
 
       console.log(`[Session Closed] userId: ${userId}, statusCode: ${statusCode}, shouldReconnect: ${shouldReconnect}, isRestart: ${isRestartRequired}`);
 
+      // Free the dead socket immediately so callers don't reference a closed socket
+      cleanupSocket(userId);
+
       if (shouldReconnect) {
+        sessionStatus.set(userId, 'CONNECTING');
         const retries = reconnectCount.get(userId) || 0;
-        if (retries < 8) {
+        if (retries < 15) {
           reconnectCount.set(userId, retries + 1);
-          const delayMs = isRestartRequired ? 600 : 2500;
-          console.log(`[Reconnecting] userId: ${userId}, attempt: ${retries + 1}, delay: ${delayMs}ms...`);
+          const delayMs = isRestartRequired ? 600 : Math.min(2500 * Math.pow(1.2, retries), 15000);
+          console.log(`[Reconnecting] userId: ${userId}, attempt: ${retries + 1}, delay: ${Math.round(delayMs)}ms...`);
           
           setTimeout(() => {
-            cleanupSocket(userId);
             initSession(userId).catch(err => {
               console.error(`Reconnection initialization failed for ${userId}:`, err);
             });
@@ -453,14 +456,12 @@ export async function initSession(userId) {
         } else {
           console.log(`[Max Reconnects Reached] userId: ${userId}`);
           sessionStatus.set(userId, 'DISCONNECTED');
-          cleanupSocket(userId);
           pairingCodes.delete(userId);
         }
       } else {
-        // Manual or forced logout, or a critical error (like 405 / corrupted credentials)
+        // Genuine logout confirmed by WhatsApp (statusCode: 401)
         console.log(`[Session Terminated] Cleaning up credentials for userId: ${userId} due to statusCode: ${statusCode}`);
         sessionStatus.set(userId, 'DISCONNECTED');
-        cleanupSocket(userId);
         qrCodes.delete(userId);
         pairingCodes.delete(userId);
         try {
@@ -666,17 +667,16 @@ export function parseSpintax(text) {
  * @param {string} to
  * @param {number} durationMs
  */
-export async function sendTypingPresence(userId, to, durationMs = 2500) {
+export async function sendTypingPresence(userId, to, durationMs = 2000) {
   try {
     const sock = sessions.get(userId);
     const status = sessionStatus.get(userId);
     if (!sock || status !== 'CONNECTED') return;
 
     const jid = normalizeTargetJid(to);
-    await sock.sendPresenceUpdate('composing', jid);
+    await sock.sendPresenceUpdate('composing', jid).catch(() => {});
     if (durationMs > 0) {
       await new Promise(r => setTimeout(r, durationMs));
-      await sock.sendPresenceUpdate('paused', jid).catch(() => {});
     }
   } catch (err) {
     // Non-fatal presence error
@@ -698,9 +698,10 @@ export async function sendMessageToJid(userId, to, message) {
   }
 
   const jid = normalizeTargetJid(to);
-  await prepareDirectMessageSession(sock, jid);
-
-  const result = await sock.sendMessage(jid, { text: message }, { useUserDevicesCache: false });
+  const result = await sock.sendMessage(jid, { text: message });
+  if (result?.key?.id && result?.message) {
+    storeRecentMessage(jid, result.key.id, result.message);
+  }
   return result;
 }
 
@@ -740,8 +741,6 @@ export async function sendMediaToJid(userId, to, mediaUrl, mediaType, caption, f
   }
 
   const jid = normalizeTargetJid(to);
-  await prepareDirectMessageSession(sock, jid);
-
   const resolvedMimeType = mimetype || getMimeType(mediaUrl, mediaType);
   
   // Resolve media content (base64 data URL, local file path, or external HTTP URL)
@@ -782,7 +781,10 @@ export async function sendMediaToJid(userId, to, mediaUrl, mediaType, caption, f
     throw new Error(`Unsupported mediaType: ${mediaType}`);
   }
 
-  const result = await sock.sendMessage(jid, messageContent, { useUserDevicesCache: false });
+  const result = await sock.sendMessage(jid, messageContent);
+  if (result?.key?.id && result?.message) {
+    storeRecentMessage(jid, result.key.id, result.message);
+  }
   return result;
 }
 

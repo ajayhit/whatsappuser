@@ -2281,12 +2281,51 @@ export async function getDailyMessageLimit(userId) {
 export async function getPendingCampaigns() {
   const now = new Date().toISOString();
   // Also pick up 'daily_limit_reached' campaigns so they auto-resume the next day
+  // 'stopped' and 'cancelled' campaigns are never picked up
   return await queryAll(`
     SELECT * FROM campaigns 
     WHERE status = 'running' 
        OR status = 'daily_limit_reached'
        OR (status = 'pending' AND (scheduled_at IS NULL OR scheduled_at <= ?))
   `, [now]);
+}
+
+/**
+ * Claims the next single pending recipient atomically.
+ * Marks it as 'processing' immediately so no other worker can claim it.
+ * Returns null if no more pending recipients exist for this campaign.
+ */
+export async function claimNextPendingRecipient(campaignId) {
+  if (isPg()) {
+    // PostgreSQL: atomic UPDATE ... RETURNING
+    const rows = await queryAll(`
+      UPDATE campaign_recipients
+      SET status = 'processing', sent_at = NOW()
+      WHERE id = (
+        SELECT id FROM campaign_recipients
+        WHERE campaign_id = $1 AND status = 'pending'
+        ORDER BY id ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING *
+    `, [campaignId]);
+    return rows && rows.length > 0 ? rows[0] : null;
+  } else {
+    // SQLite: two-step (claim then fetch)
+    const rec = await queryOne(
+      `SELECT * FROM campaign_recipients WHERE campaign_id = ? AND status = 'pending' ORDER BY id ASC LIMIT 1`,
+      [campaignId]
+    );
+    if (!rec) return null;
+    await execute(
+      `UPDATE campaign_recipients SET status = 'processing' WHERE id = ? AND status = 'pending'`,
+      [rec.id]
+    );
+    // Verify we actually claimed it (not snatched by another worker)
+    const claimed = await queryOne(`SELECT * FROM campaign_recipients WHERE id = ? AND status = 'processing'`, [rec.id]);
+    return claimed || null;
+  }
 }
 
 export async function getPendingRecipients(campaignId, limit = 50) {
