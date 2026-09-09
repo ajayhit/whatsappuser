@@ -19,9 +19,18 @@ import xlsx from 'xlsx';
 import path from 'path';
 
 const router = express.Router();
+const ALLOWED_SPREADSHEET_EXTENSIONS = new Set(['.xlsx', '.xls', '.csv']);
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!ALLOWED_SPREADSHEET_EXTENSIONS.has(ext)) {
+      return cb(new Error(`Invalid spreadsheet file type '${ext}'. Please upload an .xlsx, .xls, or .csv file.`));
+    }
+    cb(null, true);
+  }
 });
 
 // Helper: normalize phone number - auto-prepend 91 if 10 digits

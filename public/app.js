@@ -1,0 +1,9648 @@
+
+    // Device & Browser Detection Helper - 100% Auto-detects Mobile vs Desktop
+    function isMobileBrowser() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+      const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk|Kindle|Tablet/i.test(ua);
+      const isTouchScreen = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+      const isSmallScreen = (window.innerWidth <= 800) || (window.screen && window.screen.width <= 800);
+      return isMobileUA || (isTouchScreen && isSmallScreen);
+    }
+
+    const WORLD_COUNTRIES = [
+      { name: 'India', code: '+91', flag: '🇮🇳' },
+      { name: 'United States', code: '+1', flag: '🇺🇸' },
+      { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+      { name: 'United Arab Emirates', code: '+971', flag: '🇦🇪' },
+      { name: 'Saudi Arabia', code: '+966', flag: '🇸🇦' },
+      { name: 'Qatar', code: '+974', flag: '🇶🇦' },
+      { name: 'Kuwait', code: '+965', flag: '🇰🇼' },
+      { name: 'Oman', code: '+968', flag: '🇴🇲' },
+      { name: 'Bahrain', code: '+973', flag: '🇧🇭' },
+      { name: 'Singapore', code: '+65', flag: '🇸🇬' },
+      { name: 'Malaysia', code: '+60', flag: '🇲🇾' },
+      { name: 'Australia', code: '+61', flag: '🇦🇺' },
+      { name: 'Canada', code: '+1', flag: '🇨🇦' },
+      { name: 'New Zealand', code: '+64', flag: '🇳🇿' },
+      { name: 'Bangladesh', code: '+880', flag: '🇧🇩' },
+      { name: 'Pakistan', code: '+92', flag: '🇵🇰' },
+      { name: 'Nepal', code: '+977', flag: '🇳🇵' },
+      { name: 'Sri Lanka', code: '+94', flag: '🇱🇰' },
+      { name: 'Germany', code: '+49', flag: '🇩🇪' },
+      { name: 'France', code: '+33', flag: '🇫🇷' },
+      { name: 'Italy', code: '+39', flag: '🇮🇹' },
+      { name: 'Spain', code: '+34', flag: '🇪🇸' },
+      { name: 'Netherlands', code: '+31', flag: '🇳🇱' },
+      { name: 'Switzerland', code: '+41', flag: '🇨🇭' },
+      { name: 'Sweden', code: '+46', flag: '🇸🇪' },
+      { name: 'Norway', code: '+47', flag: '🇳🇴' },
+      { name: 'Denmark', code: '+45', flag: '🇩🇰' },
+      { name: 'Finland', code: '+358', flag: '🇫🇮' },
+      { name: 'Ireland', code: '+353', flag: '🇮🇪' },
+      { name: 'Poland', code: '+48', flag: '🇵🇱' },
+      { name: 'Portugal', code: '+351', flag: '🇵🇹' },
+      { name: 'Austria', code: '+43', flag: '🇦🇹' },
+      { name: 'Belgium', code: '+32', flag: '🇧🇪' },
+      { name: 'Greece', code: '+30', flag: '🇬🇷' },
+      { name: 'Turkey', code: '+90', flag: '🇹🇷' },
+      { name: 'Russia', code: '+7', flag: '🇷🇺' },
+      { name: 'Ukraine', code: '+380', flag: '🇺🇦' },
+      { name: 'South Africa', code: '+27', flag: '🇿🇦' },
+      { name: 'Nigeria', code: '+234', flag: '🇳🇬' },
+      { name: 'Egypt', code: '+20', flag: '🇪🇬' },
+      { name: 'Kenya', code: '+254', flag: '🇰🇪' },
+      { name: 'Ghana', code: '+233', flag: '🇬🇭' },
+      { name: 'Tanzania', code: '+255', flag: '🇹🇿' },
+      { name: 'Uganda', code: '+256', flag: '🇺🇬' },
+      { name: 'Ethiopia', code: '+251', flag: '🇪🇹' },
+      { name: 'Philippines', code: '+63', flag: '🇵🇭' },
+      { name: 'Indonesia', code: '+62', flag: '🇮🇩' },
+      { name: 'Vietnam', code: '+84', flag: '🇻🇳' },
+      { name: 'Thailand', code: '+66', flag: '🇹🇭' },
+      { name: 'Japan', code: '+81', flag: '🇯🇵' },
+      { name: 'South Korea', code: '+82', flag: '🇰🇷' },
+      { name: 'China', code: '+86', flag: '🇨🇳' },
+      { name: 'Hong Kong', code: '+852', flag: '🇭🇰' },
+      { name: 'Taiwan', code: '+886', flag: '🇹🇼' },
+      { name: 'Brazil', code: '+55', flag: '🇧🇷' },
+      { name: 'Mexico', code: '+52', flag: '🇲🇽' },
+      { name: 'Argentina', code: '+54', flag: '🇦🇷' },
+      { name: 'Chile', code: '+56', flag: '🇨🇱' },
+      { name: 'Colombia', code: '+57', flag: '🇨🇴' },
+      { name: 'Peru', code: '+51', flag: '🇵🇪' },
+      { name: 'Israel', code: '+972', flag: '🇮🇱' },
+      { name: 'Jordan', code: '+962', flag: '🇯🇴' },
+      { name: 'Lebanon', code: '+961', flag: '🇱🇧' },
+      { name: 'Iraq', code: '+964', flag: '🇮🇶' },
+      { name: 'Iran', code: '+98', flag: '🇮🇷' },
+      { name: 'Afghanistan', code: '+93', flag: '🇦🇫' },
+      { name: 'Albania', code: '+355', flag: '🇦🇱' },
+      { name: 'Algeria', code: '+213', flag: '🇩🇿' },
+      { name: 'Andorra', code: '+376', flag: '🇦🇩' },
+      { name: 'Angola', code: '+244', flag: '🇦🇴' },
+      { name: 'Armenia', code: '+374', flag: '🇦🇲' },
+      { name: 'Azerbaijan', code: '+994', flag: '🇦🇿' },
+      { name: 'Belarus', code: '+375', flag: '🇧🇾' },
+      { name: 'Belize', code: '+501', flag: '🇧🇿' },
+      { name: 'Benin', code: '+229', flag: '🇧🇯' },
+      { name: 'Bhutan', code: '+975', flag: '🇧🇹' },
+      { name: 'Bolivia', code: '+591', flag: '🇧🇴' },
+      { name: 'Bosnia', code: '+387', flag: '🇧🇦' },
+      { name: 'Botswana', code: '+267', flag: '🇧🇼' },
+      { name: 'Bulgaria', code: '+359', flag: '🇧🇬' },
+      { name: 'Cambodia', code: '+855', flag: '🇰🇭' },
+      { name: 'Cameroon', code: '+237', flag: '🇨🇲' },
+      { name: 'Costa Rica', code: '+506', flag: '🇨🇷' },
+      { name: 'Croatia', code: '+385', flag: '🇭🇷' },
+      { name: 'Cuba', code: '+53', flag: '🇨🇺' },
+      { name: 'Cyprus', code: '+357', flag: '🇨🇾' },
+      { name: 'Czech Republic', code: '+420', flag: '🇨🇿' },
+      { name: 'Ecuador', code: '+593', flag: '🇪🇨' },
+      { name: 'El Salvador', code: '+503', flag: '🇸🇻' },
+      { name: 'Estonia', code: '+372', flag: '🇪🇪' },
+      { name: 'Georgia', code: '+995', flag: '🇬🇪' },
+      { name: 'Guatemala', code: '+502', flag: '🇬🇹' },
+      { name: 'Hungary', code: '+36', flag: '🇭🇺' },
+      { name: 'Iceland', code: '+354', flag: '🇮🇸' },
+      { name: 'Kazakhstan', code: '+7', flag: '🇰🇿' },
+      { name: 'Kyrgyzstan', code: '+996', flag: '🇰🇬' },
+      { name: 'Latvia', code: '+371', flag: '🇱🇻' },
+      { name: 'Libya', code: '+218', flag: '🇱🇾' },
+      { name: 'Lithuania', code: '+370', flag: '🇱🇹' },
+      { name: 'Luxembourg', code: '+352', flag: '🇱🇺' },
+      { name: 'Maldives', code: '+960', flag: '🇲🇻' },
+      { name: 'Malta', code: '+356', flag: '🇲🇹' },
+      { name: 'Mauritius', code: '+230', flag: '🇲🇺' },
+      { name: 'Moldova', code: '+373', flag: '🇲🇩' },
+      { name: 'Monaco', code: '+377', flag: '🇲🇨' },
+      { name: 'Mongolia', code: '+976', flag: '🇲🇳' },
+      { name: 'Morocco', code: '+212', flag: '🇲🇦' },
+      { name: 'Myanmar', code: '+95', flag: '🇲🇲' },
+      { name: 'Panama', code: '+507', flag: '🇵🇦' },
+      { name: 'Paraguay', code: '+595', flag: '🇵🇾' },
+      { name: 'Romania', code: '+40', flag: '🇷🇴' },
+      { name: 'Rwanda', code: '+250', flag: '🇷🇼' },
+      { name: 'Senegal', code: '+221', flag: '🇸🇳' },
+      { name: 'Serbia', code: '+381', flag: '🇷🇸' },
+      { name: 'Slovakia', code: '+421', flag: '🇸🇰' },
+      { name: 'Slovenia', code: '+386', flag: '🇸🇮' },
+      { name: 'Sudan', code: '+249', flag: '🇸🇩' },
+      { name: 'Syria', code: '+963', flag: '🇸🇾' },
+      { name: 'Tunisia', code: '+216', flag: '🇹🇳' },
+      { name: 'Uruguay', code: '+598', flag: '🇺🇾' },
+      { name: 'Uzbekistan', code: '+998', flag: '🇺🇿' },
+      { name: 'Venezuela', code: '+58', flag: '🇻🇪' },
+      { name: 'Yemen', code: '+967', flag: '🇾🇪' },
+      { name: 'Zambia', code: '+260', flag: '🇿🇲' },
+      { name: 'Zimbabwe', code: '+263', flag: '🇿🇼' }
+    ];
+
+    function parsePhoneNumber(fullPhone) {
+      const digits = String(fullPhone || '').replace(/\D/g, '');
+      if (!digits) {
+        return { code: '+91', localPhone: '', label: '🇮🇳 India (+91)' };
+      }
+      const sorted = [...WORLD_COUNTRIES].sort((a, b) => b.code.length - a.code.length);
+      for (const c of sorted) {
+        const cDigits = c.code.replace('+', '');
+        if (digits.startsWith(cDigits) && digits.length > cDigits.length) {
+          return {
+            code: c.code,
+            localPhone: digits.slice(cDigits.length),
+            label: `${c.flag} ${c.name} (${c.code})`
+          };
+        }
+      }
+      if (digits.length === 10) {
+        return {
+          code: '+91',
+          localPhone: digits,
+          label: '🇮🇳 India (+91)'
+        };
+      }
+      return {
+        code: '+',
+        localPhone: digits,
+        label: `🌐 Other (+${digits})`
+      };
+    }
+
+    // App State
+    let state = {
+      token: localStorage.getItem('token') || null,
+      user: null,
+      plan: null,
+      plans: [],
+      orders: [],
+      transactions: [],
+      whatsappStatus: 'DISCONNECTED',
+      whatsappQr: null,
+      whatsappPairingCode: null,
+      whatsappAccount: null,
+      adminWaPairingCode: null,
+      groups: [],
+      currentTab: 'whatsappTab',
+      whatsappSubTab: 'textTab',
+      publicPage: 'home',
+      authTab: 'login',
+      loading: false,
+
+      // Dynamic lists fetched on profile sync
+      banks: [],
+      contacts: [],
+      contactSearchQuery: '',
+      contactsPage: 1,
+      contactsPageSize: 25,
+      contactGroups: [],
+      activeGroupId: null, // group currently open in member panel
+      autoReplies: [], // removed feature placeholder
+      reminders: [],
+      templates: [],
+      campaigns: [],
+      campaignRecipientsCache: {},
+      editingTemplateId: null,
+      selectedContactIds: [],
+      automationSettings: null,
+      catalog: null,
+      services: [],
+      planPrice: 149,
+
+      // Admin-only caches
+      adminBanks: [],
+      adminUsers: [],
+      adminOrders: [],
+      editingBankId: null, // used if editing a bank account
+      forgotResetStep: 'email', // 'email' | 'otp' | 'done'
+      forgotEmail: '',
+      forgotOtp: '',
+      captchaId: null,
+      captchaQuestion: 'Loading...',
+      captchaImage: '',
+
+      // Bulk campaign state
+      bulkTasks: [],
+      bulkCampaignStatus: 'idle', // 'idle' | 'sending' | 'paused' | 'stopped' | 'completed'
+      bulkCampaignIndex: 0,
+      bulkDelay: 2
+    };
+
+    // Main App Renderer
+    function renderApp() {
+      const root = document.getElementById('appRoot');
+      if (!state.token) {
+        if (state.publicPage === 'auth') {
+          root.innerHTML = renderAuthScreen();
+          bindAuthEvents();
+        } else {
+          root.innerHTML = renderPublicSite();
+        }
+      } else {
+        root.innerHTML = renderMainDashboard();
+        bindDashboardEvents();
+        syncSubTabState();
+      }
+    }
+
+    // PUBLIC WEBSITE TEMPLATES
+    function switchPublicPage(page) {
+      state.publicPage = page;
+      renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function showAuth(tab = 'login') {
+      state.publicPage = 'auth';
+      state.authTab = tab;
+      renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function fetchPublicPlans() {
+      if (state.planOptions && state.planOptions.length > 0) return;
+      try {
+        let res = await fetch('/auth/public-plans');
+        if (!res.ok) res = await fetch('/api/auth/public-plans');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.planOptions) {
+            state.planOptions = data.planOptions;
+            if (!state.token && (state.publicPage === 'pricing' || state.publicPage === 'home')) {
+              renderApp();
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching public plans:', e);
+      }
+    }
+
+    function renderPublicSite() {
+      fetchPublicPlans();
+      return `
+        <div class="site-shell">
+          ${renderSiteNav()}
+          ${renderPublicPage()}
+          ${renderSiteFooter()}
+        </div>
+      `;
+    }
+
+    function renderSiteNav() {
+      const links = [
+        ['home', 'Home'],
+        ['pricing', 'Pricing'],
+        ['about', 'About&nbsp;Us'],
+        ['contact', 'Contact'],
+        ['refund', 'Refund&nbsp;Policy'],
+        ['privacy', 'Privacy'],
+        ['terms', 'Terms']
+      ];
+      return `
+        <nav class="site-nav">
+          <button class="site-logo" onclick="switchPublicPage('home')" style="background:none; border:none; cursor:pointer; text-align:left;">
+            WhatsApp Messaging
+            <span>Studio & SaaS Panel</span>
+          </button>
+          <div class="site-links">
+            ${links.map(([page, label]) => `<button class="site-link ${state.publicPage === page ? 'active' : ''}" onclick="switchPublicPage('${page}')">${label}</button>`).join('')}
+          </div>
+          <div class="site-actions">
+            <button type="button" class="btn-secondary" onclick="showAuth('login')" style="width:auto;">Login</button>
+            <button type="button" onclick="showAuth('register')" style="width:auto;">Sign&nbsp;Up</button>
+          </div>
+        </nav>
+      `;
+    }
+
+    function renderPublicPage() {
+      if (state.publicPage === 'pricing') return renderPricingPage();
+      if (state.publicPage === 'about') return renderAboutPage();
+      if (state.publicPage === 'contact') return renderContactPage();
+      if (state.publicPage === 'refund') return renderRefundPolicyPage();
+      if (state.publicPage === 'privacy') return renderPrivacyPolicyPage();
+      if (state.publicPage === 'terms') return renderTermsPage();
+      return renderHomePage();
+    }
+
+    function renderHomePage() {
+      return `
+        <section class="site-hero">
+          <div class="site-hero-content">
+            <div class="site-kicker">✨ 5-Day Free Trial Available • WhatsApp Messaging for Business Teams</div>
+            <h1>Manage messaging, campaigns, contacts, and subscriptions from one secure dashboard.</h1>
+            <p>Run WhatsApp sessions, send bulk messages, parse Excel contact lists, track plan access, and manage payments from a clean SaaS panel built for daily operations.</p>
+            <div class="site-hero-actions">
+              <button type="button" onclick="showAuth('register')" style="width:auto; padding:0.8rem 1.2rem;">Start 5-Day Free Trial</button>
+              <button type="button" class="btn-secondary" onclick="showAuth('login')" style="width:auto; padding:0.8rem 1.2rem;">Login</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="site-band">
+          <div class="site-grid">
+            <div class="site-panel" style="border-color: rgba(59, 130, 246, 0.35); background: rgba(59, 130, 246, 0.08);">
+              <i class="fa-solid fa-gift" style="color: #60a5fa;"></i>
+              <h3 style="color: #93c5fd;">5-Day Free Demo</h3>
+              <p>Get instant access with a 5-day trial to experience our full WhatsApp Studio, Excel bulk messaging, and automation tools.</p>
+            </div>
+            <div class="site-panel">
+              <i class="fa-solid fa-message"></i>
+              <h3>WhatsApp Studio</h3>
+              <p>Connect a session, view live status, and manage text, media, group, and campaign workflows from the user dashboard.</p>
+            </div>
+            <div class="site-panel">
+              <i class="fa-solid fa-file-excel"></i>
+              <h3>Excel Campaigns</h3>
+              <p>Upload recipient spreadsheets, personalize messages with columns, and prepare bulk delivery without manually copying numbers.</p>
+            </div>
+            <div class="site-panel">
+              <i class="fa-solid fa-shield-halved"></i>
+              <h3>Secure Signup</h3>
+              <p>New users pass a visual security challenge before registration, with server-side verification and expiring one-time captcha codes.</p>
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderAboutPage() {
+      return `
+    <section class="policy-page">
+      <div class="site-kicker">About Us</div>
+
+      <h1>Empowering Businesses with Smart WhatsApp Messaging</h1>
+
+      <p>
+        We are committed to helping businesses communicate faster, smarter, and
+        more efficiently through powerful WhatsApp Messaging solutions. Our
+        platform is designed to simplify customer engagement, automate repetitive
+        messaging tasks, and improve business productivity—all from one secure
+        and easy-to-use dashboard.
+      </p>
+
+      <p>
+        Whether you're a startup, growing business, agency, or enterprise, our
+        platform enables you to manage conversations, send personalized bulk
+        campaigns, organize customer contacts, and streamline communication
+        without unnecessary complexity.
+      </p>
+
+      <div class="site-grid">
+
+        <div class="site-panel">
+          <i class="fa-solid fa-bolt"></i>
+          <h3>Powerful Messaging</h3>
+          <p>
+            Automate repetitive WhatsApp tasks, schedule campaigns, and send
+            personalized messages in just a few clicks, saving valuable time
+            every day.
+          </p>
+        </div>
+
+        <div class="site-panel">
+          <i class="fa-solid fa-users"></i>
+          <h3>Built for Every Business</h3>
+          <p>
+            Perfect for retailers, service providers, educational institutes,
+            healthcare, marketing agencies, and businesses of every size looking
+            to improve customer communication.
+          </p>
+        </div>
+
+        <div class="site-panel">
+          <i class="fa-solid fa-shield-halved"></i>
+          <h3>Secure & Reliable</h3>
+          <p>
+            We prioritize security and reliability by protecting user accounts,
+            maintaining secure sessions, and providing a stable messaging
+            environment for daily operations.
+          </p>
+        </div>
+
+        <div class="site-panel">
+          <i class="fa-solid fa-chart-line"></i>
+          <h3>Business Growth</h3>
+          <p>
+            Reach more customers, improve engagement, increase response rates,
+            and build stronger customer relationships using intelligent WhatsApp
+            communication tools.
+          </p>
+        </div>
+
+      </div>
+
+      <h2 style="margin-top:25px;">Why Choose Us?</h2>
+
+      <p>
+        Our mission is to provide a modern, reliable, and feature-rich WhatsApp
+        Messaging platform that helps businesses save time, reduce manual work,
+        and improve customer engagement. With an intuitive interface, continuous
+        improvements, and scalable solutions, we empower organizations to focus
+        on what matters most—growing their business.
+      </p>
+
+      <p>
+        From individual entrepreneurs to large organizations, we strive to
+        deliver a professional communication platform that combines simplicity,
+        performance, and security into one complete solution.
+      </p>
+    </section>
+  `;
+    }
+
+    function renderPricingPage() {
+      const plans = (state.planOptions && state.planOptions.length > 0)
+        ? state.planOptions
+        : [
+          { type: 'demo', name: 'Demo Plan', durationDays: 5, price: 0 },
+          { type: 'plan_28', name: 'Monthly Plan', durationDays: 28, price: 199 },
+          { type: 'quarter', name: 'Quarter Plan', durationDays: 90, price: 549 },
+          { type: 'half_year', name: 'Half-Year Plan', durationDays: 180, price: 999 },
+          { type: 'year', name: 'Year Plan', durationDays: 365, price: 1899 }
+        ];
+
+      const featuresMap = {
+        demo: ['Full WhatsApp Studio Access', 'Excel Campaign Messaging', 'Media & Document Broadcasts', '5 Days Validity'],
+        plan_28: ['Full WhatsApp Studio Access', 'Unlimited Contacts & Groups', 'Excel Bulk Messaging', 'Media & Document Broadcast', '28 Days Validity'],
+        quarter: ['Full WhatsApp Studio Access', 'Unlimited Contacts & Groups', 'Excel Bulk Messaging', 'Priority Delivery Speed', '90 Days Validity'],
+        half_year: ['Full WhatsApp Studio Access', 'Unlimited Contacts & Groups', 'Excel Bulk Messaging', 'Priority Delivery & Support', '180 Days Validity'],
+        year: ['Full WhatsApp Studio Access', 'Unlimited Contacts & Groups', 'Excel Bulk Messaging', 'VIP Priority Support & Delivery', '365 Days Full Year Validity']
+      };
+
+      return `
+        <section class="policy-page">
+          <div class="site-kicker">Subscription Plans</div>
+
+          <h1>Plan Prices & Packages</h1>
+
+          <p>
+            Choose the subscription plan that fits your business needs. All plans include full access to our WhatsApp Messaging Studio, Excel contact imports, group campaigns, and automated tools.
+          </p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-top: 2rem;">
+            ${plans.map(p => {
+        const isYear = p.type === 'year';
+        const isDemo = p.type === 'demo';
+        const features = featuresMap[p.type] || featuresMap['plan_28'];
+        return `
+                <div style="background: var(--glass-bg); backdrop-filter: blur(16px); border: 1px solid ${isYear ? 'rgba(16,185,129,0.5)' : 'var(--glass-border)'}; border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: ${isYear ? '0 10px 30px rgba(16,185,129,0.15)' : '0 8px 24px rgba(0,0,0,0.2)'};">
+                  ${isYear ? `<div style="position:absolute; top:-12px; right:16px; background:var(--accent-color); color:#fff; font-size:0.7rem; font-weight:700; text-transform:uppercase; padding:0.2rem 0.6rem; border-radius:12px; letter-spacing:0.05em;">Best Value</div>` : ''}
+                  ${isDemo ? `<div style="position:absolute; top:-12px; right:16px; background:var(--info-color); color:#fff; font-size:0.7rem; font-weight:700; text-transform:uppercase; padding:0.2rem 0.6rem; border-radius:12px; letter-spacing:0.05em;">Free Trial</div>` : ''}
+                  
+                  <div>
+                    <h3 style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.25rem;">${p.name}</h3>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">${p.durationDays} Days Duration</div>
+                    
+                    <div style="font-size: 2rem; font-weight: 800; color: var(--accent-color); margin-bottom: 1.25rem;">
+                      ₹${p.price} <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-muted);">/ ${p.durationDays} days</span>
+                    </div>
+                    
+                    <ul style="list-style: none; padding: 0; margin: 0 0 1.5rem 0; font-size: 0.85rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 0.6rem;">
+                      ${features.map(f => `<li style="display:flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-check" style="color:var(--accent-color); font-size:0.8rem;"></i> ${f}</li>`).join('')}
+                    </ul>
+                  </div>
+
+                  <button type="button" onclick="showAuth('register')" style="width:100%; margin-top: auto; background: ${isYear ? 'var(--accent-color)' : 'rgba(255,255,255,0.08)'}; color: #ffffff; border: 1px solid ${isYear ? 'var(--accent-color)' : 'var(--glass-border)'}; font-weight: 600;">
+                    ${isDemo ? 'Start Free Trial' : 'Get Started'}
+                  </button>
+                </div>
+              `;
+      }).join('')}
+          </div>
+
+          <div style="margin-top: 2.5rem; padding: 1.25rem; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; text-align: center;">
+            <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem; color: #93c5fd;"><i class="fa-solid fa-headset"></i> Need Custom Pricing or Bulk Plans?</h3>
+            <p style="font-size: 0.9rem; color: #cbd5e1; margin-bottom: 1rem;">Contact our support team for custom volume messaging setups and enterprise assistance.</p>
+            <button type="button" onclick="switchPublicPage('contact')" class="btn-secondary" style="width: auto; padding: 0.6rem 1.5rem;">Contact Support</button>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderContactPage() {
+      return `
+    <section class="policy-page">
+      <div class="site-kicker">Contact Us</div>
+
+      <h1>We're Here to Help</h1>
+
+      <p>
+        Our support team is committed to providing fast, reliable, and professional
+        assistance for all your questions related to account setup, subscriptions,
+        payments, and WhatsApp Messaging services.
+      </p>
+
+      <p>
+        Whether you need technical support, billing assistance, or have general
+        inquiries, we're always happy to help. Our goal is to ensure you have the
+        best experience using our platform.
+      </p>
+
+      <div class="site-grid">
+
+        <div class="site-panel">
+          <i class="fa-solid fa-envelope"></i>
+          <h3>Email Support</h3>
+          <p>
+            info@chatautomate.in
+          </p>
+          <small style="color:var(--text-muted);">
+            We typically respond within 24 business hours.
+          </small>
+        </div>
+
+        <div class="site-panel">
+          <i class="fa-solid fa-phone"></i>
+          <h3>Phone Support</h3>
+          <p>
+            +91 7597550701
+          </p>
+          <small style="color:var(--text-muted);">
+            Timing: 09:00 AM to 09:00 PM (IST)
+          </small>
+        </div>
+
+        <div class="site-panel">
+          <i class="fa-brands fa-whatsapp"></i>
+          <h3>WhatsApp Support</h3>
+          <p>
+            +91 7597550701
+          </p>
+          <small style="color:var(--text-muted);">
+            Get quick assistance through WhatsApp.
+          </small>
+        </div>
+
+      </div>
+
+      <h2 style="margin-top:30px;">Business Hours</h2>
+
+      <p>
+        <strong>Timing:</strong> 09:00 AM to 09:00 PM (IST)
+      </p>
+
+      <h2 style="margin-top:25px;">Support Information</h2>
+
+      <p>
+        For faster assistance, please include your registered email address,
+        transaction reference number (if applicable), and a brief description of
+        your issue when contacting our support team.
+      </p>
+
+      <div style="
+          margin-top:25px;
+          padding:20px;
+          background:rgba(16,185,129,.08);
+          border:1px solid rgba(16,185,129,.2);
+          border-radius:12px;
+          text-align:center;">
+        <h3 style="margin-bottom:10px;">Need Immediate Assistance?</h3>
+        <p style="margin-bottom:15px;">
+          Our support team is ready to help you with technical issues,
+          subscriptions, payments, and account-related queries.
+        </p>
+        <button onclick="showAuth('login')" style="width:auto;padding:12px 28px;">
+          Login to Your Account
+        </button>
+      </div>
+    </section>
+  `;
+    }
+
+    function renderRefundPolicyPage() {
+      return `
+    <section class="policy-page">
+      <div class="site-kicker">Refund & Cancellation Policy</div>
+
+      <h1>Refund and Cancellation Policy</h1>
+
+      <p>
+        Thank you for choosing our WhatsApp Messaging Platform. We are committed
+        to providing reliable software services and transparent billing. Please
+        read our Refund and Cancellation Policy carefully before purchasing any
+        subscription plan.
+      </p>
+
+      <h2>1. Subscription Purchase</h2>
+      <p>
+        All subscription plans provide access to our software services for the
+        selected validity period. By purchasing a subscription, you agree to the
+        terms outlined in this policy.
+      </p>
+
+      <h2>2. No Refund After Purchase</h2>
+      <ul>
+        <li>Once a subscription has been successfully purchased and activated, it cannot be cancelled.</li>
+        <li>No refund will be provided after activation of the subscription.</li>
+        <li>Please review the plan details carefully before making your payment.</li>
+      </ul>
+
+      <h2>3. Cancellation Policy</h2>
+      <ul>
+        <li>Purchased subscription plans are non-cancellable.</li>
+        <li>Users may stop using the service at any time, but the subscription fee will not be refunded.</li>
+        <li>The subscription will remain active until its expiry date.</li>
+      </ul>
+
+      <h2>4. Refund Eligibility</h2>
+      <p>
+        Refunds will only be considered under the following circumstances:
+      </p>
+
+      <ul>
+        <li>The platform is completely unavailable due to our server-side issues for an extended period.</li>
+        <li>Technical issues originating from our systems prevent activation or use of the purchased service.</li>
+        <li>The purchased subscription cannot be activated due to a verified issue on our server.</li>
+        <li>Duplicate payments made accidentally for the same subscription may be reviewed for refund after verification.</li>
+      </ul>
+
+      <h2>5. Refund Not Applicable</h2>
+      <ul>
+        <li>Change of mind after purchasing the subscription.</li>
+        <li>Lack of knowledge about software features.</li>
+        <li>User device, internet connection, or browser-related issues.</li>
+        <li>WhatsApp restrictions, bans, policy changes, or limitations imposed by Meta.</li>
+        <li>Incorrect usage or misuse of the platform.</li>
+      </ul>
+
+      <h2>6. Refund Processing</h2>
+      <p>
+        If a refund request is approved after verification, the amount will be
+        processed through the original payment method within <strong>5 to 7
+        business days</strong>, depending on your bank or payment provider.
+      </p>
+
+      <h2>7. Contact for Refund Requests</h2>
+      <p>
+        If you believe you are eligible for a refund due to a verified server-side
+        issue, please contact our support team with your registered email address,
+        payment reference number, and a detailed description of the issue.
+      </p>
+
+      <div style="
+        margin-top:30px;
+        padding:20px;
+        background:rgba(245,158,11,.08);
+        border:1px solid rgba(245,158,11,.25);
+        border-radius:12px;">
+        <h3 style="margin-bottom:12px;">
+          <i class="fa-solid fa-circle-info"></i>
+          Important Notice
+        </h3>
+
+        <ul style="margin-left:20px;">
+          <li><strong>Once a subscription is purchased and activated, it cannot be cancelled.</strong></li>
+          <li><strong>No refund will be provided after successful activation of the service.</strong></li>
+          <li><strong>Refunds are only applicable if the service cannot be provided due to verified server-side or system-related issues from our platform.</strong></li>
+        </ul>
+      </div>
+    </section>
+  `;
+    }
+
+    function renderPrivacyPolicyPage() {
+      return `
+    <section class="policy-page">
+      <div class="site-kicker">Privacy Policy</div>
+
+      <h1>Privacy Policy</h1>
+
+      <p>
+        Your privacy is important to us. This Privacy Policy explains how we
+        collect, use, store, and protect your personal information when you use
+        our WhatsApp Messaging Platform and related services.
+      </p>
+
+      <h2>1. Information We Collect</h2>
+      <p>We may collect the following information when you use our platform:</p>
+
+      <ul>
+        <li>Full Name</li>
+        <li>Email Address</li>
+        <li>Mobile Number</li>
+        <li>Account credentials (stored securely in encrypted form)</li>
+        <li>Subscription and payment details</li>
+        <li>Transaction reference numbers and payment screenshots</li>
+        <li>Usage logs required to operate and improve our services</li>
+      </ul>
+
+      <h2>2. How We Use Your Information</h2>
+      <p>Your information is used only for legitimate business purposes, including:</p>
+
+      <ul>
+        <li>Creating and managing your account.</li>
+        <li>Processing subscriptions and payments.</li>
+        <li>Providing customer support.</li>
+        <li>Managing WhatsApp Messaging services.</li>
+        <li>Improving platform performance and security.</li>
+        <li>Sending important service notifications and account updates.</li>
+      </ul>
+
+      <h2>3. Data Security</h2>
+      <p>
+        We implement reasonable technical and administrative security measures
+        to protect your personal information against unauthorized access,
+        disclosure, alteration, or destruction.
+      </p>
+
+      <h2>4. Data Sharing</h2>
+      <p>
+        We respect your privacy. We do <strong>not sell, rent, or trade</strong>
+        your personal information to third parties.
+      </p>
+
+      <p>Your information may only be shared when:</p>
+
+      <ul>
+        <li>Required by applicable law or government authorities.</li>
+        <li>Necessary to process payments through authorized payment providers.</li>
+        <li>Required to protect our legal rights or prevent fraud and misuse.</li>
+      </ul>
+
+      <h2>5. Payment Information</h2>
+      <p>
+        Payment transactions are processed through authorized banking or payment
+        partners. We do not store your debit card, credit card, or banking
+        passwords on our servers.
+      </p>
+
+      <h2>6. Cookies & Session Data</h2>
+      <p>
+        Our website may use cookies and session data to improve user experience,
+        maintain secure login sessions, and analyze platform performance.
+      </p>
+
+      <h2>7. User Responsibilities</h2>
+      <ul>
+        <li>Keep your account credentials confidential.</li>
+        <li>Do not share your login details with unauthorized persons.</li>
+        <li>Notify our support team immediately if you suspect unauthorized access to your account.</li>
+      </ul>
+
+      <h2>8. Policy Updates</h2>
+      <p>
+        We may update this Privacy Policy from time to time to reflect changes
+        in our services, legal requirements, or security practices. The latest
+        version will always be available on this website.
+      </p>
+
+      <h2>9. Contact Us</h2>
+      <p>
+        If you have any questions regarding this Privacy Policy or how your data
+        is handled, please contact our support team through the Contact Us page.
+      </p>
+
+      <div style="
+        margin-top:30px;
+        padding:20px;
+        background:rgba(16,185,129,.08);
+        border:1px solid rgba(16,185,129,.2);
+        border-radius:12px;">
+        <h3 style="margin-bottom:12px;">
+          <i class="fa-solid fa-shield-halved"></i>
+          Our Privacy Commitment
+        </h3>
+
+        <ul style="margin-left:20px;">
+          <li>Your personal information is kept secure.</li>
+          <li>We never sell or rent your personal data.</li>
+          <li>Your information is used only to provide and improve our services.</li>
+          <li>We continuously work to protect your account and data using industry-standard security practices.</li>
+        </ul>
+      </div>
+    </section>
+  `;
+    }
+
+    function renderTermsPage() {
+      return `
+    <section class="policy-page">
+      <div class="site-kicker">Terms & Conditions</div>
+
+      <h1>Terms and Conditions</h1>
+
+      <p>
+        Welcome to our WhatsApp Messaging Platform. By registering an account,
+        purchasing a subscription, or using our services, you agree to comply
+        with these Terms and Conditions. If you do not agree with any part of
+        these terms, please do not use our platform.
+      </p>
+
+      <h2>1. Acceptance of Terms</h2>
+      <p>
+        By accessing or using this platform, you acknowledge that you have read,
+        understood, and agreed to be bound by these Terms and Conditions, our
+        Privacy Policy, and our Refund & Cancellation Policy.
+      </p>
+
+      <h2>2. User Account</h2>
+      <ul>
+        <li>You are responsible for maintaining the confidentiality of your account credentials.</li>
+        <li>You are responsible for all activities performed using your account.</li>
+        <li>You must provide accurate and up-to-date registration information.</li>
+        <li>Sharing or transferring your account to another person is strictly prohibited.</li>
+      </ul>
+
+      <h2>3. Subscription & Payments</h2>
+      <ul>
+        <li>All subscription plans are prepaid.</li>
+        <li>Service access is activated only after successful payment verification.</li>
+        <li>Subscriptions are valid for the selected plan duration.</li>
+        <li>Once a subscription has been activated, it cannot be cancelled or refunded except as described in our Refund Policy.</li>
+      </ul>
+
+      <h2>4. Acceptable Use</h2>
+      <p>Users agree not to use the platform for:</p>
+
+      <ul>
+        <li>Sending spam or unsolicited bulk messages.</li>
+        <li>Fraudulent, illegal, abusive, or misleading activities.</li>
+        <li>Distributing malware, phishing links, or harmful content.</li>
+        <li>Violating WhatsApp or Meta policies.</li>
+        <li>Any activity that may damage the platform or other users.</li>
+      </ul>
+
+      <h2>5. WhatsApp Service Disclaimer</h2>
+      <p>
+        Our platform operates with WhatsApp services. We are not affiliated with,
+        endorsed by, or operated by WhatsApp LLC or Meta Platforms, Inc.
+      </p>
+
+      <p>
+        Changes made by WhatsApp or Meta, including API changes, policy updates,
+        account restrictions, or service limitations, may affect platform
+        functionality. We are not responsible for such third-party changes.
+      </p>
+
+      <h2>6. Service Availability</h2>
+      <p>
+        We strive to provide reliable service. However, temporary interruptions
+        may occur due to maintenance, software updates, internet connectivity,
+        server maintenance, or third-party service outages.
+      </p>
+
+      <h2>7. Suspension or Termination</h2>
+      <p>We reserve the right to suspend or permanently terminate accounts that:</p>
+
+      <ul>
+        <li>Violate these Terms and Conditions.</li>
+        <li>Attempt unauthorized access to the platform.</li>
+        <li>Use the platform for illegal or harmful activities.</li>
+        <li>Cause security risks or abuse the service.</li>
+      </ul>
+
+      <h2>8. Limitation of Liability</h2>
+      <p>
+        We shall not be liable for any indirect, incidental, or consequential
+        damages arising from the use or inability to use the platform, including
+        business loss, data loss, message delivery delays, or third-party service
+        interruptions.
+      </p>
+
+      <h2>9. Changes to the Service</h2>
+      <p>
+        We reserve the right to modify, improve, suspend, or discontinue any
+        feature or service without prior notice whenever necessary.
+      </p>
+
+      <h2>10. Changes to These Terms</h2>
+      <p>
+        These Terms and Conditions may be updated periodically. Continued use of
+        the platform after any changes constitutes acceptance of the revised terms.
+      </p>
+
+      <h2>11. Contact</h2>
+      <p>
+        If you have any questions regarding these Terms and Conditions, please
+        contact our support team through the Contact Us page.
+      </p>
+
+      <div style="
+        margin-top:30px;
+        padding:20px;
+        background:rgba(59,130,246,.08);
+        border:1px solid rgba(59,130,246,.2);
+        border-radius:12px;">
+
+        <h3 style="margin-bottom:12px;">
+          <i class="fa-solid fa-circle-check"></i>
+          Important Notice
+        </h3>
+
+        <ul style="margin-left:20px;">
+          <li>Use the platform responsibly and in compliance with all applicable laws.</li>
+          <li>Do not use the service for spam, fraud, or unauthorized messaging.</li>
+          <li>Subscriptions are non-transferable and intended for the registered account only.</li>
+          <li>Once a subscription is activated, it is governed by our Refund & Cancellation Policy.</li>
+          <li>Violation of these terms may result in immediate suspension or permanent termination of your account.</li>
+        </ul>
+
+      </div>
+    </section>
+  `;
+    }
+    function renderSiteFooter() {
+      return `
+        <footer class="site-footer">
+          <span>© ${new Date().getFullYear()} WhatsApp Messaging Studio. All rights reserved.</span>
+          <span>Home | About Us | Privacy Policy | Terms | Refund Policy | Contact</span>
+        </footer>
+      `;
+    }
+
+    // AUTH TEMPLATES
+    function renderAuthScreen() {
+      const isReset = state.authTab === 'forgot';
+      return `
+        <div class="site-shell">
+          ${renderSiteNav()}
+          <div class="auth-container" style="margin-top: 1rem;">
+            <div class="auth-tabs">
+              <button class="auth-tab ${state.authTab === 'login' ? 'active' : ''}" id="loginTabBtn">Sign In</button>
+              <button class="auth-tab ${state.authTab === 'register' ? 'active' : ''}" id="registerTabBtn">Sign Up</button>
+              <button class="auth-tab ${state.authTab === 'forgot' ? 'active' : ''}" id="forgotTabBtn">Reset</button>
+            </div>
+            <div class="auth-card" style="position: relative; overflow: hidden;">
+              <!-- Shimmer progress line while loading -->
+              <div id="authProgressBar" class="auth-shimmer-line"></div>
+
+              <div class="auth-header">
+                <h2>WhatsApp Messaging Studio</h2>
+                <p>${state.authTab === 'login' ? 'Sign in to access your dashboard' : state.authTab === 'register' ? 'Create an account to start your 5-day free demo' : 'Reset your account password'}</p>
+              </div>
+              
+              <!-- Active Loading Indicator with animated spinner -->
+              <div id="authLoadingBox" class="auth-loading-banner">
+                <span class="btn-spinner" style="border-top-color: #34d399; border-color: rgba(52, 211, 153, 0.25); width: 20px; height: 20px; border-width: 2.5px;"></span>
+                <span id="authLoadingMsg">Verifying credentials, please wait...</span>
+              </div>
+
+              <div id="authAlert" style="display: none; background: rgba(244, 63, 94, 0.15); border: 1px solid var(--error-color); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: var(--error-color); margin-bottom: 1rem; text-align: center;"></div>
+              <div id="authSuccess" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--accent-color); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: var(--accent-color); margin-bottom: 1rem; text-align: center;"></div>
+              
+              ${state.authTab === 'login' ? renderLoginForm() : state.authTab === 'register' ? renderRegisterForm() : renderForgotPasswordForm()}
+            </div>
+          </div>
+          ${renderSiteFooter()}
+        </div>
+      `;
+    }
+
+    function renderLoginForm() {
+      return `
+        <form id="loginForm" onsubmit="handleLogin(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="form-group">
+            <label>Email Address / User ID</label>
+            <input type="text" id="loginEmail" required placeholder="name@domain.com or 10-digit mobile" autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPassword" required placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <button type="submit" id="loginSubmitBtn" style="margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.65rem;">
+            <span>Sign In</span>
+          </button>
+          <div style="text-align: center; margin-top: 0.25rem;">
+            <a href="#" onclick="event.preventDefault(); switchAuthTab('forgot')" style="color: var(--info-color); font-size: 0.85rem; text-decoration: none;">Forgot your password?</a>
+          </div>
+        </form>
+      `;
+    }
+
+    function renderRegisterForm() {
+      return `
+        <form id="registerForm" onsubmit="handleRegister(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="regName" required placeholder="John Doe">
+          </div>
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="regEmail" required placeholder="john@example.com">
+          </div>
+          <div class="form-group">
+            <label>Mobile Number *</label>
+            <div style="display: flex; gap: 0.5rem; align-items: stretch; position: relative;">
+              <!-- Searchable Country Code Dropdown Trigger & Popover -->
+              <div style="position: relative; flex-shrink: 0;" id="countryPickerWrapper">
+                <button type="button" id="countryPickerBtn" onclick="toggleCountryDropdown(event)" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; height: 100%; min-height: 42px; width: 145px; padding: 0.55rem 0.65rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.86rem; cursor: pointer; white-space: nowrap;" aria-haspopup="listbox" aria-expanded="false" title="Search and choose country">
+                  <span id="countryPickerLabel" style="display: flex; align-items: center; gap: 0.35rem; overflow: hidden; text-overflow: ellipsis;">🇮🇳 India (+91)</span>
+                  <i class="fa-solid fa-chevron-down" style="font-size: 0.68rem; opacity: 0.7;"></i>
+                </button>
+
+                <!-- Searchable Popover Menu -->
+                <div id="countryPickerDropdown" style="display: none; position: absolute; top: calc(100% + 5px); left: 0; width: 280px; max-height: 320px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.7); z-index: 10000; flex-direction: column; overflow: hidden;" role="listbox">
+                  <div style="padding: 0.55rem; border-bottom: 1px solid #1e293b; background: #0f172a; position: sticky; top: 0; z-index: 2;">
+                    <div style="position: relative; display: flex; align-items: center;">
+                      <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 0.65rem; color: #94a3b8; font-size: 0.78rem; pointer-events: none;"></i>
+                      <input type="text" id="countrySearchInput" placeholder="Type country or code..." oninput="filterCountryList(this.value)" autocomplete="off" style="width: 100%; padding: 0.45rem 0.5rem 0.45rem 1.85rem; font-size: 0.82rem; background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 6px; outline: none;">
+                    </div>
+                  </div>
+                  <div id="countryListContainer" style="overflow-y: auto; max-height: 250px; padding: 0.25rem 0;">
+                    <!-- Filled by JavaScript renderCountryList -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Textable / Editable Country Code Input -->
+              <input type="text" id="regCountryCode" value="+91" required placeholder="+91" oninput="formatCountryCodeInput(this)" style="width: 76px; min-width: 66px; text-align: center; font-weight: 600; padding: 0.55rem 0.4rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.88rem;" title="Country dial code (editable)">
+
+              <!-- Mobile Number Input -->
+              <input type="tel" id="regPhone" required placeholder="Mobile number" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="15" minlength="6" style="flex: 1; min-width: 130px;">
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.25rem;">Search and select your country or type any custom code in the code box.</div>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="regPassword" required placeholder="Minimum 6 characters">
+          </div>
+          <div class="form-group">
+            <label>Security Challenge</label>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.6rem; align-items: stretch;">
+              <div id="captchaVisualBox" style="background: rgba(15, 23, 42, 0.72); border: 1px solid var(--glass-border); border-radius: 10px; padding: 0.5rem; min-height: 82px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                ${state.captchaImage
+          ? `<img id="captchaImage" src="${state.captchaImage}" alt="Signup security code" style="width: 100%; max-width: 260px; height: 92px; object-fit: contain; display: block;">`
+          : `<div id="captchaQuestion" style="color: var(--accent-color); font-weight: 700;">${state.captchaQuestion}</div>`}
+              </div>
+              <button type="button" onclick="loadCaptcha()" class="btn-secondary" title="Refresh captcha" aria-label="Refresh captcha" style="width: 46px; padding: 0.65rem; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+              </button>
+            </div>
+            <input type="text" id="regCaptchaAnswer" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="10" placeholder="Type the code shown above" style="text-transform: uppercase; letter-spacing: 0.18em; font-weight: 700;">
+          </div>
+          <button type="submit" id="registerSubmitBtn" style="margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            <span>Sign Up</span>
+          </button>
+        </form>
+      `;
+    }
+
+    function renderForgotPasswordForm() {
+      if (state.forgotResetStep === 'done') {
+        return `
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 1rem 0;">
+            <div style="font-size: 2.5rem;">📱</div>
+            <div style="font-weight: 600; font-size: 1.1rem; color: var(--accent-color);">Password Sent!</div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center;">
+              Your new temporary password has been sent to your registered WhatsApp number.
+              Sign in with it and change your password from Profile Settings.
+            </p>
+            <button onclick="state.forgotResetStep = 'email'; switchAuthTab('login')" style="margin-top: 0.5rem;">Go to Sign In</button>
+          </div>
+        `;
+      }
+
+      // Default: email/mobile entry
+      return `
+        <form id="forgotPasswordForm" onsubmit="handleForgotPassword(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; color: #86efac; line-height: 1.55;">
+            📱 Enter your registered email or mobile number.<br>A <strong>new temporary password</strong> will be sent to your WhatsApp from Admin.
+          </div>
+          <div class="form-group">
+            <label>Email or Mobile Number</label>
+            <input type="text" id="forgotEmail" required placeholder="email@domain.com or 10-digit mobile">
+          </div>
+          <button type="submit" style="margin-top: 0.5rem;">📲 Send Password to WhatsApp</button>
+          <div style="text-align: center;">
+            <a href="#" onclick="event.preventDefault(); switchAuthTab('login')" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">← Back to Sign In</a>
+          </div>
+        </form>
+      `;
+    }
+
+    // MAIN DASHBOARD TEMPLATE (Swaps based on User/Admin Role)
+    function renderMainDashboard() {
+      if (!state.user) {
+        fetchUserProfile();
+        return `<div style="text-align: center; padding: 4rem;">Loading details...</div>`;
+      }
+
+      const isAdmin = state.user.role === 'admin';
+
+      if (isAdmin) {
+        return renderAdminDashboard();
+      } else {
+        return renderUserDashboard();
+      }
+    }
+
+    // Helper to get formatted plan name
+    function getPlanName(planType) {
+      const names = {
+        demo: 'Demo Plan (5 Days)',
+        plan_28: 'Monthly Plan (28 Days)',
+        quarter: 'Quarter Plan (90 Days)',
+        half_year: 'Half-Year Plan (180 Days)',
+        year: 'Year Plan (365 Days)'
+      };
+      return names[planType] || (planType ? String(planType).toUpperCase() : 'Custom Plan');
+    }
+
+    // USER DASHBOARD
+    function renderPlanCards() {
+      if (!state.planOptions || state.planOptions.length === 0) {
+        return '<div style="text-align: center; color: var(--text-muted);">No plans available</div>';
+      }
+      const hasActivePlan = state.plan && state.plan.status === 'active' && new Date(state.plan.expires_at) > new Date();
+      const activePlanType = hasActivePlan ? state.plan.plan_type : null;
+
+      return state.planOptions.map(function (plan) {
+        const isDemo = plan.type === 'demo';
+        const isCurrentActive = hasActivePlan && activePlanType === plan.type;
+
+        let btnText = isDemo ? 'Claim Demo (5d)' : 'Subscribe Now';
+        let btnClass = isDemo ? 'btn-secondary' : '';
+        let btnAttrs = '';
+
+        const alreadyClaimedDemo = isDemo && state.plans && state.plans.some(function (p) { return p.plan_type === 'demo'; });
+
+        if (isCurrentActive) {
+          btnText = isDemo ? '✅ Demo Active' : '⚡ Active (Extend/Renew)';
+          btnClass = 'btn-secondary';
+        } else if (alreadyClaimedDemo) {
+          btnText = 'Trial Claimed';
+          btnClass = 'btn-secondary';
+          btnAttrs = 'disabled style="opacity:0.5;cursor:not-allowed;"';
+        }
+
+        const borderColor = isCurrentActive 
+          ? 'rgba(16, 185, 129, 0.85)' 
+          : isDemo 
+            ? 'rgba(59,130,246,0.35)' 
+            : 'var(--glass-border)';
+
+        const cardBg = isCurrentActive 
+          ? 'linear-gradient(145deg, rgba(16, 185, 129, 0.12) 0%, rgba(15, 23, 42, 0.6) 100%)' 
+          : 'rgba(15,23,42,0.4)';
+
+        const cardShadow = isCurrentActive 
+          ? '0 0 20px rgba(16, 185, 129, 0.2)' 
+          : 'none';
+
+        const nameColor = isCurrentActive ? '#34d399' : isDemo ? '#60a5fa' : 'var(--text-main)';
+
+        const activeTag = isCurrentActive 
+          ? '<div style="background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-size:0.68rem; font-weight:800; text-transform:uppercase; padding:0.22rem 0.6rem; border-radius:12px; letter-spacing:0.06em; display:inline-flex; align-items:center; gap:0.35rem; width:fit-content; box-shadow:0 2px 8px rgba(16,185,129,0.35);"><i class="fa-solid fa-circle-check"></i> ACTIVATED</div>'
+          : isDemo
+            ? '<div style="background:rgba(59,130,246,0.2); color:#60a5fa; font-size:0.68rem; font-weight:700; text-transform:uppercase; padding:0.2rem 0.55rem; border-radius:10px; width:fit-content;">Free Trial</div>'
+            : '';
+
+        const razorpayBtn = (!isDemo && plan.price > 0)
+          ? '<button type="button" onclick="payWithRazorpay(\'' + plan.type + '\',' + plan.price + ')" style="width:100%;font-size:0.8rem;padding:0.4rem 0.8rem;margin-top:0.4rem;background:linear-gradient(135deg,#0284c7,#0369a1);border:none;color:#fff;border-radius:8px;cursor:pointer;font-weight:600;">📱 Pay via UPI / QR Code</button>'
+          : '';
+
+        return '<div class="card" style="margin:0; background:' + cardBg + '; border:1.5px solid ' + borderColor + '; box-shadow:' + cardShadow + '; display:flex; flex-direction:column; justify-content:space-between; gap:1rem; padding:1.15rem; border-radius:12px; position:relative; transition: all 0.3s ease;">'
+          + '<div style="display:flex; flex-direction:column; gap:0.35rem;">'
+          + (activeTag ? '<div style="margin-bottom:0.25rem;">' + activeTag + '</div>' : '')
+          + '<div style="font-weight:700; font-size:1rem; color:' + nameColor + ';">' + plan.name + '</div>'
+          + '<div style="font-size:0.75rem; color:var(--text-muted);">' + plan.durationDays + ' Days Duration</div>'
+          + '<div style="font-size:1.45rem; font-weight:800; color:var(--accent-color); margin-top:0.25rem;">\u20b9' + plan.price + '</div>'
+          + '</div>'
+          + '<div style="display:flex; flex-direction:column; gap:0.4rem; width:100%;">'
+          + '<button type="button" class="' + btnClass + '" ' + btnAttrs + ' onclick="purchasePlan(\'' + plan.type + '\',' + plan.price + ',' + plan.durationDays + ')" style="width:100%; font-size:0.8rem; padding:0.45rem 0.8rem; margin:0;" title="Pay using your existing wallet balance">'
+          + (isDemo ? btnText : isCurrentActive ? '⚡ Renew / Extend (₹' + plan.price + ')' : 'Use Wallet Balance (₹' + plan.price + ')')
+          + '</button>'
+          + razorpayBtn
+          + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    function renderUserDashboard() {
+      const hasActivePlan = state.plan && state.plan.status === 'active' && new Date(state.plan.expires_at) > new Date();
+      const activeBadge = hasActivePlan
+        ? `<span class="badge badge-active">Active Plan: ${getPlanName(state.plan.plan_type)}</span>`
+        : `<span class="badge badge-expired">No Active Plan</span>`;
+      const planCardsHtml = renderPlanCards();
+      const activeCategory = getActiveCategory(state.currentTab);
+
+      return `
+        <header style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; padding:1rem 1.5rem; background:rgba(15,23,42,0.8); border:1px solid var(--glass-border); border-radius:16px; margin-bottom:1rem; backdrop-filter:blur(16px);">
+          <div class="brand">
+            <h1 style="font-size:1.3rem; font-weight:800; color:#fff; margin:0;">WhatsApp Automation Studio</h1>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin:0.2rem 0 0;">Control Panel & Subscription Portal</p>
+          </div>
+          
+          <!-- Top Account Info Strip -->
+          <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.03); padding:0.35rem 0.75rem; border-radius:10px; border:1px solid var(--glass-border);">
+              <span style="font-size:0.75rem; color:#94a3b8;">Wallet:</span>
+              <span style="font-size:0.9rem; font-weight:800; color:#34d399;">₹${(state.user.wallet_balance || 0).toFixed(2)}</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.03); padding:0.35rem 0.75rem; border-radius:10px; border:1px solid var(--glass-border);">
+              <span style="font-size:0.75rem; color:#94a3b8;">Plan:</span>
+              ${hasActivePlan
+          ? `<span style="font-size:0.7rem; font-weight:700; color:#34d399; background:rgba(16,185,129,0.15); padding:0.15rem 0.5rem; border-radius:6px;">${getPlanName(state.plan.plan_type)} (ACTIVE)</span>`
+          : `<span style="font-size:0.7rem; font-weight:700; color:#f87171; background:rgba(239,68,68,0.15); padding:0.15rem 0.5rem; border-radius:6px;">INACTIVE</span>`
+        }
+            </div>
+            ${hasActivePlan ? `
+              <div style="font-size:0.75rem; color:#fbbf24; background:rgba(245,158,11,0.1); padding:0.35rem 0.75rem; border-radius:10px; border:1px solid rgba(245,158,11,0.25);">
+                Expires: <strong>${new Date(state.plan.expires_at).toLocaleDateString()}</strong> (${Math.max(0, Math.ceil((new Date(state.plan.expires_at) - new Date()) / (1000 * 60 * 60 * 24)))}d left)
+              </div>` : ''}
+            <div class="user-profile" style="display:flex; align-items:center; gap:0.6rem;">
+              <div class="user-details" onclick="switchTab('profileTab')" style="text-align:right; cursor:pointer;" title="Click to view & edit profile">
+                <div class="user-name" style="font-weight:600; font-size:0.85rem;">${state.user.name} 👤</div>
+                <div class="user-role" style="font-size:0.7rem; color:#86efac;">${state.user.phone ? `📱 +${state.user.phone.replace(/^\+/, '')}` : 'SUBSCRIBER'}</div>
+              </div>
+              <button onclick="switchTab('profileTab')" style="padding:0.35rem 0.7rem; font-size:0.8rem; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#fff; border-radius:8px; cursor:pointer;">👤 Profile</button>
+              <button class="btn-logout" onclick="handleLogout()" style="padding:0.4rem 0.8rem; font-size:0.8rem;">Sign Out</button>
+            </div>
+          </div>
+        </header>
+
+        ${!hasActivePlan ? `
+          <div class="service-banner">
+            <div style="font-size: 1.5rem;">⚠️</div>
+            <div>
+              <div class="service-banner-title">WhatsApp Messaging Locked — Subscription Expired or Inactive</div>
+              <div class="service-banner-desc">You do not have an active plan. Access to WhatsApp Session connections and APIs is currently suspended. Please choose a plan below or transfer funds to activate.</div>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- ─── Category Navigation Bar ──────────────────────────── -->
+        <div style="background:rgba(15,23,42,0.7); border:1px solid var(--glass-border); border-radius:14px; padding:0.75rem 1rem; backdrop-filter:blur(12px); display:flex; flex-direction:column; gap:0.6rem; margin-bottom:0.5rem;">
+          <!-- Main Category Row -->
+          <div style="display:flex; gap:0.35rem; flex-wrap:wrap; align-items:center;">
+            <button class="top-cat-btn ${activeCategory === 'account' ? 'active' : ''}" onclick="selectCategory('account','plansTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-crown" style="font-size:0.75rem;"></i> Account</button>
+            <button class="top-cat-btn ${activeCategory === 'whatsapp' ? 'active' : ''}" onclick="selectCategory('whatsapp','whatsappTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-brands fa-whatsapp" style="font-size:0.75rem;"></i> WhatsApp</button>
+            <button class="top-cat-btn ${activeCategory === 'contacts' ? 'active' : ''}" onclick="selectCategory('contacts','contactsTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-address-book" style="font-size:0.75rem;"></i> Contacts</button>
+            <button class="top-cat-btn ${activeCategory === 'campaigns' ? 'active' : ''}" onclick="selectCategory('campaigns','campaignsTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-bullhorn" style="font-size:0.75rem;"></i> Campaigns</button>
+            <button class="top-cat-btn ${activeCategory === 'automation' ? 'active' : ''}" onclick="selectCategory('automation','autoRespondersTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-robot" style="font-size:0.75rem;"></i> Automation</button>
+            <button class="top-cat-btn ${activeCategory === 'api' ? 'active' : ''}" onclick="selectCategory('api','apiDocsTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-code" style="font-size:0.75rem;"></i> REST API</button>
+            <button class="top-cat-btn ${activeCategory === 'reports' ? 'active' : ''}" onclick="selectCategory('reports','reportsTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-chart-bar" style="font-size:0.75rem;"></i> Reports</button>
+            <button class="top-cat-btn ${activeCategory === 'more' ? 'active' : ''}" onclick="selectCategory('more','catalogTab')" style="display:flex;align-items:center;gap:0.35rem;"><i class="fa-solid fa-ellipsis" style="font-size:0.75rem;"></i> More</button>
+          </div>
+          <!-- Sub-pill Row -->
+          <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:0.5rem;">
+            ${renderSubPills(activeCategory)}
+          </div>
+        </div>
+
+            <!-- TAB: Subscription Plans -->
+            <div id="plansTab" class="tab-content ${state.currentTab === 'plansTab' ? 'active' : ''}">
+              
+              <!-- Active Plan Status Hero Banner -->
+              ${hasActivePlan ? `
+                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 1rem;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; border-bottom: 1px solid rgba(16, 185, 129, 0.2); padding-bottom: 0.85rem;">
+                    <div style="display: flex; align-items: center; gap: 0.65rem;">
+                      <span style="font-size: 1.6rem;">⚡</span>
+                      <div>
+                        <div style="font-size: 0.75rem; color: #86efac; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Currently Active Plan</div>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: #fff;">${getPlanName(state.plan.plan_type)}</div>
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; font-weight: 700; font-size: 0.78rem; padding: 0.35rem 0.8rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background: #34d399; border-radius: 50%;"></span> ACTIVE SUBSCRIPTION
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Details Grid -->
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem;">
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 10px;">
+                      <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Activated On</div>
+                      <div style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 0.2rem;">
+                        ${state.plan.started_at ? new Date(state.plan.started_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+                      </div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 10px;">
+                      <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Expires On</div>
+                      <div style="font-size: 0.95rem; font-weight: 700; color: #fbbf24; margin-top: 0.2rem;">
+                        ${new Date(state.plan.expires_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 10px;">
+                      <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Validity Remaining</div>
+                      <div style="font-size: 0.95rem; font-weight: 800; color: #34d399; margin-top: 0.2rem;">
+                        ${Math.max(0, Math.ceil((new Date(state.plan.expires_at) - new Date()) / (1000 * 60 * 60 * 24)))} Days Left
+                      </div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 10px;">
+                      <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">WhatsApp Status</div>
+                      <div style="font-size: 0.95rem; font-weight: 700; color: #38bdf8; margin-top: 0.2rem;">
+                        ✅ Full Access Unlocked
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ` : `
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+                  <div style="font-size: 1.6rem; color: #ef4444;">⚠️</div>
+                  <div>
+                    <div style="font-size: 0.95rem; font-weight: 700; color: #fca5a5;">No Active Subscription Plan</div>
+                    <div style="font-size: 0.8rem; color: #cbd5e1; margin-top: 0.2rem;">Your account currently does not have an active plan. Select a subscription below or claim the Free Demo Plan to unlock WhatsApp messaging.</div>
+                  </div>
+                </div>
+              `}
+
+              <!-- Available Plans Grid -->
+              <div style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); padding: 1.25rem; border-radius: 12px;">
+                <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 1rem; color: #a5b4fc; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                  <span style="display: flex; align-items: center; gap: 0.5rem;">💎 Choose / Renew Subscription Plan</span>
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">${hasActivePlan ? 'Currently active plan highlighted with green border' : ''}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                  ${planCardsHtml}
+                </div>
+              </div>
+
+              <!-- Subscription History List if available -->
+              ${state.plans && state.plans.length > 0 ? `
+                <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); padding: 1.25rem; border-radius: 12px;">
+                  <div style="font-weight: 600; font-size: 1rem; margin-bottom: 0.85rem; color: #cbd5e1; display: flex; align-items: center; gap: 0.5rem;">
+                    📜 Subscription History
+                  </div>
+                  <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left;">
+                      <thead>
+                        <tr style="border-bottom: 1px solid var(--glass-border); color: var(--text-muted);">
+                          <th style="padding: 0.6rem 0.75rem;">Plan Name</th>
+                          <th style="padding: 0.6rem 0.75rem;">Duration</th>
+                          <th style="padding: 0.6rem 0.75rem;">Amount</th>
+                          <th style="padding: 0.6rem 0.75rem;">Started</th>
+                          <th style="padding: 0.6rem 0.75rem;">Expires</th>
+                          <th style="padding: 0.6rem 0.75rem;">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${state.plans.map(p => {
+                          const isActive = p.status === 'active' && new Date(p.expires_at) > new Date();
+                          return `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                              <td style="padding: 0.6rem 0.75rem; font-weight: 600; color: #fff;">${getPlanName(p.plan_type)}</td>
+                              <td style="padding: 0.6rem 0.75rem;">${p.duration_days || '-'} Days</td>
+                              <td style="padding: 0.6rem 0.75rem; color: var(--accent-color); font-weight: 700;">₹${p.price}</td>
+                              <td style="padding: 0.6rem 0.75rem; color: var(--text-muted);">${p.started_at ? new Date(p.started_at).toLocaleDateString() : '-'}</td>
+                              <td style="padding: 0.6rem 0.75rem; color: var(--text-muted);">${p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '-'}</td>
+                              <td style="padding: 0.6rem 0.75rem;">
+                                ${isActive 
+                                  ? `<span style="background: rgba(16,185,129,0.15); color: #34d399; padding: 0.15rem 0.5rem; border-radius: 6px; font-weight: 700; font-size: 0.75rem;">ACTIVE</span>` 
+                                  : `<span style="background: rgba(255,255,255,0.05); color: var(--text-muted); padding: 0.15rem 0.5rem; border-radius: 6px; font-size: 0.75rem;">EXPIRED</span>`}
+                              </td>
+                            </tr>
+                          `;
+                        }).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- TAB: Bank Accounts -->
+            <div id="banksTab" class="tab-content ${state.currentTab === 'banksTab' ? 'active' : ''}">
+              <div class="card-title">Payment Bank Options</div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1rem;">
+                Transfer <strong>₹${state.planPrice}</strong> to any of the verified bank accounts listed below to recharge:
+              </p>
+              <div class="bank-card-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+                ${state.banks.length === 0 ? '<div style="font-size:0.85rem; text-align:center; color:var(--error-color);">No bank accounts available. Contact Admin.</div>' :
+          state.banks.map(bank => `
+                    <div class="bank-item" style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem;">
+                      <div class="bank-details-row" style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.85rem;">
+                        <span style="color:var(--text-muted);">Bank Name</span>
+                        <span style="font-weight:600; color:#fff;">${bank.bank_name}</span>
+                      </div>
+                      <div class="bank-details-row" style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.85rem;">
+                        <span style="color:var(--text-muted);">Account Number</span>
+                        <span><code style="color:#a5b4fc;">${bank.account_number}</code></span>
+                      </div>
+                      <div class="bank-details-row" style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.85rem;">
+                        <span style="color:var(--text-muted);">IFSC Code</span>
+                        <span><code style="color:#a5b4fc;">${bank.ifsc}</code></span>
+                      </div>
+                      <div class="bank-details-row" style="display:flex; justify-content:space-between; font-size:0.85rem;">
+                        <span style="color:var(--text-muted);">Holder Name</span>
+                        <span style="font-weight:600; color:#fff;">${bank.account_holder}</span>
+                      </div>
+                    </div>
+                  `).join('')
+        }
+              </div>
+            </div>
+
+            <!-- TAB: Submit Deposit -->
+            <div id="depositTab" class="tab-content ${state.currentTab === 'depositTab' ? 'active' : ''}">
+              <div class="card-title">Submit Deposit Reference</div>
+              <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 1.5rem; border-radius: 12px; max-width: 550px;">
+                <form id="orderForm" onsubmit="handleOrderSubmit(event)" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                  <div class="form-group">
+                    <label>Select Bank Sent To</label>
+                    <select id="orderBankSelect" required>
+                      <option value="">-- Choose destination bank --</option>
+                      ${state.banks.map(b => `<option value="${b.id}">${b.bank_name} - ${b.account_holder}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Purpose / Plan to Buy</label>
+                    <select id="orderPlanTypeSelect" onchange="handleOrderPlanSelectChange(this)" required>
+                      <option value="wallet">Just recharge wallet (Add funds)</option>
+                      ${state.planOptions ? state.planOptions.filter(p => p.type !== 'demo').map(p => `
+                        <option value="${p.type}">${p.name} - ₹${p.price} (${p.durationDays} Days)</option>
+                      `).join('') : ''}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Deposit Amount (₹)</label>
+                    <input type="number" id="orderAmountInput" required min="1" placeholder="Enter amount sent" value="199">
+                  </div>
+                  <div class="form-group">
+                    <label>Your WhatsApp / Mobile Number</label>
+                    <input type="text" id="orderUserPhone" placeholder="10-digit mobile number for WhatsApp updates" value="${state.user?.phone || ''}">
+                  </div>
+                  <div class="form-group">
+                    <label>Sender Account Name</label>
+                    <input type="text" id="orderAccountName" required placeholder="Name on bank statement">
+                  </div>
+                  <div class="form-group">
+                    <label>Transaction UTR / Reference No.</label>
+                    <input type="text" id="orderUtr" required placeholder="12-digit UTR Code">
+                  </div>
+                  <div class="form-group">
+                    <label>Upload Screenshot (Optional)</label>
+                    <input type="file" id="orderScreenshot" accept="image/*,application/pdf" style="background:none; border:none; padding: 0.25rem 0;">
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem;">
+                    <button type="button" onclick="const p = document.getElementById('orderPlanTypeSelect').value; const a = document.getElementById('orderAmountInput').value; payWithRazorpay(p, a);" style="background:linear-gradient(135deg,#0284c7,#0369a1); border:none; color:#fff; font-weight:600; padding:0.75rem; border-radius:8px; cursor:pointer; font-size:0.95rem;">⚡ Pay via UPI & QR Code (Instant Auto-Activation)</button>
+                    <div style="text-align:center; font-size:0.75rem; color:var(--text-muted); margin:0.25rem 0;">— OR MANUAL BANK TRANSFER —</div>
+                    <button type="submit" style="background:rgba(255,255,255,0.08); border:1px solid var(--glass-border); color:#fff;">Submit Manual Bank Transfer Request</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- TAB: WhatsApp Studio -->
+            <div id="whatsappTab" class="tab-content ${state.currentTab === 'whatsappTab' ? 'active' : ''}">
+              
+              ${!hasActivePlan ? `
+                <div style="text-align: center; padding: 3rem 2rem; color: var(--text-muted); background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); border-radius: 12px;">
+                  <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🔒</div>
+                  <h3>WhatsApp Automation Features are Locked</h3>
+                  <p style="margin-top: 0.5rem; max-width: 450px; margin-inline: auto; font-size: 0.85rem; line-height: 1.5;">Please claim a Plan under <a href="javascript:void(0)" onclick="switchTab('plansTab')" style="color:#a5b4fc;">Subscription Plans</a> or submit payment under <a href="javascript:void(0)" onclick="switchTab('depositTab')" style="color:#a5b4fc;">Submit Deposit</a> to unlock WhatsApp session features.</p>
+                </div>
+              ` : `
+                <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                  <!-- WhatsApp Session Status Card -->
+                  <div style="display: flex; flex-direction: column; gap: 1rem; background: rgba(255,255,255,0.02); padding: 1.25rem; border-radius: 14px; border: 1px solid var(--glass-border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                      <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <span style="font-weight: 700; font-size: 1.05rem;">WhatsApp Session Connection</span>
+                        ${isMobileBrowser() 
+                          ? `<span class="wa-mobile-badge">📱 Mobile Auto-Detected (8-Digit Code)</span>` 
+                          : `<span class="wa-mobile-badge" style="background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.3); color:#c4b5fd;">💻 Desktop Auto-Detected (QR Scan)</span>`
+                        }
+                      </div>
+                      <div id="statusBadge" class="badge badge-none">
+                        <div class="pulse"></div>
+                        <span id="statusText">Disconnected</span>
+                      </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 0.5rem;">
+                      <button onclick="triggerLogin()" id="connectSessionBtn" style="flex: 1;">⚡ Connect / Refresh</button>
+                      <button onclick="triggerLogout()" id="disconnectSessionBtn" class="btn-danger" style="flex: 1;" disabled>✕ Disconnect & Unlink</button>
+                    </div>
+
+                    <!-- Dynamic Auto-Configured QR / Pairing Code Container -->
+                    <div id="qrContainer" class="qr-container">
+                      ${renderWhatsappConnectArea()}
+                    </div>
+
+                    <div id="profileContainer" class="profile-card" style="display: none;">
+                      <img id="profileAvatar" class="profile-avatar" src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" alt="Avatar">
+                      <div>
+                        <div style="font-weight: 600; font-size: 0.95rem;" id="profileName">Loading Account...</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);" id="profileNumber">Phone: </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- WhatsApp Actions Console -->
+                  <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="tabs-nav" style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+                      <button class="tab-btn ${state.whatsappSubTab === 'textTab' ? 'active' : ''}" onclick="switchSubTab('textTab')">Send Message</button>
+                      <button class="tab-btn ${state.whatsappSubTab === 'mediaTab' ? 'active' : ''}" onclick="switchSubTab('mediaTab')">Send Media</button>
+                      <button class="tab-btn ${state.whatsappSubTab === 'groupsTab' ? 'active' : ''}" onclick="switchSubTab('groupsTab')">Groups</button>
+                      <button class="tab-btn ${state.whatsappSubTab === 'lookupTab' ? 'active' : ''}" onclick="switchSubTab('lookupTab')">Profile Lookup</button>
+                      <button class="tab-btn ${state.whatsappSubTab === 'bulkTab' ? 'active' : ''}" onclick="switchSubTab('bulkTab')">Bulk (Excel)</button>
+                    </div>
+
+                    <!-- Sub Tab: Text Message -->
+                    <div id="textTab" class="whatsapp-sub-content tab-content ${state.whatsappSubTab === 'textTab' ? 'active' : ''}">
+                      <div class="actions-grid">
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                          <div class="form-group">
+                            <label>Select Saved Contact (Optional)</label>
+                            <select id="singleContactSelect" onchange="onSingleContactSelect(this.value)" style="padding:0.4rem 0.6rem; font-size:0.85rem; background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); color:var(--text-main); border-radius:8px;">
+                              <option value="">-- Choose Contact from Directory --</option>
+                              ${(state.contacts || []).map(c => `<option value="${c.mobile}">${c.name} (${c.mobile}) ${c.shop_name ? `- ${c.shop_name}` : ''}</option>`).join('')}
+                            </select>
+                          </div>
+                          <div class="form-group">
+                            <label>Recipient JID or Phone Number</label>
+                            <input type="text" id="msgTo" placeholder="e.g. 919876543210 (include country code)">
+                          </div>
+                          <div class="form-group">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                              <label style="margin-bottom:0;">Message Content</label>
+                              <select onchange="applyTemplateToField(this.value, 'msgBody')" style="max-width:180px; padding:0.25rem 0.5rem; font-size:0.75rem; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#a5b4fc; border-radius:6px;">
+                                <option value="">-- Apply Template --</option>
+                                ${(state.templates || []).map(t => `<option value="${t.id}">${t.title}</option>`).join('')}
+                              </select>
+                            </div>
+                            <textarea id="msgBody" rows="4" placeholder="Type message body here... Use {Name} or [Name] for placeholders"></textarea>
+                          </div>
+                          <button onclick="sendMessage()" id="sendMsgBtn" disabled>Send Message</button>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                          <label>API Activity Logs</label>
+                          <div id="apiConsole" class="console-card">
+                            <div class="console-line system">[System] Logs initialized.</div>
+                          </div>
+                          <button class="btn-secondary" onclick="clearConsole('apiConsole')">Clear Logs</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Sub Tab: Send Media -->
+                    <div id="mediaTab" class="whatsapp-sub-content tab-content ${state.whatsappSubTab === 'mediaTab' ? 'active' : ''}">
+                      <div class="actions-grid">
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                          <div class="form-group">
+                            <label>Recipient JID or Phone</label>
+                            <input type="text" id="mediaTo" placeholder="e.g. 919876543210">
+                          </div>
+                          <div class="form-group">
+                            <label>Media Attachment Type</label>
+                            <select id="mediaTypeSelect" onchange="onMediaTypeChange()">
+                              <option value="image">Image (JPEG/PNG)</option>
+                              <option value="document">Document (PDF/DOCX/xlsx)</option>
+                              <option value="audio">Audio (MP3/OGG)</option>
+                              <option value="video">Video (MP4)</option>
+                            </select>
+                          </div>
+                          <div class="form-group">
+                            <label>Attachment Source</label>
+                            <div style="display: flex; gap: 1rem; padding: 0.25rem 0;">
+                              <label style="display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem;">
+                                <input type="radio" name="mediaSource" value="url" checked onchange="toggleMediaSource('url')" style="width: auto;"> External URL
+                              </label>
+                              <label style="display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem;">
+                                <input type="radio" name="mediaSource" value="file" onchange="toggleMediaSource('file')" style="width: auto;"> Local File Upload
+                              </label>
+                            </div>
+                          </div>
+                          <div class="form-group" id="mediaUrlGroup">
+                            <label>File URL</label>
+                            <input type="text" id="mediaUrl" placeholder="https://domain.com/image.png">
+                          </div>
+                          <div class="form-group" id="mediaFileGroup" style="display: none;">
+                            <label>Upload File</label>
+                            <input type="file" id="mediaFile" style="background:none; border:none; padding: 0.25rem 0;">
+                          </div>
+                          <div class="form-group" id="mediaFileNameGroup" style="display: none;">
+                            <label>Filename Override (for documents)</label>
+                            <input type="text" id="mediaFileName" placeholder="Leave empty for original name">
+                          </div>
+                          <div class="form-group" id="mediaCaptionGroup">
+                            <label>Caption / Text (Optional)</label>
+                            <input type="text" id="mediaCaption" placeholder="Add caption text here...">
+                          </div>
+                          <button onclick="sendMedia()" id="sendMediaBtn" disabled>Send Media Attachment</button>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                          <label>Media Activity Logs</label>
+                          <div id="mediaConsole" class="console-card">
+                            <div class="console-line system">[System] Media logs initialized.</div>
+                          </div>
+                          <button class="btn-secondary" onclick="clearConsole('mediaConsole')">Clear Logs</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Sub Tab: Groups -->
+                    <div id="groupsTab" class="whatsapp-sub-content tab-content ${state.whatsappSubTab === 'groupsTab' ? 'active' : ''}">
+                      <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <button onclick="loadGroups()" class="btn-secondary" style="width: auto; align-self: flex-start;">Fetch Participating Groups</button>
+                        <div class="form-group">
+                          <label>Select Group</label>
+                          <select id="groupSelect" onchange="onGroupSelectChange()">
+                            <option value="">-- Fetch groups to select --</option>
+                          </select>
+                        </div>
+                        <div class="form-group">
+                          <label>Group Message Text</label>
+                          <textarea id="groupMsgBody" rows="3" placeholder="Write message to group..."></textarea>
+                        </div>
+                        <button onclick="sendGroupMessage()" id="sendGroupMsgBtn" disabled style="width: auto;">Send Message to Group</button>
+                      </div>
+                    </div>
+
+                    <!-- Sub Tab: Profile Lookup -->
+                    <div id="lookupTab" class="whatsapp-sub-content tab-content ${state.whatsappSubTab === 'lookupTab' ? 'active' : ''}">
+                      <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="form-group">
+                          <label>Lookup Target Phone Number</label>
+                          <input type="text" id="lookupPhone" placeholder="e.g. 919876543210 (leave empty for own profile)">
+                        </div>
+                        <button onclick="lookupProfile()" style="width: auto;">Lookup Profile Avatar & Name</button>
+                        
+                        <div id="lookupResult" class="profile-card" style="display: none; margin-top: 1rem;">
+                          <img id="lookupAvatar" class="profile-avatar" src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y" alt="Avatar">
+                          <div>
+                            <div id="lookupResultPhone" style="font-weight: 600;">Phone: </div>
+                            <div id="lookupResultPic" style="font-size: 0.85rem; color: var(--text-muted);">No details found</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Sub Tab: Bulk Messaging (Excel) -->
+                    <div id="bulkTab" class="whatsapp-sub-content tab-content ${state.whatsappSubTab === 'bulkTab' ? 'active' : ''}">
+                      <div id="bulkConnectionWarning" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem; display: none; align-items: center; gap: 0.5rem; font-weight: 500;">
+                        ⚠️ <strong>Connection Error:</strong> WhatsApp session is disconnected. Please connect your session in the "WhatsApp Connection" tab first.
+                      </div>
+                      <div class="actions-grid">
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                          <div class="form-group">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                              <label style="margin-bottom: 0;">Upload Excel File (.xlsx, .xls)</label>
+                              <a href="/demo_recipients.xlsx" download="demo_recipients.xlsx" style="color: var(--accent-color); font-size: 0.8rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 500;">
+                                📥 Download Sample Excel
+                              </a>
+                            </div>
+                            <input type="file" id="bulkExcelFile" accept=".xlsx, .xls" style="background:none; border:none; padding: 0.25rem 0;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                              Excel must contain a column named <strong>phone</strong>, <strong>mobile</strong>, or <strong>number</strong>. Placeholders like <code>{name}</code> will be replaced by the row cell data.
+                            </div>
+                          </div>
+                          
+                          <div class="form-group">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                              <label style="margin-bottom:0;">Message Template</label>
+                              <select onchange="applyTemplateToField(this.value, 'bulkMsgBody')" style="max-width:180px; padding:0.25rem 0.5rem; font-size:0.75rem; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#a5b4fc; border-radius:6px;">
+                                <option value="">-- Apply Template --</option>
+                                ${(state.templates || []).map(t => `<option value="${t.id}">${t.title}</option>`).join('')}
+                              </select>
+                            </div>
+                            <textarea id="bulkMsgBody" rows="4" placeholder="Hello {name}, your order from {shopname} is ready..."></textarea>
+                          </div>
+                          
+                          <div class="form-group">
+                            <label>Delay (Seconds)</label>
+                            <input type="number" id="bulkDelay" value="2" min="1" max="10" style="max-width: 100px;">
+                          </div>
+
+                          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <button onclick="parseExcelFile()" id="parseExcelBtn" style="flex: 1;">Parse & Preview</button>
+                            <button onclick="startBulkCampaign()" id="startBulkBtn" style="flex: 1; background: var(--accent-color);" disabled>Send Campaign</button>
+                          </div>
+
+                          <div style="display: flex; gap: 0.5rem;">
+                            <button onclick="pauseBulkCampaign()" id="pauseBulkBtn" class="btn-secondary" style="flex: 1;" disabled>Pause</button>
+                            <button onclick="stopBulkCampaign()" id="stopBulkBtn" class="btn-danger" style="flex: 1;" disabled>Stop/Reset</button>
+                          </div>
+
+                          <!-- Campaign Progress Section -->
+                          <div id="bulkProgressContainer" style="display: none; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); margin-top: 0.5rem;">
+                            <div id="bulkProgressText" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem;">Progress: 0 / 0 sent</div>
+                            <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 10px; overflow: hidden; width: 100%;">
+                              <div id="bulkProgressBar" style="background: var(--accent-color); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                            </div>
+                          </div>
+
+                          <!-- Preview Table Target -->
+                          <div id="bulkPreviewContainer"></div>
+                        </div>
+
+                        <!-- Bulk Console Logs -->
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                          <label>Campaign Activity Console</label>
+                          <div id="bulkConsole" class="console-card">
+                            <div class="console-line system">[System] Campaign logs initialized.</div>
+                          </div>
+                          <button class="btn-secondary" onclick="clearConsole('bulkConsole')">Clear Logs</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `}
+            </div>
+
+            <!-- TAB: User Order History -->
+            <div id="ordersTab" class="tab-content ${state.currentTab === 'ordersTab' ? 'active' : ''}">
+              <div class="card-title">Submitted Deposit History</div>
+              
+              <!-- Filters Section -->
+              <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 140px;">
+                  <label style="font-size: 0.75rem;">From Date</label>
+                  <input type="date" id="userOrderFromDate" onchange="renderUserOrders()" style="padding: 0.4rem; font-size: 0.85rem;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 140px;">
+                  <label style="font-size: 0.75rem;">To Date</label>
+                  <input type="date" id="userOrderToDate" onchange="renderUserOrders()" style="padding: 0.4rem; font-size: 0.85rem;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1.5; min-width: 180px;">
+                  <label style="font-size: 0.75rem;">User Filter</label>
+                  <select id="userOrderUserFilter" onchange="renderUserOrders()" style="padding: 0.4rem; font-size: 0.85rem;">
+                    <option value="">All Users</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1.2; min-width: 150px;">
+                  <label style="font-size: 0.75rem;">Status Filter</label>
+                  <select id="userOrderStatusFilter" onchange="renderUserOrders()" style="padding: 0.4rem; font-size: 0.85rem;">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+                <button onclick="clearUserOrderFilters()" style="padding: 0.45rem 1rem; font-size: 0.85rem; background: rgba(255,255,255,0.08); border: 1px solid var(--glass-border); color: #fff; cursor: pointer; border-radius: 8px;">
+                  Reset
+                </button>
+              </div>
+
+              <div class="table-container">
+                <table id="userOrdersTable">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>User</th>
+                      <th>Deposit Amount</th>
+                      <th>UTR Reference</th>
+                      <th>Transferred From</th>
+                      <th>Screenshot</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="userOrdersTableBody">
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading deposit history...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- TAB: User Expiry Report -->
+            <div id="userExpiryReportTab" class="tab-content ${state.currentTab === 'userExpiryReportTab' ? 'active' : ''}">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <div class="card-title" style="margin-bottom: 0;">User Subscription Expiry Report</div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <label style="font-size: 0.85rem; color: var(--text-muted);">Filter Status:</label>
+                  <select id="userExpiryStatusFilter" onchange="renderUserExpiryReport()" style="padding: 0.4rem 0.85rem; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 8px;">
+                    <option value="all">All Users</option>
+                    <option value="active">Active Plans</option>
+                    <option value="deactive">Deactivated / Expired</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="table-container">
+                <table id="userExpiryReportTable">
+                  <thead>
+                    <tr>
+                      <th>User ID</th>
+                      <th>User Name</th>
+                      <th>Email / Phone</th>
+                      <th>Plan Expiration Date</th>
+                      <th>Time Remaining</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="userExpiryReportTableBody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading expiry details...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- TAB: Account Settings / Change Password -->
+            <div id="changePasswordTab" class="tab-content ${state.currentTab === 'changePasswordTab' ? 'active' : ''}">
+              <div class="card-title">Change Account Password</div>
+              <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border); max-width: 450px;">
+                <form id="changePasswordForm" onsubmit="handleChangePassword(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                  <div id="changePwAlert" style="display: none; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; text-align: center;"></div>
+                  <div class="form-group">
+                    <label>Current Password</label>
+                    <input type="password" id="currentPassword" required placeholder="Enter your current password">
+                  </div>
+                  <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" required placeholder="Minimum 6 characters">
+                  </div>
+                  <div class="form-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" id="confirmNewPassword" required placeholder="Re-enter new password">
+                  </div>
+                  <button type="submit">Update Password</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- TAB: API Documentation -->
+            <div id="apiDocsTab" class="tab-content ${state.currentTab === 'apiDocsTab' ? 'active' : ''}">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <div class="card-title" style="margin-bottom: 0;">Developer API Reference</div>
+                <a href="/api_documentation.md" download="api_documentation.md" class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent-color); color: #fff; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 500; font-size: 0.9rem;">
+                  📥 Download API Doc (.md)
+                </a>
+              </div>
+
+              <!-- API Token Section for User -->
+              <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; backdrop-filter: blur(8px);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                  <div style="font-size: 0.95rem; font-weight: 600; color: #a5b4fc; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>🔑</span> Your API Authorization Token
+                    <span style="background: rgba(52, 211, 153, 0.15); color: #34d399; font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 999px; border: 1px solid rgba(52, 211, 153, 0.3);">Permanent</span>
+                  </div>
+                  <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <button id="copyUserApiTokenBtn" onclick="copyUserApiToken()" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; color: #fff; padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.3rem; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);">
+                      📋 Copy Token
+                    </button>
+                    <button id="regenerateUserApiTokenBtn" onclick="regenerateUserApiToken()" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.3rem;">
+                      🔄 Generate New Token
+                    </button>
+                  </div>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(99,102,241,0.25); border-radius: 8px; padding: 0.75rem; word-break: break-all; font-family: Consolas, 'Courier New', monospace; font-size: 0.75rem; color: #cbd5e1; line-height: 1.5; max-height: 80px; overflow-y: auto;" id="userApiTokenValue">
+                  ${state.token}
+                </div>
+                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem; line-height: 1.4;">
+                  Include this in the headers as: <code style="color: #a5b4fc; font-family: Consolas, monospace; background: rgba(0,0,0,0.2); padding: 0.1rem 0.3rem; border-radius: 4px;">Authorization: Bearer &lt;token&gt;</code>. <strong>Permanent API Key:</strong> Valid indefinitely until you generate a new token.
+                </div>
+              </div>
+              
+              <div class="docs-container" style="background: rgba(0,0,0,0.25); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border); max-height: 550px; overflow-y: auto; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.05);">
+                <pre style="white-space: pre-wrap; font-size: 0.85rem; margin: 0; font-family: 'Consolas', 'Courier New', monospace; line-height: 1.6;" id="apiDocsContent">Loading documentation...</pre>
+              </div>
+            </div>
+
+            <!-- TAB: Contacts Directory -->
+            <div id="contactsTab" class="tab-content ${state.currentTab === 'contactsTab' ? 'active' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+                <div class="card-title" style="margin-bottom:0;">CRM Contacts Directory</div>
+                <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                  <button onclick="openBroadcastTemplateModal()" style="background:linear-gradient(135deg, #6366f1, #8b5cf6);">📢 Send Template Broadcast</button>
+                  <button onclick="downloadSampleContactsExcel()" style="background:linear-gradient(135deg, #0284c7, #0369a1);" title="Download Sample Excel File">📄 Download Sample Excel</button>
+                  <button onclick="document.getElementById('excelContactInput').click()" style="background:var(--accent-color);">📥 Import Excel</button>
+                  <input type="file" id="excelContactInput" accept=".xlsx,.xls" style="display:none;" onchange="importContactsExcel(event)">
+                  <button onclick="showAddContactModal()" class="btn-secondary">➕ Add Contact</button>
+                </div>
+              </div>
+
+              <div style="margin-bottom:1rem; width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                <input type="text" id="contactSearchInput" placeholder="Search contacts by name, phone or shop..." oninput="filterContactsList(this.value)" style="padding:0.6rem;font-size:0.85rem; max-width:350px;">
+                <div id="selectedContactsCount" style="font-size:0.85rem; color:#a5b4fc; font-weight:600;">
+                  Selected: <span id="contactCheckCount">0</span> contact(s)
+                </div>
+              </div>
+
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width:40px; text-align:center;"><input type="checkbox" id="selectAllContactsCheck" onchange="toggleSelectAllContacts(this.checked)" style="width:auto;"></th>
+                      <th>Name</th>
+                      <th>Mobile Phone</th>
+                      <th>Shop Name</th>
+                      <th>Date Added</th>
+                      <th>Block List (Exclude)</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="contactsTableBody">
+                    ${renderContactsRows()}
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Pagination Controls -->
+              <div id="contactsPaginationControls" style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; flex-wrap:wrap; gap:0.75rem; padding:0.75rem 1rem; background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:10px; font-size:0.85rem;">
+                ${renderContactsPaginationBar()}
+              </div>
+            </div>
+
+            <!-- TAB: Contact Groups -->
+            <div id="contactGroupsTab" class="tab-content ${state.currentTab === 'contactGroupsTab' ? 'active' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+                <div class="card-title" style="margin-bottom:0;">📋 Contact Groups</div>
+                <button onclick="showCreateGroupModal()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);width:auto;">➕ New Group</button>
+              </div>
+
+              ${(state.contactGroups || []).length === 0 ? `
+                <div style="text-align:center;padding:3rem;background:rgba(255,255,255,0.01);border:1px dashed var(--glass-border);border-radius:16px;">
+                  <div style="font-size:2.5rem;margin-bottom:1rem;">📋</div>
+                  <div style="font-weight:600;margin-bottom:0.5rem;">No groups yet</div>
+                  <div style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.5rem;">Create a group to organise your contacts for targeted broadcasts.</div>
+                  <button onclick="showCreateGroupModal()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);width:auto;padding:0.6rem 1.5rem;">➕ Create First Group</button>
+                </div>
+              ` : `
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem;">
+                  ${(state.contactGroups || []).map(g => `
+                    <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:14px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;transition:box-shadow 0.2s;" onmouseenter="this.style.boxShadow='0 4px 24px rgba(99,102,241,0.18)'" onmouseleave="this.style.boxShadow=''">
+                      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
+                        <div>
+                          <div style="font-weight:700;font-size:1rem;color:#c7d2fe;">${g.name}</div>
+                          ${g.description ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">${g.description}</div>` : ''}
+                        </div>
+                        <div style="display:flex;gap:0.4rem;flex-shrink:0;">
+                          <button onclick="showEditGroupModal(${g.id},'${g.name.replace(/'/g, "\\'")}','${(g.description || '').replace(/'/g, "\\'")}')" style="background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;width:auto;" title="Edit group">✏️</button>
+                          <button onclick="deleteGroupEntry(${g.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;width:auto;" title="Delete group">🗑️</button>
+                        </div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <span style="background:rgba(99,102,241,0.18);color:#a5b4fc;padding:0.2rem 0.6rem;border-radius:9999px;font-size:0.78rem;font-weight:600;">👥 ${g.member_count || 0} member${g.member_count !== 1 ? 's' : ''}</span>
+                        <span style="font-size:0.75rem;color:var(--text-muted);">Created ${new Date(g.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <div style="display:flex;gap:0.5rem;">
+                        <button onclick="openGroupMembersPanel(${g.id})" style="background:rgba(99,102,241,0.18);border:1px solid rgba(99,102,241,0.3);color:#c7d2fe;padding:0.4rem 0.75rem;font-size:0.82rem;margin:0;flex:1;" title="Manage members">👥 Manage Members</button>
+                        <button onclick="broadcastToGroup(${g.id},'${g.name.replace(/'/g, "\\'")}')" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#6ee7b7;padding:0.4rem 0.75rem;font-size:0.82rem;margin:0;flex:1;" title="Send broadcast to group">📢 Broadcast</button>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+
+              <!-- Create/Edit Group Modal -->
+              <div id="groupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+                <div style="background:#1e2942;border:1px solid rgba(99,102,241,0.3);border-radius:18px;padding:2rem;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+                  <div style="font-size:1.1rem;font-weight:700;color:#c7d2fe;margin-bottom:1.5rem;" id="groupModalTitle">Create Group</div>
+                  <form onsubmit="submitGroupForm(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <input type="hidden" id="groupModalId" value="">
+                    <div class="form-group">
+                      <label>Group Name *</label>
+                      <input type="text" id="groupModalName" required placeholder="e.g. VIP Customers, Wholesale Buyers">
+                    </div>
+                    <div class="form-group">
+                      <label>Description (optional)</label>
+                      <input type="text" id="groupModalDesc" placeholder="Short description of this group">
+                    </div>
+                    <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+                      <button type="button" onclick="hideGroupModal()" class="btn-secondary" style="flex:1;">Cancel</button>
+                      <button type="submit" style="flex:1;background:linear-gradient(135deg,#6366f1,#8b5cf6);">Save Group</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Group Members Side Panel -->
+              <div id="groupMembersPanel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(520px,100vw);background:#0f172a;border-left:1px solid rgba(99,102,241,0.3);z-index:1001;overflow-y:auto;box-shadow:-8px 0 40px rgba(0,0,0,0.5);transition:transform 0.3s;">
+                <div style="padding:1.5rem;border-bottom:1px solid rgba(99,102,241,0.15);display:flex;justify-content:space-between;align-items:center;background:rgba(99,102,241,0.06);position:sticky;top:0;z-index:2;">
+                  <div>
+                    <div style="font-weight:700;color:#c7d2fe;" id="groupPanelTitle">Group Members</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);" id="groupPanelSubtitle"></div>
+                  </div>
+                  <button onclick="closeGroupMembersPanel()" style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);width:auto;padding:0.4rem 0.8rem;font-size:0.85rem;margin:0;">✕ Close</button>
+                </div>
+
+                <div style="padding:1.25rem;">
+                  <!-- Add members area -->
+                  <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:1rem;margin-bottom:1.25rem;">
+                    <div style="font-size:0.85rem;font-weight:600;color:#6ee7b7;margin-bottom:0.75rem;">➕ Add Contacts to Group</div>
+                    <div style="display:flex;gap:0.5rem;">
+                      <select id="addMemberSelect" style="flex:1;font-size:0.82rem;" multiple size="4">
+                        <option disabled>Loading...</option>
+                      </select>
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem;">Hold Ctrl/Cmd to select multiple contacts</div>
+                    <button onclick="submitAddMembers()" style="background:linear-gradient(135deg,#10b981,#059669);margin-top:0.75rem;font-size:0.85rem;">Add Selected</button>
+                  </div>
+
+                  <!-- Current members -->
+                  <div style="font-size:0.85rem;font-weight:600;color:#a5b4fc;margin-bottom:0.75rem;">Current Members</div>
+                  <div id="groupMembersList">
+                    <div style="color:var(--text-muted);text-align:center;padding:2rem;font-size:0.85rem;">Loading members...</div>
+                  </div>
+                </div>
+              </div>
+              <!-- Overlay for panel -->
+              <div id="groupPanelOverlay" onclick="closeGroupMembersPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;"></div>
+            </div>
+
+            <!-- TAB: Personalized Message Templates -->
+            <div id="templatesTab" class="tab-content ${state.currentTab === 'templatesTab' ? 'active' : ''}">
+              <div class="card-title">Personalized Message Templates</div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 id="templateFormHeading" style="margin-bottom:1rem;color:#a5b4fc;">Create New Template</h4>
+                  <form id="templateForm" onsubmit="saveTemplate(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    
+                    <div class="form-group">
+                      <label>Template Title</label>
+                      <input type="text" id="templateTitle" required placeholder="e.g. Welcome Message, Payment Due">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Category</label>
+                      <select id="templateCategory">
+                        <option value="General">General</option>
+                        <option value="Marketing">Marketing & Offers</option>
+                        <option value="Transactional">Transactional</option>
+                        <option value="Reminders">Reminders & Dues</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Message Content</label>
+                      <textarea id="templateContent" rows="5" required placeholder="Type your template text here... Use placeholders below for customer personalization."></textarea>
+                      
+                      <div style="margin-top:0.5rem;">
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:</div>
+                        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                          <button type="button" onclick="insertPlaceholder('{Name}', 'templateContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Name}</button>
+                          <button type="button" onclick="insertPlaceholder('{ShopName}', 'templateContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {ShopName}</button>
+                          <button type="button" onclick="insertPlaceholder('{Mobile}', 'templateContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Mobile}</button>
+                          <button type="button" onclick="insertPlaceholder('{Email}', 'templateContent')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Email}</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;gap:0.5rem;">
+                      <button type="submit" id="saveTemplateBtn" style="flex:1;">Save Template</button>
+                      <button type="button" onclick="resetTemplateForm()" class="btn-secondary" style="width:auto;display:none;" id="cancelEditTemplateBtn">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Saved Templates List</h4>
+                  <div style="display:flex;flex-direction:column;gap:1rem;">
+                    ${renderTemplateCards()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Auto Responders (Welcome & Away Messages) -->
+            <div id="autoRespondersTab" class="tab-content ${state.currentTab === 'autoRespondersTab' ? 'active' : ''}">
+              <div class="card-title">Automated Responders (Welcome & Away Messages)</div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;">
+                
+                <!-- Welcome Message Card -->
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h4 style="color:#a5b4fc;margin:0;">👋 Welcome Message</h4>
+                    <span style="background:${(state.automationSettings?.welcome_active === 1) ? '#10b981' : '#94a3b8'};color:#fff;padding:0.25rem 0.6rem;border-radius:12px;font-size:0.75rem;font-weight:700;">
+                      ${(state.automationSettings?.welcome_active === 1) ? 'ENABLED' : 'DISABLED'}
+                    </span>
+                  </div>
+                  
+                  <form id="welcomeMessageForm" onsubmit="saveWelcomeSettings(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:600;color:#f8fafc;">
+                        <input type="checkbox" id="welcomeActiveCheck" ${state.automationSettings?.welcome_active === 1 ? 'checked' : ''} style="width:auto;">
+                        Enable Automatic Welcome Message
+                      </label>
+                      <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;">Sends an automated greeting message when a customer sends a message on WhatsApp.</div>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Welcome Message Text</label>
+                      <textarea id="welcomeText" rows="5" required placeholder="Type welcome greeting message...">${state.automationSettings?.welcome_text || 'Hello {Name}! Welcome to {ShopName}. How can we assist you today?'}</textarea>
+                      
+                      <div style="margin-top:0.5rem;">
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:</div>
+                        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                          <button type="button" onclick="insertPlaceholder('{Name}', 'welcomeText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Name}</button>
+                          <button type="button" onclick="insertPlaceholder('{ShopName}', 'welcomeText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {ShopName}</button>
+                          <button type="button" onclick="insertPlaceholder('{Mobile}', 'welcomeText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Mobile}</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Attach Greeting Media (Optional Image/PDF)</label>
+                      <input type="file" id="welcomeMediaFile" accept="image/*,application/pdf">
+                      ${state.automationSettings?.welcome_media_path ? `<div style="font-size:0.75rem;color:#10b981;margin-top:0.25rem;">✅ Media attached: <a href="/${state.automationSettings.welcome_media_path}" target="_blank" style="color:#60a5fa;text-decoration:none;">View Media</a></div>` : ''}
+                    </div>
+
+                    <button type="submit" style="background:var(--accent-color);">Save Welcome Settings</button>
+                  </form>
+                </div>
+
+                <!-- Away Message Card -->
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h4 style="color:#a5b4fc;margin:0;">🌙 Away Message</h4>
+                    <span style="background:${(state.automationSettings?.away_active === 1) ? '#10b981' : '#94a3b8'};color:#fff;padding:0.25rem 0.6rem;border-radius:12px;font-size:0.75rem;font-weight:700;">
+                      ${(state.automationSettings?.away_active === 1) ? 'ENABLED' : 'DISABLED'}
+                    </span>
+                  </div>
+
+                  <form id="awayMessageForm" onsubmit="saveAwaySettings(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:600;color:#f8fafc;">
+                        <input type="checkbox" id="awayActiveCheck" ${state.automationSettings?.away_active === 1 ? 'checked' : ''} style="width:auto;">
+                        Enable Automatic Away Reply
+                      </label>
+                      <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;">Automatically sends an away response when you are unavailable or outside business hours.</div>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Away Message Text</label>
+                          <button type="button" onclick="insertPlaceholder('{Name}', 'awayText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {Name}</button>
+                          <button type="button" onclick="insertPlaceholder('{ShopName}', 'awayText')" style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+ {ShopName}</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Away Trigger Mode</label>
+                      <select id="awayScheduleType" onchange="toggleAwayScheduleMode(this.value)">
+                        <option value="always" ${state.automationSettings?.away_schedule_type === 'always' ? 'selected' : ''}>Always Send (24/7)</option>
+                        <option value="schedule" ${state.automationSettings?.away_schedule_type === 'schedule' ? 'selected' : ''}>Outside Business Hours (Custom Schedule)</option>
+                      </select>
+                    </div>
+
+                    <div id="awayTimeInputs" style="display:${state.automationSettings?.away_schedule_type === 'schedule' ? 'flex' : 'none'};gap:1rem;">
+                      <div class="form-group" style="flex:1;">
+                        <label>Business Start Time (Available from)</label>
+                        <input type="time" id="awayStartTime" value="${state.automationSettings?.away_start_time || '09:00'}">
+                      </div>
+                      <div class="form-group" style="flex:1;">
+                        <label>Business End Time (Available until)</label>
+                        <input type="time" id="awayEndTime" value="${state.automationSettings?.away_end_time || '19:00'}">
+                      </div>
+                    </div>
+
+                    <button type="submit" style="background:var(--accent-color);">Save Away Settings</button>
+                  </form>
+                </div>
+
+                 <!-- Anti-Ban: Daily Campaign Limit -->
+                 <div class="card" style="border:1px solid rgba(251,146,60,0.35);margin-top:0.5rem;">
+                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                     <div>
+                       <div style="font-size:1rem;font-weight:700;">🛡️ Anti-Ban: Daily Message Limit</div>
+                       <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem;">Max campaign messages sent per day. Campaign auto-pauses &amp; resumes next day. Recommended: 200 for aged numbers, 50 for new numbers.</div>
+                     </div>
+                     <span style="background:rgba(251,146,60,0.2);color:#fb923c;padding:0.25rem 0.6rem;border-radius:12px;font-size:0.78rem;font-weight:700;white-space:nowrap;">
+                       ${state.automationSettings?.daily_campaign_limit || 200}/day
+                     </span>
+                   </div>
+                   <form onsubmit="saveDailyLimit(event)" style="display:flex;gap:1rem;align-items:flex-end;">
+                     <div class="form-group" style="flex:1;margin:0;">
+                       <label>Daily Sending Limit (messages/day)</label>
+                       <input type="number" id="dailyCampaignLimit" min="10" max="1000" step="10"
+                         value="${state.automationSettings?.daily_campaign_limit || 200}"
+                         placeholder="200" style="width:100%;">
+                     </div>
+                     <button type="submit" style="background:rgba(251,146,60,0.85);border:none;color:#fff;padding:0.65rem 1.25rem;border-radius:8px;cursor:pointer;white-space:nowrap;font-weight:600;">Save Limit</button>
+                   </form>
+                   <div style="margin-top:0.75rem;padding:0.6rem 0.85rem;background:rgba(251,146,60,0.07);border-radius:8px;font-size:0.77rem;color:var(--text-muted);">
+                     <b>💡 Warm-up Guide:</b> New SIM → 30-50/day &nbsp;|&nbsp; 1-week old → 80-100/day &nbsp;|&nbsp; 1-month+ → 200-300/day
+                   </div>
+                 </div>
+
+              </div>
+            </div>
+
+
+            <!-- TAB: Campaigns Dashboard -->
+            <div id="campaignsTab" class="tab-content ${state.currentTab === 'campaignsTab' ? 'active' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                <div class="card-title" style="margin:0;">Broadcast Campaigns & Analytics</div>
+                <button onclick="openCreateCampaignModal()" style="background:var(--accent-color);padding:0.5rem 1rem;">+ New Campaign</button>
+              </div>
+              
+              <div style="display:flex;flex-direction:column;gap:1.5rem;" id="campaignsListContainer">
+                ${renderCampaignsList()}
+              </div>
+            </div>
+
+            <!-- TAB: Campaign Analytics -->
+            <div id="campaignAnalyticsTab" class="tab-content ${state.currentTab === 'campaignAnalyticsTab' ? 'active' : ''}">
+              <div class="card-title">📈 Campaign Analytics</div>
+              <div id="campaignAnalyticsContent" style="display:flex;flex-direction:column;gap:1.5rem;">
+                ${renderCampaignAnalytics()}
+              </div>
+            </div>
+
+            <!-- TAB: Campaign Scheduler -->
+            <div id="campaignSchedulerTab" class="tab-content ${state.currentTab === 'campaignSchedulerTab' ? 'active' : ''}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                <div class="card-title" style="margin:0;">📅 Campaign Scheduler</div>
+                <button onclick="openCreateCampaignModal()" style="background:var(--accent-color);">+ Schedule New Campaign</button>
+              </div>
+              <div id="schedulerCampaignsList" style="display:flex;flex-direction:column;gap:1rem;">
+                ${renderScheduledCampaigns()}
+              </div>
+            </div>
+
+            <!-- TAB: Messages Report -->
+            <div id="reportsTab" class="tab-content ${state.currentTab === 'reportsTab' ? 'active' : ''}">
+              <div class="card-title">📊 Messages Report</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;">
+                <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#34d399;" id="reportTotalSent">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">✅ Messages Sent</div>
+                </div>
+                <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#818cf8;" id="reportTotalCampaigns">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📢 Total Campaigns</div>
+                </div>
+                <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#f87171;" id="reportTotalFailed">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">❌ Failed Deliveries</div>
+                </div>
+                <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+                  <div style="font-size:2rem;font-weight:800;color:#fbbf24;" id="reportSuccessRate">—</div>
+                  <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📈 Success Rate</div>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;padding:1.25rem;">
+                <div style="font-size:0.9rem;font-weight:600;margin-bottom:1rem;">Recent Campaign Performance</div>
+                <div id="reportsTableContainer">${renderReportsTable()}</div>
+              </div>
+            </div>
+
+            <!-- TAB: Customer Reminders -->
+            <div id="remindersTab" class="tab-content ${state.currentTab === 'remindersTab' ? 'active' : ''}">
+              <div class="card-title">Scheduled Customer Reminders</div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Schedule New Reminder</h4>
+                  <form id="reminderForm" onsubmit="saveReminder(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    
+                    <div class="form-group">
+                      <label>Choose Customer / Contact</label>
+                      <select id="reminderContactSelect" onchange="handleReminderContactSelect(this.value)">
+                        <option value="">-- Select Contact (Optional) --</option>
+                        ${(state.contacts || []).map(c => `
+                          <option value="${c.id}" data-phone="${c.mobile}" data-name="${c.name}" data-shop="${c.shop_name || ''}">
+                            ${c.name} (${c.mobile}) ${c.shop_name ? `- ${c.shop_name}` : ''}
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Recipient Mobile Number</label>
+                      <input type="text" id="reminderPhone" required placeholder="e.g. 919876543210">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Recipient Name</label>
+                      <input type="text" id="reminderName" placeholder="e.g. John Doe">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Shop Name</label>
+                      <input type="text" id="reminderShop" placeholder="e.g. Star Enterprises">
+                    </div>
+
+                    <div class="form-group">
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+                        <label style="margin-bottom:0;">Message Template</label>
+                        <select onchange="applyTemplateToField(this.value, 'reminderTemplate')" style="max-width:200px; padding:0.25rem 0.5rem; font-size:0.75rem; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#a5b4fc; border-radius:6px; cursor:pointer;">
+                          <option value="">-- Apply Saved Template --</option>
+                          ${(state.templates || []).map(t => `<option value="${t.id}">${t.title}</option>`).join('')}
+                        </select>
+                      </div>
+                      <textarea id="reminderTemplate" rows="4" required placeholder="Type your reminder message here...&#10;&#10;Use {Name} or [Name] for customer name&#10;Use {ShopName} or [ShopName] for shop name&#10;Use {Mobile} or [Mobile] for phone number"></textarea>
+                      <div style="font-size:0.72rem;color:#a5b4fc;margin-top:0.4rem;">💡 Placeholders: <b>{Name}</b> or <b>[Name]</b> &nbsp;|&nbsp; <b>{ShopName}</b> or <b>[ShopName]</b> &nbsp;|&nbsp; <b>{Mobile}</b> or <b>[Mobile]</b></div>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Scheduling Method</label>
+                      <select id="reminderScheduleType" onchange="handleReminderScheduleTypeChange(this.value)" required>
+                        <option value="days">Send After X Days</option>
+                        <option value="datetime">Custom Date & Time</option>
+                        <option value="selected_days">Select Day(s) of Week & Time</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group" id="reminderDaysGroup">
+                      <label>Send After (Days)</label>
+                      <input type="number" id="reminderDays" min="0" placeholder="e.g. 3" value="3">
+                    </div>
+
+                    <div class="form-group" id="reminderDatetimeGroup" style="display:none;">
+                      <label>Custom Date & Time</label>
+                      <input type="datetime-local" id="reminderDatetime">
+                    </div>
+
+                    <div class="form-group" id="reminderSelectedDaysGroup" style="display:none;flex-direction:column;gap:0.75rem;">
+                      <label>Select Days of Week & Time</label>
+                      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:0.25rem;">
+                        <button type="button" onclick="toggleAllReminderDays(true)" style="padding:0.2rem 0.5rem;font-size:0.75rem;background:rgba(255,255,255,0.1);border:1px solid var(--glass-border);color:var(--text-main);border-radius:4px;cursor:pointer;">Select All Days</button>
+                        <button type="button" onclick="toggleAllReminderDays(false)" style="padding:0.2rem 0.5rem;font-size:0.75rem;background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);color:var(--text-muted);border-radius:4px;cursor:pointer;">Clear All</button>
+                      </div>
+                      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:0.5rem;font-size:0.85rem;">
+                        <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;"><input type="checkbox" class="reminder-day-cb" value="mon" checked> Mon</label>
+                        <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;"><input type="checkbox" class="reminder-day-cb" value="tue" checked> Tue</label>
+                        <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;"><input type="checkbox" class="reminder-day-cb" value="wed" checked> Wed</label>
+                        <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;"><input type="checkbox" class="reminder-day-cb" value="thu" checked> Thu</label>
+                        <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;"><input type="checkbox" class="reminder-day-cb" value="fri" checked> Fri</label>
+                        <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;"><input type="checkbox" class="reminder-day-cb" value="sat"> Sat</label>
+                        <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer;"><input type="checkbox" class="reminder-day-cb" value="sun"> Sun</label>
+                      </div>
+
+                      <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+                        <div style="flex:1;">
+                          <label>Send Time *</label>
+                          <input type="time" id="reminderSendTime" value="09:00" style="padding:0.4rem;font-size:0.9rem;">
+                        </div>
+                        <div style="flex:1;">
+                          <label>Recurrence</label>
+                          <select id="reminderRepeatOption" style="padding:0.4rem;font-size:0.85rem;">
+                            <option value="once">Send Once on Next Day</option>
+                            <option value="weekly">Repeat Every Week</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button type="submit">Schedule Message</button>
+                  </form>
+                </div>
+
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h4 style="margin:0;color:#a5b4fc;">Upcoming & Historical Reminders</h4>
+                    <button onclick="fetchReminders()" class="btn-secondary" style="width:auto;padding:0.3rem 0.8rem;font-size:0.8rem;display:flex;align-items:center;gap:0.4rem;" title="Refresh status">
+                      🔄 Refresh
+                    </button>
+                  </div>
+                  <div class="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Recipient</th>
+                          <th>Scheduled For</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${renderReminderRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Birthday Wishes Automation -->
+            <div id="birthdayTab" class="tab-content ${state.currentTab === 'birthdayTab' ? 'active' : ''}">
+              <div class="card-title">🎂 Birthday Wishes Automation</div>
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Schedule Birthday Wish</h4>
+                  <form id="birthdayForm" onsubmit="saveBirthdayWish(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label>Choose Contact (Optional)</label>
+                      <select id="birthdayContactSelect" onchange="handleBirthdayContactSelect(this.value)">
+                        <option value="">-- Select Contact --</option>
+                        ${(state.contacts || []).map(c => `
+                          <option value="${c.id}" data-phone="${c.mobile}" data-name="${c.name}" data-bday="${c.birthday || ''}">
+                            ${c.name} (${c.mobile})
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Recipient Mobile Number *</label>
+                      <input type="text" id="birthdayPhone" required placeholder="e.g. 919876543210">
+                    </div>
+                    <div class="form-group">
+                      <label>Recipient Name *</label>
+                      <input type="text" id="birthdayName" required placeholder="e.g. John Doe">
+                    </div>
+                    <div class="form-group" style="display:flex;gap:1rem;">
+                      <div style="flex:1;">
+                        <label>Birthday Date *</label>
+                        <input type="date" id="birthdayDate" required>
+                      </div>
+                      <div style="flex:1;">
+                        <label>Send Time</label>
+                        <input type="time" id="birthdaySendTime" value="09:00">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Wish Message Text *</label>
+                      <textarea id="birthdayMessage" rows="4" required placeholder="Type birthday wish message...">🎉 Happy Birthday {Name}! Wishing you a wonderful year ahead filled with health, happiness, and success! 🎁</textarea>
+                    </div>
+                    <div class="form-group">
+                      <label>Greeting Media Attachment (Optional)</label>
+                      <input type="file" id="birthdayMedia" accept="image/*,video/*">
+                    </div>
+                    <button type="submit" style="background:var(--accent-color);">🎂 Save Birthday Wish</button>
+                  </form>
+                </div>
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Configured Birthday Wishes</h4>
+                  <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Recipient</th>
+                          <th>Birthday</th>
+                          <th>Send Time</th>
+                          <th>Status</th>
+                          <th>Last Sent</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="birthdayWishesTableBody">
+                        ${renderBirthdayWishRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Payment Reminder -->
+            <div id="paymentReminderTab" class="tab-content ${state.currentTab === 'paymentReminderTab' ? 'active' : ''}">
+              <div class="card-title">💳 Payment Reminder Automation</div>
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Schedule Payment Reminder</h4>
+                  <form id="paymentReminderForm" onsubmit="savePaymentReminder(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label>Choose Contact (Optional)</label>
+                      <select id="payContactSelect" onchange="handlePayContactSelect(this.value)">
+                        <option value="">-- Select Contact --</option>
+                        ${(state.contacts || []).map(c => `
+                          <option value="${c.id}" data-phone="${c.mobile}" data-name="${c.name}">
+                            ${c.name} (${c.mobile})
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Recipient Mobile Number *</label>
+                      <input type="text" id="payPhone" required placeholder="e.g. 919876543210">
+                    </div>
+                    <div class="form-group">
+                      <label>Recipient Name *</label>
+                      <input type="text" id="payName" required placeholder="e.g. John Doe">
+                    </div>
+                    <div class="form-group" style="display:flex;gap:1rem;">
+                      <div style="flex:1;">
+                        <label>Amount (₹) *</label>
+                        <input type="number" step="0.01" id="payAmount" required placeholder="1500.00">
+                      </div>
+                      <div style="flex:1;">
+                        <label>Payment Due Date *</label>
+                        <input type="date" id="payDueDate" required>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Remind Days Before Due Date</label>
+                      <select id="payRemindOffset">
+                        <option value="0">On Due Date</option>
+                        <option value="1" selected>1 Day Before</option>
+                        <option value="2">2 Days Before</option>
+                        <option value="3">3 Days Before</option>
+                        <option value="7">7 Days Before</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Reminder Message Text *</label>
+                      <textarea id="payMessage" rows="4" required placeholder="Type payment reminder message...">Hello {Name}, this is a gentle reminder that your payment of ₹{Amount} is due on {DueDate}. Please clear your dues at your earliest. Thank you!</textarea>
+                    </div>
+                    <div class="form-group">
+                      <label>Attach Invoice / QR / Bill (Optional)</label>
+                      <input type="file" id="payMedia" accept="image/*,application/pdf">
+                    </div>
+                    <button type="submit" style="background:var(--accent-color);">💳 Create Payment Reminder</button>
+                  </form>
+                </div>
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Payment Reminders List</h4>
+                  <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Recipient</th>
+                          <th>Amount</th>
+                          <th>Due Date</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="paymentRemindersTableBody">
+                        ${renderPaymentReminderRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Order Notifications -->
+            <div id="orderNotifyTab" class="tab-content ${state.currentTab === 'orderNotifyTab' ? 'active' : ''}">
+              <div class="card-title">📦 Order Notifications Automation</div>
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Send / Trigger Order Notification</h4>
+                  <form id="orderNotifyForm" onsubmit="saveOrderNotification(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label>Choose Contact (Optional)</label>
+                      <select id="orderContactSelect" onchange="handleOrderContactSelect(this.value)">
+                        <option value="">-- Select Contact (Optional) --</option>
+                        ${(state.contacts || []).map(c => `
+                          <option value="${c.id}" data-phone="${c.mobile}" data-name="${c.name}">
+                            ${c.name} (${c.mobile}) ${c.shop_name ? '- ' + c.shop_name : ''}
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Customer Mobile Number *</label>
+                      <input type="text" id="orderPhone" required placeholder="e.g. 919876543210">
+                    </div>
+                    <div class="form-group">
+                      <label>Customer Name *</label>
+                      <input type="text" id="orderCustomerName" required placeholder="e.g. John Doe">
+                    </div>
+                    <div class="form-group" style="display:flex;gap:1rem;">
+                      <div style="flex:1;">
+                        <label>Order ID / No. *</label>
+                        <input type="text" id="orderIdNum" required placeholder="ORD-9982">
+                      </div>
+                      <div style="flex:1;">
+                        <label>Order Status *</label>
+                        <select id="orderStatusSelect" onchange="updateOrderNotificationTemplate(this.value)">
+                          <option value="placed" selected>🛍️ Order Placed</option>
+                          <option value="confirmed">✅ Confirmed</option>
+                          <option value="shipped">🚚 Shipped</option>
+                          <option value="out_for_delivery">📦 Out for Delivery</option>
+                          <option value="delivered">🎉 Delivered</option>
+                          <option value="cancelled">❌ Cancelled</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-group" style="display:flex;gap:1rem;">
+                      <div style="flex:1.5;">
+                        <label>Product / Item Name</label>
+                        <input type="text" id="orderProductName" placeholder="e.g. Premium Cotton Shirt">
+                      </div>
+                      <div style="flex:1;">
+                        <label>Order Amount (₹)</label>
+                        <input type="number" step="0.01" id="orderAmount" placeholder="999.00">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Notification Message Text *</label>
+                      <textarea id="orderMessageText" rows="4" required placeholder="Type notification message...">Hello {Name}, your order #{OrderId} for {Product} of ₹{Amount} has been placed successfully! Thank you for shopping with us.</textarea>
+                    </div>
+                    <div class="form-group">
+                      <label>Send Timing</label>
+                      <select id="orderSendTiming">
+                        <option value="immediate">⚡ Send Immediately via WhatsApp</option>
+                        <option value="scheduled">⏱️ Queue for Batch Sending</option>
+                      </select>
+                    </div>
+                    <button type="submit" style="background:var(--accent-color);">📦 Send Order Notification</button>
+                  </form>
+                </div>
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Order Notification History</h4>
+                  <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Recipient</th>
+                          <th>Order Status</th>
+                          <th>Delivery Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="orderNotificationsTableBody">
+                        ${renderOrderNotificationRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Follow-up Automation -->
+            <div id="followUpTab" class="tab-content ${state.currentTab === 'followUpTab' ? 'active' : ''}">
+              <div class="card-title">🔔 Follow-up Sequence Automation</div>
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Create Follow-up Rule</h4>
+                  <form id="followUpForm" onsubmit="saveFollowUpAutomation(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label>Follow-up Sequence Name *</label>
+                      <input type="text" id="followUpName" required placeholder="e.g. 3-Day Lead Check-in" value="3-Day Lead Check-in">
+                    </div>
+                    <div class="form-group" style="display:flex;gap:1rem;">
+                      <div style="flex:1;">
+                        <label>Trigger Event *</label>
+                        <select id="followUpTrigger" onchange="updateFollowUpTemplate(this.value)">
+                          <option value="no_response" selected>⏳ No Reply in N Days</option>
+                          <option value="after_purchase">🛍️ After Purchase</option>
+                          <option value="after_reminder">⏰ After Reminder Sent</option>
+                        </select>
+                      </div>
+                      <div style="flex:1;">
+                        <label>Delay (Days) *</label>
+                        <input type="number" id="followUpDelay" min="1" max="30" value="3" required>
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Follow-up Message Text *</label>
+                      <textarea id="followUpMessage" rows="4" required placeholder="Type follow-up message...">Hi {Name}, just checking in to see if you had any questions regarding your inquiry! Let us know how we can assist you.</textarea>
+                    </div>
+                    <button type="submit" style="background:var(--accent-color);">🔔 Create Follow-up Automation</button>
+                  </form>
+                </div>
+                <div>
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Active Follow-up Automation Rules</h4>
+                  <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Sequence Name</th>
+                          <th>Trigger</th>
+                          <th>Delay</th>
+                          <th>Messages Sent</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="followUpTableBody">
+                        ${renderFollowUpRows()}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <h4 style="margin-top:2rem;margin-bottom:1rem;color:#a5b4fc;">Follow-up Message Delivery Log</h4>
+                  <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;" class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Recipient</th>
+                          <th>Sequence Name</th>
+                          <th>Sent Time</th>
+                          <th>Delivery Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="followUpLogTableBody">
+                        ${renderFollowUpLogRows()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Digital Catalog Builder -->
+            <div id="catalogTab" class="tab-content ${state.currentTab === 'catalogTab' ? 'active' : ''}">
+              <div class="card-title">Digital Catalog Configurator</div>
+
+              <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:2rem;align-items:start;">
+                
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);padding:1.5rem;border-radius:12px;">
+                  <h4 style="margin-bottom:1rem;color:#a5b4fc;">Catalog Settings</h4>
+                  <form id="catalogSettingsForm" onsubmit="saveCatalogSettings(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    
+                    <div class="form-group">
+                      <label>Brand / Shop Name</label>
+                      <input type="text" id="catalogBrandName" required placeholder="e.g. Star Garments" value="${state.catalog ? state.catalog.brand_name : ''}">
+                    </div>
+
+                    <div class="form-group">
+                      <label>Description / Intro</label>
+                      <textarea id="catalogDescription" rows="3" placeholder="Welcome to our store...">${state.catalog ? state.catalog.description || '' : ''}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                      <label>Upload Brand Logo Image</label>
+                      <input type="file" id="catalogLogo" accept="image/*">
+                      ${state.catalog?.logo_path ? `<div style="font-size:0.75rem;color:#10b981;margin-top:0.25rem;">✅ Logo uploaded: <a href="/${state.catalog.logo_path}" target="_blank" style="color:#60a5fa;text-decoration:none;">View Logo</a></div>` : ''}
+                    </div>
+
+                    <div class="form-group">
+                      <label>Upload Catalog Greeting Audio (Intro)</label>
+                      <input type="file" id="catalogAudio" accept="audio/*">
+                      ${state.catalog?.catalog_audio_path ? `<div style="font-size:0.75rem;color:#10b981;margin-top:0.25rem;">✅ Greeting audio uploaded: <a href="/${state.catalog.catalog_audio_path}" target="_blank" style="color:#60a5fa;text-decoration:none;">Listen</a></div>` : ''}
+                    </div>
+
+                    <button type="submit">Update Catalog Profile</button>
+                  </form>
+
+                  ${state.catalog ? `
+                    <div style="margin-top:1.5rem;background:rgba(99, 102, 241, 0.08);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.75rem;">
+                      <div style="font-size:0.75rem;color:#a5b4fc;font-weight:600;margin-bottom:0.25rem;">🌐 Public Catalog Link</div>
+                      <a href="/catalog/view/${state.user.id}" target="_blank" style="font-size:0.8rem;color:#60a5fa;word-break:break-all;text-decoration:underline;display:block;margin-bottom:0.5rem;">
+                        ` + window.location.origin + `/catalog/view/` + state.user.id + `
+                      </a>
+                      <button type="button" onclick="window.open('/catalog/view/${state.user.id}', '_blank')" style="font-size:0.75rem;padding:0.3rem 0.6rem;margin:0;width:100%;">🔗 Open Catalog Page</button>
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                    <h4 style="color:#a5b4fc;margin:0;">Listed Services & Products</h4>
+                    <button type="button" onclick="showAddServiceModal()" style="font-size:0.8rem;padding:0.4rem 0.8rem;margin:0;background:var(--accent-color);">➕ Add Item</button>
+                  </div>
+
+                  <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:1rem;">
+                    ${renderServiceCards()}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- TAB: User Profile & Account Settings -->
+            <div id="profileTab" class="tab-content ${state.currentTab === 'profileTab' ? 'active' : ''}">
+              <div class="card-title">My Profile & Mobile Settings</div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                <!-- User Profile Form -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem;">
+                  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #fff; font-weight: 700;">
+                      ${(state.user?.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style="font-size: 1.2rem; font-weight: 700; color: #fff;">${state.user?.name || 'User'}</div>
+                      <div style="font-size: 0.85rem; color: #86efac; font-weight: 600;">👤 USER ACCOUNT</div>
+                      <div style="font-size: 0.8rem; color: var(--text-muted);">${state.user?.email || ''}</div>
+                    </div>
+                  </div>
+
+                  <form onsubmit="handleProfileUpdate(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div id="profileAlert" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:500;"></div>
+                    <div class="form-group">
+                      <label>Full Name</label>
+                      <input type="text" id="profileEditName" required value="${state.user?.name || ''}" placeholder="Full Name">
+                    </div>
+                    <div class="form-group">
+                      <label>WhatsApp / Mobile Number</label>
+                      <div style="display: flex; gap: 0.5rem; align-items: stretch; position: relative;">
+                        <!-- Searchable Country Code Dropdown Trigger & Popover -->
+                        <div style="position: relative; flex-shrink: 0;" id="profileCountryPickerWrapper">
+                          <button type="button" id="profileCountryPickerBtn" onclick="toggleProfileCountryDropdown(event)" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; height: 100%; min-height: 42px; width: 145px; padding: 0.55rem 0.65rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.86rem; cursor: pointer; white-space: nowrap;" aria-haspopup="listbox" aria-expanded="false" title="Search and choose country">
+                            <span id="profileCountryPickerLabel" style="display: flex; align-items: center; gap: 0.35rem; overflow: hidden; text-overflow: ellipsis;">${parsePhoneNumber(state.user?.phone).label}</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size: 0.68rem; opacity: 0.7;"></i>
+                          </button>
+
+                          <!-- Searchable Popover Menu -->
+                          <div id="profileCountryPickerDropdown" style="display: none; position: absolute; top: calc(100% + 5px); left: 0; width: 280px; max-height: 320px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.7); z-index: 10000; flex-direction: column; overflow: hidden;" role="listbox">
+                            <div style="padding: 0.55rem; border-bottom: 1px solid #1e293b; background: #0f172a; position: sticky; top: 0; z-index: 2;">
+                              <div style="position: relative; display: flex; align-items: center;">
+                                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 0.65rem; color: #94a3b8; font-size: 0.78rem; pointer-events: none;"></i>
+                                <input type="text" id="profileCountrySearchInput" placeholder="Type country or code..." oninput="filterProfileCountryList(this.value)" autocomplete="off" style="width: 100%; padding: 0.45rem 0.5rem 0.45rem 1.85rem; font-size: 0.82rem; background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 6px; outline: none;">
+                              </div>
+                            </div>
+                            <div id="profileCountryListContainer" style="overflow-y: auto; max-height: 250px; padding: 0.25rem 0;">
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Textable / Editable Country Code Input -->
+                        <input type="text" id="profileCountryCode" value="${parsePhoneNumber(state.user?.phone).code}" required placeholder="+91" oninput="formatProfileCountryCodeInput(this)" style="width: 76px; min-width: 66px; text-align: center; font-weight: 600; padding: 0.55rem 0.4rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.88rem;" title="Country dial code (editable)">
+
+                        <!-- Mobile Number Input -->
+                        <input type="tel" id="profileEditPhone" value="${parsePhoneNumber(state.user?.phone).localPhone}" placeholder="Mobile number" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="15" minlength="6" style="flex: 1; min-width: 130px;">
+                      </div>
+                      <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">
+                        📱 Used for receiving payment confirmation alerts & automated notifications.
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Email Address</label>
+                      <input type="email" value="${state.user?.email || ''}" disabled style="background: rgba(255,255,255,0.05); color: #94a3b8;">
+                    </div>
+                    <button type="submit" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 0.75rem; border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer;">
+                      💾 Save Profile Details
+                    </button>
+                  </form>
+                </div>
+
+                <!-- Password Change Form -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem;">
+                  <div style="font-size: 1.05rem; font-weight: 600; color: #a5b4fc; margin-bottom: 1rem;">🔐 Change Password</div>
+                  <form onsubmit="handleChangePassword(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div id="changePwAlert" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:500;"></div>
+                    <div class="form-group">
+                      <label>Current Password</label>
+                      <input type="password" id="currentPassword" required placeholder="Enter current password">
+                    </div>
+                    <div class="form-group">
+                      <label>New Password</label>
+                      <input type="password" id="newPassword" required minlength="6" placeholder="At least 6 characters">
+                    </div>
+                    <div class="form-group">
+                      <label>Confirm New Password</label>
+                      <input type="password" id="confirmNewPassword" required minlength="6" placeholder="Re-type new password">
+                    </div>
+                    <button type="submit" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); padding: 0.75rem; border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer;">
+                      🔒 Update Password
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
+
+    // ADMIN-ONLY DASHBOARD (WhatsApp Studio tabs removed)
+    function renderAdminDashboard() {
+      // If currentTab is still user tab, default to user manager
+      if (state.currentTab === 'whatsappTab') {
+        state.currentTab = 'adminUsersTab';
+      }
+
+      return `
+        <header>
+          <div class="brand">
+            <h1>WhatsApp Messaging — Admin Portal</h1>
+            <p>User Accounts Directory, Deposit approvals, and Bank Details settings</p>
+          </div>
+          <div class="user-profile" style="display:flex; align-items:center; gap:0.6rem;">
+            <div class="user-details" onclick="switchTab('adminProfileTab')" style="cursor:pointer; text-align:right;" title="Click to view & edit admin profile">
+              <div class="user-name">${state.user.name} 👤</div>
+              <div class="user-role" style="color: var(--warning-color); font-size:0.75rem;">${state.user.phone ? `📱 +${state.user.phone.replace(/^\+/, '')}` : 'SYSTEM ADMIN'}</div>
+            </div>
+            <button onclick="switchTab('adminProfileTab')" style="padding:0.35rem 0.7rem; font-size:0.8rem; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#fff; border-radius:8px; cursor:pointer;">👤 Profile</button>
+            <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
+          </div>
+        </header>
+
+        <div class="admin-layout">
+          <div class="card">
+            <div class="tabs-nav">
+              <button class="tab-btn ${state.currentTab === 'adminUsersTab' ? 'active' : ''}" onclick="switchTab('adminUsersTab')">Manage Users</button>
+              <button class="tab-btn ${state.currentTab === 'adminBroadcastTab' ? 'active' : ''}" onclick="switchTab('adminBroadcastTab')" style="color:${state.currentTab === 'adminBroadcastTab' ? '#fff' : '#38bdf8'};">📢 Send Message</button>
+              <button class="tab-btn ${state.currentTab === 'adminOrdersTab' ? 'active' : ''}" onclick="switchTab('adminOrdersTab')">Confirm Deposits</button>
+              <button class="tab-btn ${state.currentTab === 'adminExpiryReportTab' ? 'active' : ''}" onclick="switchTab('adminExpiryReportTab')">Expiry Report</button>
+              <button class="tab-btn ${state.currentTab === 'adminBanksTab' ? 'active' : ''}" onclick="switchTab('adminBanksTab')">Manage Banks</button>
+              <button class="tab-btn ${state.currentTab === 'adminDbSyncTab' ? 'active' : ''}" onclick="switchTab('adminDbSyncTab')" style="color:${state.currentTab === 'adminDbSyncTab' ? '#fff' : '#c084fc'};">💾 Database Sync</button>
+              <button class="tab-btn ${state.currentTab === 'adminSettingsTab' ? 'active' : ''}" onclick="switchTab('adminSettingsTab')">SaaS Settings</button>
+              <button class="tab-btn ${state.currentTab === 'adminWhatsappTab' ? 'active' : ''}" onclick="switchTab('adminWhatsappTab')" style="color:${state.currentTab === 'adminWhatsappTab' ? '#fff' : '#86efac'};">📱 Admin WhatsApp</button>
+              <button class="tab-btn ${state.currentTab === 'adminProfileTab' ? 'active' : ''}" onclick="switchTab('adminProfileTab')">👤 Admin Profile</button>
+            </div>
+
+            <!-- TAB: Database Sync, Backup & Restore -->
+            <div id="adminDbSyncTab" class="tab-content ${state.currentTab === 'adminDbSyncTab' ? 'active' : ''}">
+              <div class="card-title">💾 Database Sync, Backup & Restore</div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; align-items: stretch; margin-top: 0.5rem;">
+                
+                <!-- Card 1: Download Live Database Backup -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(192,132,252,0.35); border-radius: 14px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; gap: 1.25rem;">
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                      <div style="width:38px;height:38px;background:rgba(192,132,252,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;">📥</div>
+                      <div>
+                        <div style="font-size:1.05rem;font-weight:700;color:#c084fc;">Download Live Database (.db)</div>
+                        <div style="font-size:0.78rem;color:var(--text-muted);">Export live SQLite database to your PC</div>
+                      </div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                      Download the latest real-time database file containing all users, plans, orders, catalog data, and settings. You can copy this file to your local workspace as <code>database.db</code> to test with 100% exact live data.
+                    </p>
+                  </div>
+                  <button type="button" onclick="handleAdminDownloadDb()" id="adminDownloadDbBtn" style="background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; padding: 0.8rem; font-size: 0.95rem; font-weight: 700; border-radius: 8px; border: none; cursor: pointer;">
+                    📥 Download Database (.db)
+                  </button>
+                </div>
+
+                <!-- Card 2: Upload & Restore Database -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(236,72,153,0.35); border-radius: 14px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; gap: 1.25rem;">
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                      <div style="width:38px;height:38px;background:rgba(236,72,153,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;">📤</div>
+                      <div>
+                        <div style="font-size:1.05rem;font-weight:700;color:#f472b6;">Upload & Restore Database (.db)</div>
+                        <div style="font-size:0.78rem;color:var(--text-muted);">Upload local database to live site</div>
+                      </div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                      Select your local <code>database.db</code> file from your computer and upload it to immediately replace and update the live database with your local data.
+                    </p>
+                  </div>
+
+                  <div id="adminRestoreDbAlert" style="display:none; padding:0.75rem; border-radius:8px; font-size:0.85rem; text-align:center;"></div>
+
+                  <form onsubmit="handleAdminRestoreDb(event)" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div class="form-group">
+                      <label style="color: #f472b6;">Select SQLite Database File (.db) *</label>
+                      <input type="file" id="adminRestoreDbInput" accept=".db,.sqlite,.sqlite3" required style="padding: 0.5rem; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                    </div>
+                    <button type="submit" id="adminRestoreDbBtn" style="background: linear-gradient(135deg, #db2777, #f43f5e); color: #fff; padding: 0.8rem; font-size: 0.95rem; font-weight: 700; border-radius: 8px; border: none; cursor: pointer;">
+                      📤 Upload & Restore Database
+                    </button>
+                  </form>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- TAB: Admin Broadcast & Direct Messaging -->
+            <div id="adminBroadcastTab" class="tab-content ${state.currentTab === 'adminBroadcastTab' ? 'active' : ''}">
+              <div class="card-title">📢 Admin WhatsApp Broadcasts & Direct Messages</div>
+
+              <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+                <!-- SECTION 1: Broadcast to Active Users -->
+                <div style="background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.04)); padding: 1.5rem; border-radius: 14px; border: 1px solid rgba(16,185,129,0.3);">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+                    <div style="width:36px;height:36px;background:rgba(16,185,129,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">✅</div>
+                    <div>
+                      <div style="font-size:1rem;font-weight:700;color:#34d399;">Broadcast to Active Users</div>
+                      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.1rem;">Sends to all users who currently have an active subscription plan</div>
+                    </div>
+                  </div>
+                  <div id="adminActiveBroadcastAlert" style="display:none; padding:0.75rem; border-radius:8px; font-size:0.85rem; text-align:center; margin-bottom:0.75rem;"></div>
+                  <form onsubmit="handleAdminActiveBroadcast(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label style="color:#34d399;">Message for Active Subscribers *</label>
+                      <textarea id="adminActiveBroadcastMsg" rows="5" required placeholder="Type your message to active users here... e.g. renewal offer, feature update, exclusive news..."></textarea>
+                    </div>
+                    <button type="submit" id="adminActiveBroadcastBtn" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;padding:0.8rem;font-size:0.95rem;font-weight:700;">
+                      ✅ Send to Active Users
+                    </button>
+                  </form>
+                </div>
+
+                <!-- SECTION 2: Broadcast to Inactive Users -->
+                <div style="background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(217,119,6,0.04)); padding: 1.5rem; border-radius: 14px; border: 1px solid rgba(245,158,11,0.3);">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+                    <div style="width:36px;height:36px;background:rgba(245,158,11,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">💤</div>
+                    <div>
+                      <div style="font-size:1rem;font-weight:700;color:#fbbf24;">Broadcast to Inactive Users</div>
+                      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.1rem;">Sends to all users who have no active plan or whose plan has expired — great for re-engagement</div>
+                    </div>
+                  </div>
+                  <div id="adminInactiveBroadcastAlert" style="display:none; padding:0.75rem; border-radius:8px; font-size:0.85rem; text-align:center; margin-bottom:0.75rem;"></div>
+                  <form onsubmit="handleAdminInactiveBroadcast(event)" style="display:flex;flex-direction:column;gap:1rem;">
+                    <div class="form-group">
+                      <label style="color:#fbbf24;">Re-engagement Message for Inactive Users *</label>
+                      <textarea id="adminInactiveBroadcastMsg" rows="5" required placeholder="Type your re-engagement message here... e.g. Come back! We miss you. Here's a special offer just for you..."></textarea>
+                    </div>
+                    <button type="submit" id="adminInactiveBroadcastBtn" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;padding:0.8rem;font-size:0.95rem;font-weight:700;">
+                      💤 Send to Inactive Users
+                    </button>
+                  </form>
+                </div>
+
+                <!-- SECTION 3: Direct Message / Broadcast All / Custom -->
+                <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 14px; border: 1px solid var(--glass-border);">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+                    <div style="width:36px;height:36px;background:rgba(59,130,246,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">📨</div>
+                    <div>
+                      <div style="font-size:1rem;font-weight:700;color:#60a5fa;">Direct Message / Custom Broadcast</div>
+                      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.1rem;">Send to all users, a specific user, or a custom phone number</div>
+                    </div>
+                  </div>
+                  <div id="adminSendMsgAlert" style="display: none; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; text-align: center; margin-bottom: 0.75rem;"></div>
+                  <form onsubmit="handleAdminSendMessage(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="form-group">
+                      <label>Select Target Recipient</label>
+                      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; padding: 0.5rem 0;">
+                        <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; text-transform: none; color: #fff;">
+                          <input type="radio" name="adminMsgTarget" value="all" checked onchange="onAdminMsgTargetChange(this.value)" style="width: auto;">
+                          <span>📢 Broadcast to All Users</span>
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; text-transform: none; color: #fff;">
+                          <input type="radio" name="adminMsgTarget" value="user" onchange="onAdminMsgTargetChange(this.value)" style="width: auto;">
+                          <span>👤 Specific Registered User</span>
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; text-transform: none; color: #fff;">
+                          <input type="radio" name="adminMsgTarget" value="custom" onchange="onAdminMsgTargetChange(this.value)" style="width: auto;">
+                          <span>📱 Custom Phone Number</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- Select User Dropdown -->
+                    <div class="form-group" id="adminUserSelectGroup" style="display: none;">
+                      <label>Select Target User *</label>
+                      <select id="adminTargetUserSelect">
+                        <option value="">-- Choose User from Database --</option>
+                        ${(state.adminUsers || []).filter(u => u.role !== 'admin').map(u => `<option value="${u.id}">${u.name} (${u.phone || 'No phone'}) - ${u.email}</option>`).join('')}
+                      </select>
+                    </div>
+
+                    <!-- Custom Phone Input -->
+                    <div class="form-group" id="adminCustomPhoneGroup" style="display: none;">
+                      <label>Enter Mobile Number with Country Code *</label>
+                      <input type="text" id="adminTargetPhoneInput" placeholder="e.g. 917597550701">
+                      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Enter 10 or 12 digit mobile number (e.g. 917597550701 or 7597550701)</div>
+                    </div>
+
+                    <!-- Message Content -->
+                    <div class="form-group">
+                      <label>Message Content *</label>
+                      <textarea id="adminMsgContentInput" rows="5" required placeholder="Type announcement, notice, or direct message to be sent via Admin WhatsApp..."></textarea>
+                    </div>
+
+                    <button type="submit" id="adminSendMsgSubmitBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white; padding: 0.8rem; font-size: 0.95rem; font-weight: 600;">
+                      🚀 Send WhatsApp Message
+                    </button>
+                  </form>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- TAB: Admin Users Directory -->
+            <div id="adminUsersTab" class="tab-content ${state.currentTab === 'adminUsersTab' ? 'active' : ''}">
+              <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                
+                <!-- Summary Stats Block -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                  <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 1rem; border-radius: 12px; backdrop-filter: blur(8px);">
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">Total User Wallet Balance</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #a5b4fc; margin-top: 0.25rem;" id="totalUserWalletBalance">₹0.00</div>
+                  </div>
+                  <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 1rem; border-radius: 12px; backdrop-filter: blur(8px);">
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">Active Subscriptions</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-color); margin-top: 0.25rem;" id="totalActiveSubscriptions">0</div>
+                  </div>
+                  <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 1rem; border-radius: 12px; backdrop-filter: blur(8px);">
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">Expiring Within 5 Days</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning-color); margin-top: 0.25rem;" id="totalExpiringSoon">0</div>
+                  </div>
+                </div>
+
+                <!-- Subgrid: Create User manually + Wallet Credits -->
+                <div class="admin-forms-grid">
+                  
+                  <!-- Create User Form -->
+                  <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="font-weight: 600; font-size: 0.95rem;">Create New User Account</div>
+                    <form id="adminCreateUserForm" onsubmit="handleAdminCreateUser(event)" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                      <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="adminNewName" required placeholder="Name">
+                      </div>
+                      <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="adminNewEmail" required placeholder="Email">
+                      </div>
+                      <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" id="adminNewPhone" placeholder="Phone with country code">
+                      </div>
+                      <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="adminNewPassword" required placeholder="Min 6 chars">
+                      </div>
+                      <div class="form-group" style="grid-column: span 2;">
+                        <label>Role</label>
+                        <select id="adminNewRole">
+                          <option value="user">User / Subscriber</option>
+                        </select>
+                      </div>
+                      <button type="submit" style="grid-column: span 2; margin-top: 0.25rem;">Create Account</button>
+                    </form>
+                  </div>
+
+                  <!-- Direct Credit Form -->
+                  <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="font-weight: 600; font-size: 0.95rem;">Credit User Wallet</div>
+                    <form id="adminCreditForm" onsubmit="handleAdminCredit(event)" style="display: flex; flex-direction: column; gap: 0.5rem; justify-content: flex-end; height: 100%;">
+                      <div class="form-group">
+                        <label>User ID</label>
+                        <input type="number" id="creditUserId" required placeholder="Database User ID">
+                      </div>
+                      <div class="form-group">
+                        <label>Amount (₹)</label>
+                        <input type="number" id="creditAmount" required placeholder="Amount">
+                      </div>
+                      <div class="form-group">
+                        <label>Reason / Note</label>
+                        <input type="text" id="creditReason" placeholder="Recharge bonus">
+                      </div>
+                      <button type="submit" style="margin-top: 0.25rem;">Apply Credit</button>
+                    </form>
+                  </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="table-container">
+                  <table id="adminUsersTable">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email / Phone</th>
+                        <th>Role</th>
+                        <th>Wallet</th>
+                        <th>Plan Status</th>
+                        <th>Expiry</th>
+                        <th>Connection Access</th>
+                        <th>API Token</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Loading users list...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Deposit Approvals -->
+            <div id="adminOrdersTab" class="tab-content ${state.currentTab === 'adminOrdersTab' ? 'active' : ''}">
+              <div class="card-title">Deposit Request History & Approvals</div>
+              
+              <!-- Filters Section -->
+              <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 140px;">
+                  <label style="font-size: 0.75rem;">From Date</label>
+                  <input type="date" id="adminOrderFromDate" onchange="filterAdminOrders()" style="padding: 0.4rem; font-size: 0.85rem;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 140px;">
+                  <label style="font-size: 0.75rem;">To Date</label>
+                  <input type="date" id="adminOrderToDate" onchange="filterAdminOrders()" style="padding: 0.4rem; font-size: 0.85rem;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1.5; min-width: 180px;">
+                  <label style="font-size: 0.75rem;">User Filter</label>
+                  <select id="adminOrderUserFilter" onchange="filterAdminOrders()" style="padding: 0.4rem; font-size: 0.85rem;">
+                    <option value="">All Users</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1.2; min-width: 150px;">
+                  <label style="font-size: 0.75rem;">Status Filter</label>
+                  <select id="adminOrderStatusFilter" onchange="filterAdminOrders()" style="padding: 0.4rem; font-size: 0.85rem;">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+                <button onclick="clearAdminOrderFilters()" style="padding: 0.45rem 1rem; font-size: 0.85rem; background: rgba(255,255,255,0.08); border: 1px solid var(--glass-border); color: #fff; cursor: pointer; border-radius: 8px;">
+                  Reset
+                </button>
+              </div>
+
+              <div class="table-container">
+                <table id="adminPendingOrdersTable">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>User</th>
+                      <th>Deposit Amount</th>
+                      <th>UTR Reference</th>
+                      <th>Transferred From</th>
+                      <th>Screenshot</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Loading deposit requests...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- TAB: Manage Banks (Add, Show, Edit) -->
+            <div id="adminBanksTab" class="tab-content ${state.currentTab === 'adminBanksTab' ? 'active' : ''}">
+              <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                <div class="admin-banks-grid">
+                  
+                  <!-- Create / Edit Bank Account -->
+                  <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <div style="font-weight: 600; margin-bottom: 0.75rem;" id="bankFormTitle">Add New Bank Account</div>
+                    <form id="adminBankForm" onsubmit="handleBankSubmit(event)" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                      <div class="form-group">
+                        <label>Bank Name</label>
+                        <input type="text" id="bankNameInput" required placeholder="e.g. State Bank of India">
+                      </div>
+                      <div class="form-group">
+                        <label>Account Number</label>
+                        <input type="text" id="bankAccountInput" required placeholder="Account Number">
+                      </div>
+                      <div class="form-group">
+                        <label>IFSC Code</label>
+                        <input type="text" id="bankIfscInput" required placeholder="e.g. SBIN0001234">
+                      </div>
+                      <div class="form-group">
+                        <label>Account Holder Name</label>
+                        <input type="text" id="bankHolderInput" required placeholder="Account Holder Name">
+                      </div>
+                      <div class="form-group">
+                        <label>Account Status</label>
+                        <select id="bankStatusInput">
+                          <option value="1">Active (Visible to users)</option>
+                          <option value="0">Inactive (Hidden)</option>
+                        </select>
+                      </div>
+                      <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                        <button type="submit" id="bankSubmitBtn" style="flex:1;">Create Bank Account</button>
+                        <button type="button" id="bankCancelBtn" onclick="resetBankForm()" class="btn-secondary" style="display:none; flex:1;">Cancel Edit</button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <!-- Active Banks Overview -->
+                  <div>
+                    <div style="font-weight: 600; margin-bottom: 0.75rem;">Configured Bank Details</div>
+                    <div class="table-container">
+                      <table id="adminBanksTable">
+                        <thead>
+                          <tr>
+                            <th>Bank Name</th>
+                            <th>Details</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Loading banks...</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: SaaS Settings (Price Config) -->
+            <div id="adminSettingsTab" class="tab-content ${state.currentTab === 'adminSettingsTab' ? 'active' : ''}">
+              <div class="card-title">SaaS Pricing Config</div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem;">
+                <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                  <div style="font-weight: 600; font-size: 1rem; color: #a5b4fc; margin-bottom: 1rem;">🏷️ Plan Prices</div>
+                  <form id="adminPriceForm" onsubmit="handlePriceSubmit(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="form-group">
+                      <label>Monthly Plan Price (₹ / 28 Days)</label>
+                      <input type="number" id="settingPlanPrice28" required min="1" placeholder="e.g. 199">
+                    </div>
+                    <div class="form-group">
+                      <label>Quarter Plan Price (₹ / 90 Days)</label>
+                      <input type="number" id="settingPlanPriceQuarter" required min="1" placeholder="e.g. 549">
+                    </div>
+                    <div class="form-group">
+                      <label>Half-Year Plan Price (₹ / 180 Days)</label>
+                      <input type="number" id="settingPlanPriceHalfYear" required min="1" placeholder="e.g. 999">
+                    </div>
+                    <div class="form-group">
+                      <label>Year Plan Price (₹ / 365 Days)</label>
+                      <input type="number" id="settingPlanPriceYear" required min="1" placeholder="e.g. 1899">
+                    </div>
+                    <button type="submit">Update Plan Prices</button>
+                  </form>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                  <div style="font-weight: 600; font-size: 1rem; color: #a5b4fc; margin-bottom: 1rem;">💳 Payment Gateway (Razorpay)</div>
+                  <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5;">
+                    Insert your Razorpay API Credentials below to enable instant online plan activation for subscribers. Get keys from <a href="https://dashboard.razorpay.com/app/keys" target="_blank" style="color: #60a5fa; text-decoration: underline;">Razorpay Dashboard</a>.
+                  </p>
+                  <form id="adminRazorpayForm" onsubmit="handleRazorpaySettingsSubmit(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="form-group">
+                      <label>Razorpay Key ID</label>
+                      <input type="text" id="settingRazorpayKeyId" placeholder="e.g. rzp_live_xxxxxxxx / rzp_test_xxxxxxxx" style="font-family: monospace;">
+                    </div>
+                    <div class="form-group">
+                      <label>Razorpay Key Secret</label>
+                      <input type="password" id="settingRazorpayKeySecret" placeholder="Enter Key Secret" style="font-family: monospace;">
+                    </div>
+                    <button type="submit" style="background: linear-gradient(135deg, #0284c7, #0369a1); border: none;">Save Razorpay Credentials</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB: Admin WhatsApp Session -->
+            <div id="adminWhatsappTab" class="tab-content ${state.currentTab === 'adminWhatsappTab' ? 'active' : ''}">
+              <div class="card-title" style="margin-bottom:1.5rem;">📱 Admin WhatsApp Connection</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+
+                <!-- QR / Status Card -->
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:16px;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                    <div style="font-size:1rem;font-weight:600;color:#a5b4fc;">🔗 Admin Connection Status</div>
+                    ${isMobileBrowser() 
+                      ? `<span class="wa-mobile-badge">📱 Mobile Auto-Detected (8-Digit Code)</span>` 
+                      : `<span class="wa-mobile-badge" style="background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.3); color:#c4b5fd;">💻 Desktop Auto-Detected (QR Scan)</span>`
+                    }
+                  </div>
+                  <div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;background:rgba(0,0,0,0.2);border-radius:10px;border:1px solid var(--glass-border);">
+                    <div id="adminWaStatusDot" style="width:13px;height:13px;border-radius:50%;background:#ef4444;flex-shrink:0;transition:background 0.4s;box-shadow:0 0 8px rgba(239,68,68,0.6);"></div>
+                    <span id="adminWaStatusLabel" style="font-weight:600;font-size:0.95rem;color:#f8fafc;">Checking...</span>
+                  </div>
+
+                  <!-- Auto-selected UI for Mobile (Pairing Code) -->
+                  <div id="adminWaPairingContainer" style="${isMobileBrowser() ? 'display:flex;' : 'display:none;'}flex-direction:column;gap:0.75rem;padding:1rem;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(99,102,241,0.25);">
+                    <div style="font-size:0.85rem;color:#7dd3fc;font-weight:600;">⚡ Link Admin Phone via 8-Digit Code</div>
+                    <div style="display:flex;gap:0.5rem;align-items:center;">
+                      <input type="tel" id="adminWaPairingInput" placeholder="e.g. 919876543210" value="${state.user?.phone ? (state.user.phone.length === 10 ? '91' + state.user.phone : state.user.phone) : ''}" style="flex:1;font-family:monospace;padding:0.55rem 0.75rem;border-radius:8px;background:rgba(15,23,42,0.8);border:1px solid var(--glass-border);color:#fff;">
+                      <button onclick="adminWaRequestCode()" style="padding:0.55rem 1rem;background:linear-gradient(135deg,#0284c7,#0369a1);border:none;border-radius:8px;color:#fff;font-weight:600;font-size:0.85rem;cursor:pointer;white-space:nowrap;">Get Code</button>
+                    </div>
+                    <div id="adminWaCodeBox" style="display:none;flex-direction:column;align-items:center;gap:0.6rem;padding:0.75rem;background:rgba(0,0,0,0.3);border-radius:10px;border:1px dashed rgba(56,189,248,0.4);">
+                      <div style="font-size:0.75rem;color:var(--text-muted);">Enter this 8-digit code in WhatsApp > Linked Devices:</div>
+                      <div id="adminWaCodeText" class="wa-code-display" style="font-size:1.5rem;letter-spacing:4px;padding:0.6rem 1rem;">---- ----</div>
+                      <button onclick="copyPairingCode('adminWaCodeText')" style="background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.35);color:#38bdf8;padding:0.4rem 0.8rem;border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:600;">📋 Copy 8-Digit Code</button>
+                    </div>
+                  </div>
+
+                  <!-- Auto-selected UI for Desktop (QR Code) -->
+                  <div id="adminWaQrContainer" style="${!isMobileBrowser() ? 'display:none;' : 'display:none;'}flex-direction:column;align-items:center;gap:0.75rem;padding:1rem;background:rgba(255,255,255,0.03);border-radius:12px;border:1px solid rgba(99,102,241,0.25);">
+                    <div style="font-size:0.85rem;color:#fde68a;text-align:center;">📲 Scan with your admin WhatsApp number</div>
+                    <img id="adminWaQrImage" src="" alt="QR Code" style="width:200px;height:200px;border-radius:12px;background:#fff;padding:8px;box-shadow:0 4px 24px rgba(0,0,0,0.4);">
+                    <div style="font-size:0.75rem;color:var(--text-muted);text-align:center;">QR auto-refreshes every 30s. Scan quickly!</div>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                    <button id="adminWaConnectBtn" onclick="adminWaConnect()" style="flex:1;padding:0.65rem 1rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:#fff;border-radius:10px;cursor:pointer;font-weight:600;font-size:0.9rem;transition:opacity 0.2s;">⚡ Connect WhatsApp</button>
+                    <button onclick="adminWaDisconnect()" style="padding:0.65rem 1rem;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#fca5a5;border-radius:10px;cursor:pointer;font-weight:600;font-size:0.9rem;transition:opacity 0.2s;">✕ Disconnect</button>
+                  </div>
+                  <p style="font-size:0.78rem;color:var(--text-muted);margin:0;line-height:1.5;">
+                    Connect the admin WhatsApp number once — it stays active until the server restarts or you disconnect it. All deposit notifications will be sent through this session.
+                  </p>
+                </div>
+
+                <!-- Notification Settings Card -->
+                <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:16px;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+                  <div style="font-size:1rem;font-weight:600;color:#a5b4fc;">⚙️ Notification Settings</div>
+                  <p style="font-size:0.85rem;color:var(--text-muted);margin:0;line-height:1.5;">
+                    The admin WhatsApp number that receives new deposit alerts. Include country code, no <code style="color:#a5b4fc;background:rgba(165,180,252,0.1);padding:1px 4px;border-radius:4px;">+</code>
+                    (e.g. <code style="color:#a5b4fc;background:rgba(165,180,252,0.1);padding:1px 4px;border-radius:4px;">919876543210</code>).
+                  </p>
+                  <div class="form-group">
+                    <label>Admin Notification Number</label>
+                    <input type="tel" id="adminWaNumber" placeholder="e.g. 919876543210" style="font-family:monospace;font-size:1rem;letter-spacing:1px;">
+                  </div>
+                  <button onclick="saveAdminWaNumber()" style="padding:0.65rem 1.25rem;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;color:#fff;border-radius:10px;cursor:pointer;font-weight:600;font-size:0.9rem;">💾 Save Number</button>
+
+                  <!-- Flow info box -->
+                  <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:1rem;">
+                    <div style="font-size:0.85rem;font-weight:600;color:#a5b4fc;margin-bottom:0.6rem;">📢 Notification Flow</div>
+                    <ul style="font-size:0.8rem;color:var(--text-muted);margin:0;padding-left:1.2rem;line-height:2;">
+                      <li>User submits deposit → <strong style="color:#fde68a;">Admin gets alert</strong> on this number</li>
+                      <li>User submits deposit → <strong style="color:#86efac;">User gets "wait 5 min" message</strong></li>
+                      <li>Admin confirms order → <strong style="color:#86efac;">User gets ✅ confirmed message</strong></li>
+                      <li>Admin rejects order → <strong style="color:#fca5a5;">User gets ❌ rejected message</strong></li>
+                    </ul>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- TAB: Expiry Report -->
+            <div id="adminExpiryReportTab" class="tab-content ${state.currentTab === 'adminExpiryReportTab' ? 'active' : ''}">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <div class="card-title" style="margin-bottom: 0;">User Subscription Expiry Report</div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <label style="font-size: 0.85rem; color: var(--text-muted);">Filter Status:</label>
+                  <select id="adminExpiryStatusFilter" onchange="renderExpiryReport()" style="padding: 0.4rem 0.85rem; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 8px;">
+                    <option value="all">All Users</option>
+                    <option value="active">Active Plans</option>
+                    <option value="deactive">Deactivated / Expired</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="table-container">
+                <table class="user-table" id="adminExpiryReportTable">
+                  <thead>
+                    <tr>
+                      <th>User ID</th>
+                      <th>User Name</th>
+                      <th>Email / Phone</th>
+                      <th>Plan Expiration Date</th>
+                      <th>Time Remaining</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading expiry details...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- TAB: Import Contacts -->
+            <div id="importContactsTab" class="tab-content ${state.currentTab === 'importContactsTab' ? 'active' : ''}">
+              <div class="card-title">📊 Import Contacts (Excel / CSV)</div>
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;max-width:520px;">
+                <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">Upload an Excel or CSV file to bulk-import contacts. The file must have columns: <strong>Name</strong>, <strong>Mobile</strong>, and optionally <strong>ShopName</strong>.</p>
+                <div style="margin-bottom: 1.25rem;">
+                  <button onclick="downloadSampleContactsExcel()" style="background:linear-gradient(135deg, #0284c7, #0369a1); font-size:0.85rem;">📄 Download Sample Excel Template</button>
+                </div>
+                <div class="form-group">
+                  <label>Choose File (.xlsx, .xls)</label>
+                  <input type="file" id="importContactsFileAlt" accept=".xlsx,.xls" onchange="importContactsExcel(event)">
+                </div>
+                <button onclick="document.getElementById('importContactsFileAlt').click()" style="background:var(--accent-color);margin-top:0.5rem;">📥 Import Now</button>
+                <div id="importContactsResultAlt" style="margin-top:1rem;font-size:0.85rem;"></div>
+              </div>
+            </div>
+
+            <!-- TAB: Export Contacts -->
+            <div id="exportContactsTab" class="tab-content ${state.currentTab === 'exportContactsTab' ? 'active' : ''}">
+              <div class="card-title">📤 Export Contacts</div>
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;padding:1.5rem;max-width:520px;">
+                <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1.5rem;">Download all your contacts as an Excel spreadsheet. The file will include Name, Mobile, Shop Name and other stored details.</p>
+                <button onclick="exportContactsExcel()" style="background:linear-gradient(135deg,#10b981,#059669);">📥 Download Contacts as Excel</button>
+              </div>
+            </div>
+
+            <!-- TAB: Admin Profile -->
+            <div id="adminProfileTab" class="tab-content ${state.currentTab === 'adminProfileTab' ? 'active' : ''}">
+              <div class="card-title">Admin Profile & Mobile Settings</div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                <!-- Admin Profile Form -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem;">
+                  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #fff; font-weight: 700;">
+                      ${(state.user.name || 'A').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style="font-size: 1.2rem; font-weight: 700; color: #fff;">${state.user.name}</div>
+                      <div style="font-size: 0.85rem; color: var(--warning-color); font-weight: 600;">👑 SYSTEM ADMINISTRATOR</div>
+                      <div style="font-size: 0.8rem; color: var(--text-muted);">${state.user.email}</div>
+                    </div>
+                  </div>
+
+                  <form onsubmit="handleProfileUpdate(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div id="profileAlert" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:500;"></div>
+                    <div class="form-group">
+                      <label>Admin Name</label>
+                      <input type="text" id="profileEditName" required value="${state.user.name || ''}" placeholder="Admin Full Name">
+                    </div>
+                    <div class="form-group">
+                      <label>Admin WhatsApp / Mobile Number</label>
+                      <div style="display: flex; gap: 0.5rem; align-items: stretch; position: relative;">
+                        <!-- Searchable Country Code Dropdown Trigger & Popover -->
+                        <div style="position: relative; flex-shrink: 0;" id="profileCountryPickerWrapper">
+                          <button type="button" id="profileCountryPickerBtn" onclick="toggleProfileCountryDropdown(event)" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; height: 100%; min-height: 42px; width: 145px; padding: 0.55rem 0.65rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.86rem; cursor: pointer; white-space: nowrap;" aria-haspopup="listbox" aria-expanded="false" title="Search and choose country">
+                            <span id="profileCountryPickerLabel" style="display: flex; align-items: center; gap: 0.35rem; overflow: hidden; text-overflow: ellipsis;">${parsePhoneNumber(state.user?.phone).label}</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size: 0.68rem; opacity: 0.7;"></i>
+                          </button>
+
+                          <!-- Searchable Popover Menu -->
+                          <div id="profileCountryPickerDropdown" style="display: none; position: absolute; top: calc(100% + 5px); left: 0; width: 280px; max-height: 320px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.7); z-index: 10000; flex-direction: column; overflow: hidden;" role="listbox">
+                            <div style="padding: 0.55rem; border-bottom: 1px solid #1e293b; background: #0f172a; position: sticky; top: 0; z-index: 2;">
+                              <div style="position: relative; display: flex; align-items: center;">
+                                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 0.65rem; color: #94a3b8; font-size: 0.78rem; pointer-events: none;"></i>
+                                <input type="text" id="profileCountrySearchInput" placeholder="Type country or code..." oninput="filterProfileCountryList(this.value)" autocomplete="off" style="width: 100%; padding: 0.45rem 0.5rem 0.45rem 1.85rem; font-size: 0.82rem; background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 6px; outline: none;">
+                              </div>
+                            </div>
+                            <div id="profileCountryListContainer" style="overflow-y: auto; max-height: 250px; padding: 0.25rem 0;">
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Textable / Editable Country Code Input -->
+                        <input type="text" id="profileCountryCode" value="${parsePhoneNumber(state.user?.phone).code}" required placeholder="+91" oninput="formatProfileCountryCodeInput(this)" style="width: 76px; min-width: 66px; text-align: center; font-weight: 600; padding: 0.55rem 0.4rem; background: rgba(15, 23, 42, 0.85); color: var(--text-color, #f8fafc); border: 1px solid var(--glass-border); border-radius: 8px; font-size: 0.88rem;" title="Country dial code (editable)">
+
+                        <!-- Mobile Number Input -->
+                        <input type="tel" id="profileEditPhone" value="${parsePhoneNumber(state.user?.phone).localPhone}" placeholder="Mobile number" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="15" minlength="6" style="flex: 1; min-width: 130px;">
+                      </div>
+                      <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">
+                        📱 Deposit notifications will be sent to this WhatsApp mobile number.
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Role</label>
+                      <input type="text" value="System Administrator" disabled style="background: rgba(255,255,255,0.05); color: #94a3b8;">
+                    </div>
+                    <button type="submit" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 0.75rem; border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer;">
+                      💾 Save Admin Profile
+                    </button>
+                  </form>
+                </div>
+
+                <!-- Admin Password Change Form -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem;">
+                  <div style="font-size: 1.05rem; font-weight: 600; color: #a5b4fc; margin-bottom: 1rem;">🔐 Change Password</div>
+                  <form onsubmit="handleChangePassword(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div id="changePwAlert" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:500;"></div>
+                    <div class="form-group">
+                      <label>Current Password</label>
+                      <input type="password" id="currentPassword" required placeholder="Enter current password">
+                    </div>
+                    <div class="form-group">
+                      <label>New Password</label>
+                      <input type="password" id="newPassword" required minlength="6" placeholder="At least 6 characters">
+                    </div>
+                    <div class="form-group">
+                      <label>Confirm New Password</label>
+                      <input type="password" id="confirmNewPassword" required minlength="6" placeholder="Re-type new password">
+                    </div>
+                    <button type="submit" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); padding: 0.75rem; border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer;">
+                      🔒 Update Password
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
+
+    // AUTH ACTIONS
+    function switchAuthTab(tab) {
+      state.publicPage = 'auth';
+      state.authTab = tab;
+      renderApp();
+    }
+
+    function bindAuthEvents() {
+      const loginTabBtn = document.getElementById('loginTabBtn');
+      const registerTabBtn = document.getElementById('registerTabBtn');
+      const forgotTabBtn = document.getElementById('forgotTabBtn');
+
+      if (loginTabBtn) loginTabBtn.onclick = () => switchAuthTab('login');
+      if (registerTabBtn) registerTabBtn.onclick = () => switchAuthTab('register');
+      if (forgotTabBtn) forgotTabBtn.onclick = () => { state.forgotResetStep = 'email'; switchAuthTab('forgot'); };
+      if (state.authTab === 'register') loadCaptcha();
+    }
+
+    async function loadCaptcha() {
+      try {
+        const res = await fetch('/auth/captcha');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load captcha');
+        state.captchaId = data.id;
+        state.captchaQuestion = data.question;
+        state.captchaImage = data.image || '';
+        const visualBox = document.getElementById('captchaVisualBox');
+        const questionEl = document.getElementById('captchaQuestion');
+        const imageEl = document.getElementById('captchaImage');
+        const answerEl = document.getElementById('regCaptchaAnswer');
+        if (visualBox && data.image) {
+          visualBox.innerHTML = `<img id="captchaImage" src="${data.image}" alt="Signup security code" style="width: 100%; max-width: 260px; height: 92px; object-fit: contain; display: block;">`;
+        }
+        if (questionEl) questionEl.textContent = data.question;
+        if (imageEl && data.image) imageEl.src = data.image;
+        if (answerEl) answerEl.value = '';
+      } catch (err) {
+        state.captchaId = null;
+        state.captchaQuestion = 'Captcha unavailable';
+        state.captchaImage = '';
+        const visualBox = document.getElementById('captchaVisualBox');
+        const questionEl = document.getElementById('captchaQuestion');
+        if (visualBox) {
+          visualBox.innerHTML = `<div id="captchaQuestion" style="color: var(--accent-color); font-weight: 700;">${state.captchaQuestion}</div>`;
+        }
+        if (questionEl) questionEl.textContent = state.captchaQuestion;
+      }
+    }
+
+    function setAuthLoading(isLoading, message = 'Processing, please wait...', submitBtn = null, inputEls = []) {
+      const progressBar = document.getElementById('authProgressBar');
+      const loadingBox = document.getElementById('authLoadingBox');
+      const loadingMsg = document.getElementById('authLoadingMsg');
+
+      if (progressBar) progressBar.style.display = isLoading ? 'block' : 'none';
+      if (loadingBox) {
+        if (loadingMsg && message) loadingMsg.textContent = message;
+        loadingBox.style.display = isLoading ? 'flex' : 'none';
+      }
+
+      if (Array.isArray(inputEls)) {
+        inputEls.forEach(el => {
+          if (el) el.disabled = isLoading;
+        });
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = isLoading;
+        if (isLoading) {
+          submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Please wait...</span>`;
+          submitBtn.style.opacity = '0.85';
+          submitBtn.style.cursor = 'wait';
+        } else {
+          submitBtn.style.opacity = '1';
+          submitBtn.style.cursor = 'pointer';
+        }
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const emailInput = document.getElementById('loginEmail');
+      const passwordInput = document.getElementById('loginPassword');
+      const submitBtn = document.getElementById('loginSubmitBtn') || (e.target ? e.target.querySelector('button[type="submit"]') : null);
+
+      const email = emailInput ? emailInput.value.trim() : '';
+      const password = passwordInput ? passwordInput.value : '';
+
+      showAuthAlert('');
+      showAuthSuccess('');
+
+      if (!email || !password) {
+        showAuthAlert('Please enter your email or User ID and password');
+        return;
+      }
+
+      setAuthLoading(true, 'Signing in to your account, please wait...', submitBtn, [emailInput, passwordInput]);
+      if (submitBtn) {
+        submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Signing In...</span>`;
+      }
+
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Authentication failed');
+
+        state.token = data.token;
+        localStorage.setItem('token', data.token);
+
+        state.user = null;
+        state.plan = null;
+        state.plans = [];
+        state.orders = [];
+        state.transactions = [];
+        state.currentTab = 'whatsappTab';
+
+        setAuthLoading(true, 'Login verified! Loading your dashboard...', submitBtn, [emailInput, passwordInput]);
+        await fetchUserProfile();
+      } catch (err) {
+        setAuthLoading(false, '', submitBtn, [emailInput, passwordInput]);
+        showAuthAlert(err.message);
+        if (submitBtn) {
+          submitBtn.innerHTML = `<span>Sign In</span>`;
+        }
+      }
+    }
+
+    // Registration Country Dropdown Helpers
+    window.toggleCountryDropdown = function(event) {
+      if (event) event.stopPropagation();
+      const dropdown = document.getElementById('countryPickerDropdown');
+      const btn = document.getElementById('countryPickerBtn');
+      if (!dropdown) return;
+      const isVisible = dropdown.style.display === 'flex';
+      if (isVisible) {
+        dropdown.style.display = 'none';
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      } else {
+        dropdown.style.display = 'flex';
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+        const searchInput = document.getElementById('countrySearchInput');
+        if (searchInput) {
+          searchInput.value = '';
+          setTimeout(() => searchInput.focus(), 50);
+        }
+        renderCountryList('');
+      }
+    };
+
+    window.renderCountryList = function(filter = '') {
+      const container = document.getElementById('countryListContainer');
+      if (!container) return;
+      const cleanFilter = filter.trim().toLowerCase().replace(/^\+/, '');
+
+      const matches = WORLD_COUNTRIES.filter(c => {
+        if (!cleanFilter) return true;
+        const nameMatch = c.name.toLowerCase().includes(cleanFilter);
+        const codeMatch = c.code.replace('+', '').includes(cleanFilter);
+        return nameMatch || codeMatch;
+      });
+
+      let html = '';
+      if (matches.length === 0) {
+        html += `<div style="padding: 0.75rem 0.6rem; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No matching country found.</div>`;
+      } else {
+        html += matches.map(c => `
+          <div onclick="selectCountry('${c.code}', '${c.flag} ${c.name}')" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.82rem; color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s;" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='transparent'">
+            <span style="display: flex; align-items: center; gap: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span style="font-size: 1.05rem;">${c.flag}</span>
+              <span>${c.name}</span>
+            </span>
+            <span style="color: #38bdf8; font-weight: 700; font-size: 0.8rem; margin-left: 0.5rem; flex-shrink: 0;">${c.code}</span>
+          </div>
+        `).join('');
+      }
+
+      html += `
+        <div onclick="selectOtherCountry()" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0.75rem; cursor: pointer; font-size: 0.82rem; color: #a7f3d0; background: rgba(16,185,129,0.08); border-top: 1px solid #1e293b; margin-top: 0.25rem; font-weight: 600;" onmouseover="this.style.background='rgba(16,185,129,0.2)'" onmouseout="this.style.background='rgba(16,185,129,0.08)'">
+          <span style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>🌐</span>
+            <span>Other (Custom Code)</span>
+          </span>
+          <span style="font-size: 0.75rem; opacity: 0.8;">Manual</span>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    };
+
+    window.filterCountryList = function(val) {
+      renderCountryList(val);
+    };
+
+    window.selectCountry = function(code, label) {
+      const codeInput = document.getElementById('regCountryCode');
+      const labelSpan = document.getElementById('countryPickerLabel');
+      const dropdown = document.getElementById('countryPickerDropdown');
+      const btn = document.getElementById('countryPickerBtn');
+
+      if (codeInput) codeInput.value = code;
+      if (labelSpan) labelSpan.textContent = `${label} (${code})`;
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+
+      const phoneInput = document.getElementById('regPhone');
+      if (phoneInput) phoneInput.focus();
+    };
+
+    window.selectOtherCountry = function() {
+      const codeInput = document.getElementById('regCountryCode');
+      const labelSpan = document.getElementById('countryPickerLabel');
+      const dropdown = document.getElementById('countryPickerDropdown');
+      const btn = document.getElementById('countryPickerBtn');
+
+      if (codeInput) {
+        codeInput.value = '+';
+        codeInput.focus();
+      }
+      if (labelSpan) labelSpan.textContent = '🌐 Other';
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    };
+
+    window.formatCountryCodeInput = function(input) {
+      let val = input.value.trim();
+      if (!val) {
+        val = '+';
+      } else if (!val.startsWith('+')) {
+        val = '+' + val.replace(/\D/g, '');
+      } else {
+        val = '+' + val.slice(1).replace(/\D/g, '');
+      }
+      if (val.length > 5) val = val.slice(0, 5);
+      input.value = val;
+
+      const labelSpan = document.getElementById('countryPickerLabel');
+      if (labelSpan) {
+        const found = WORLD_COUNTRIES.find(c => c.code === val);
+        if (found) {
+          labelSpan.textContent = `${found.flag} ${found.name} (${found.code})`;
+        } else {
+          labelSpan.textContent = `🌐 Other (${val})`;
+        }
+      }
+    };
+
+    // User Profile Country Dropdown Helpers
+    window.toggleProfileCountryDropdown = function(event) {
+      if (event) event.stopPropagation();
+      const dropdown = document.getElementById('profileCountryPickerDropdown');
+      const btn = document.getElementById('profileCountryPickerBtn');
+      if (!dropdown) return;
+      const isVisible = dropdown.style.display === 'flex';
+      if (isVisible) {
+        dropdown.style.display = 'none';
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      } else {
+        dropdown.style.display = 'flex';
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+        const searchInput = document.getElementById('profileCountrySearchInput');
+        if (searchInput) {
+          searchInput.value = '';
+          setTimeout(() => searchInput.focus(), 50);
+        }
+        renderProfileCountryList('');
+      }
+    };
+
+    window.renderProfileCountryList = function(filter = '') {
+      const container = document.getElementById('profileCountryListContainer');
+      if (!container) return;
+      const cleanFilter = filter.trim().toLowerCase().replace(/^\+/, '');
+
+      const matches = WORLD_COUNTRIES.filter(c => {
+        if (!cleanFilter) return true;
+        const nameMatch = c.name.toLowerCase().includes(cleanFilter);
+        const codeMatch = c.code.replace('+', '').includes(cleanFilter);
+        return nameMatch || codeMatch;
+      });
+
+      let html = '';
+      if (matches.length === 0) {
+        html += `<div style="padding: 0.75rem 0.6rem; text-align: center; color: var(--text-muted); font-size: 0.8rem;">No matching country found.</div>`;
+      } else {
+        html += matches.map(c => `
+          <div onclick="selectProfileCountry('${c.code}', '${c.flag} ${c.name}')" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.82rem; color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s;" onmouseover="this.style.background='rgba(59,130,246,0.18)'" onmouseout="this.style.background='transparent'">
+            <span style="display: flex; align-items: center; gap: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span style="font-size: 1.05rem;">${c.flag}</span>
+              <span>${c.name}</span>
+            </span>
+            <span style="color: #38bdf8; font-weight: 700; font-size: 0.8rem; margin-left: 0.5rem; flex-shrink: 0;">${c.code}</span>
+          </div>
+        `).join('');
+      }
+
+      html += `
+        <div onclick="selectProfileOtherCountry()" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0.75rem; cursor: pointer; font-size: 0.82rem; color: #a7f3d0; background: rgba(16,185,129,0.08); border-top: 1px solid #1e293b; margin-top: 0.25rem; font-weight: 600;" onmouseover="this.style.background='rgba(16,185,129,0.2)'" onmouseout="this.style.background='rgba(16,185,129,0.08)'">
+          <span style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>🌐</span>
+            <span>Other (Custom Code)</span>
+          </span>
+          <span style="font-size: 0.75rem; opacity: 0.8;">Manual</span>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    };
+
+    window.filterProfileCountryList = function(val) {
+      renderProfileCountryList(val);
+    };
+
+    window.selectProfileCountry = function(code, label) {
+      const codeInput = document.getElementById('profileCountryCode');
+      const labelSpan = document.getElementById('profileCountryPickerLabel');
+      const dropdown = document.getElementById('profileCountryPickerDropdown');
+      const btn = document.getElementById('profileCountryPickerBtn');
+
+      if (codeInput) codeInput.value = code;
+      if (labelSpan) labelSpan.textContent = `${label} (${code})`;
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+
+      const phoneInput = document.getElementById('profileEditPhone');
+      if (phoneInput) phoneInput.focus();
+    };
+
+    window.selectProfileOtherCountry = function() {
+      const codeInput = document.getElementById('profileCountryCode');
+      const labelSpan = document.getElementById('profileCountryPickerLabel');
+      const dropdown = document.getElementById('profileCountryPickerDropdown');
+      const btn = document.getElementById('profileCountryPickerBtn');
+
+      if (codeInput) {
+        codeInput.value = '+';
+        codeInput.focus();
+      }
+      if (labelSpan) labelSpan.textContent = '🌐 Other';
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    };
+
+    window.formatProfileCountryCodeInput = function(input) {
+      let val = input.value.trim();
+      if (!val) {
+        val = '+';
+      } else if (!val.startsWith('+')) {
+        val = '+' + val.replace(/\D/g, '');
+      } else {
+        val = '+' + val.slice(1).replace(/\D/g, '');
+      }
+      if (val.length > 5) val = val.slice(0, 5);
+      input.value = val;
+
+      const labelSpan = document.getElementById('profileCountryPickerLabel');
+      if (labelSpan) {
+        const found = WORLD_COUNTRIES.find(c => c.code === val);
+        if (found) {
+          labelSpan.textContent = `${found.flag} ${found.name} (${found.code})`;
+        } else {
+          labelSpan.textContent = `🌐 Other (${val})`;
+        }
+      }
+    };
+
+    // Global listener to close both registration and profile country dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+      const wrapper = document.getElementById('countryPickerWrapper');
+      const dropdown = document.getElementById('countryPickerDropdown');
+      const btn = document.getElementById('countryPickerBtn');
+      if (dropdown && dropdown.style.display === 'flex' && wrapper && !wrapper.contains(e.target)) {
+        dropdown.style.display = 'none';
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
+
+      const profileWrapper = document.getElementById('profileCountryPickerWrapper');
+      const profileDropdown = document.getElementById('profileCountryPickerDropdown');
+      const profileBtn = document.getElementById('profileCountryPickerBtn');
+      if (profileDropdown && profileDropdown.style.display === 'flex' && profileWrapper && !profileWrapper.contains(e.target)) {
+        profileDropdown.style.display = 'none';
+        if (profileBtn) profileBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const nameInput = document.getElementById('regName');
+      const emailInput = document.getElementById('regEmail');
+      const countryPickerBtn = document.getElementById('countryPickerBtn');
+      const countryCodeInput = document.getElementById('regCountryCode');
+      const phoneInput = document.getElementById('regPhone');
+      const passwordInput = document.getElementById('regPassword');
+      const captchaInput = document.getElementById('regCaptchaAnswer');
+      const submitBtn = document.getElementById('registerSubmitBtn') || (e.target ? e.target.querySelector('button[type="submit"]') : null);
+
+      const name = nameInput ? nameInput.value.trim() : '';
+      const email = emailInput ? emailInput.value.trim() : '';
+      const countryCode = countryCodeInput ? countryCodeInput.value.trim() : '+91';
+      const rawPhone = phoneInput ? phoneInput.value.trim() : '';
+      const password = passwordInput ? passwordInput.value : '';
+      const captchaAnswer = captchaInput ? captchaInput.value.trim() : '';
+
+      const cleanCode = countryCode.replace(/\D/g, '');
+      const cleanPhone = rawPhone.replace(/\D/g, '');
+
+      if (!cleanCode) {
+        showAuthAlert('Please enter a valid country code (e.g. +91, +1, +44)');
+        return;
+      }
+
+      if (!cleanPhone) {
+        showAuthAlert('Please enter your mobile number');
+        return;
+      }
+
+      if (cleanCode === '91' && cleanPhone.length !== 10) {
+        showAuthAlert('Please enter a valid 10-digit mobile number for India (+91)');
+        return;
+      } else if (cleanPhone.length < 6 || cleanPhone.length > 15) {
+        showAuthAlert('Please enter a valid mobile number (6-15 digits)');
+        return;
+      }
+
+      // Combine country code and local mobile number
+      const fullPhone = cleanCode + cleanPhone;
+
+      showAuthAlert('');
+      showAuthSuccess('');
+
+      setAuthLoading(true, 'Creating your account, please wait...', submitBtn, [nameInput, emailInput, countryPickerBtn, countryCodeInput, phoneInput, passwordInput, captchaInput]);
+      if (submitBtn) {
+        submitBtn.innerHTML = `<span class="btn-spinner"></span> <span>Creating Account...</span>`;
+      }
+
+      try {
+        const res = await fetch('/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            email,
+            phone: fullPhone,
+            countryCode,
+            localPhone: cleanPhone,
+            password,
+            captchaId: state.captchaId,
+            captchaAnswer
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+        state.token = data.token;
+        localStorage.setItem('token', data.token);
+
+        state.user = null;
+        state.plan = null;
+        state.plans = [];
+        state.orders = [];
+        state.transactions = [];
+        state.currentTab = 'whatsappTab';
+
+        setAuthLoading(true, 'Account created! Loading your dashboard...', submitBtn, [nameInput, emailInput, countryPickerBtn, countryCodeInput, phoneInput, passwordInput, captchaInput]);
+        await fetchUserProfile();
+      } catch (err) {
+        setAuthLoading(false, '', submitBtn, [nameInput, emailInput, countryPickerBtn, countryCodeInput, phoneInput, passwordInput, captchaInput]);
+        showAuthAlert(err.message);
+        loadCaptcha();
+        if (submitBtn) {
+          submitBtn.innerHTML = `<span>Sign Up</span>`;
+        }
+      }
+    }
+
+    function showAuthAlert(msg) {
+      const alertDiv = document.getElementById('authAlert');
+      if (!alertDiv) return;
+      if (msg) {
+        alertDiv.textContent = msg;
+        alertDiv.style.display = 'block';
+      } else {
+        alertDiv.style.display = 'none';
+      }
+    }
+
+    function showAuthSuccess(msg) {
+      const el = document.getElementById('authSuccess');
+      if (!el) return;
+      if (msg) {
+        el.textContent = msg;
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    async function handleForgotPassword(e) {
+      e.preventDefault();
+      const identifier = document.getElementById('forgotEmail').value.trim();
+      const submitBtn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+      showAuthAlert('');
+      showAuthSuccess('');
+      if (submitBtn) submitBtn.innerHTML = '<span class="btn-spinner"></span> <span>Sending...</span>';
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        const res = await fetch('/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: identifier })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to process request');
+
+        if (data.sent) {
+          // Password delivered via WhatsApp — show success step
+          state.forgotResetStep = 'done';
+          renderApp();
+        } else {
+          // Account not found or admin offline
+          showAuthSuccess(data.message || 'Request processed.');
+          if (submitBtn) { submitBtn.innerHTML = '<span>📲 Send Password to WhatsApp</span>'; submitBtn.disabled = false; }
+        }
+      } catch (err) {
+        showAuthAlert(err.message);
+        if (submitBtn) { submitBtn.innerHTML = '<span>📲 Send Password to WhatsApp</span>'; submitBtn.disabled = false; }
+      }
+    }
+
+    async function handleResetPassword(e) {
+      e.preventDefault();
+      const otp = document.getElementById('resetOtp').value.trim();
+      const newPassword = document.getElementById('resetNewPassword').value;
+      const confirmPassword = document.getElementById('resetConfirmPassword').value;
+
+      showAuthAlert('');
+      showAuthSuccess('');
+
+      if (newPassword !== confirmPassword) {
+        showAuthAlert('Passwords do not match');
+        return;
+      }
+
+      try {
+        const res = await fetch('/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: state.forgotEmail, otp, newPassword })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Reset failed');
+
+        state.forgotResetStep = 'done';
+        renderApp();
+      } catch (err) {
+        showAuthAlert(err.message);
+      }
+    }
+
+    async function handleProfileUpdate(e) {
+      e.preventDefault();
+      const nameInput = document.getElementById('profileEditName');
+      const countryCodeInput = document.getElementById('profileCountryCode');
+      const phoneInput = document.getElementById('profileEditPhone');
+      const alertDiv = document.getElementById('profileAlert');
+
+      const name = nameInput ? nameInput.value.trim() : '';
+      const countryCode = countryCodeInput ? countryCodeInput.value.trim() : '+91';
+      const rawPhone = phoneInput ? phoneInput.value.trim() : '';
+
+      const cleanCode = countryCode.replace(/\D/g, '');
+      const cleanPhone = rawPhone.replace(/\D/g, '');
+
+      let fullPhone = '';
+      if (cleanPhone) {
+        if (!cleanCode) {
+          if (alertDiv) {
+            alertDiv.textContent = 'Please enter a valid country code (e.g. +91, +1)';
+            alertDiv.style.display = 'block';
+            alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+            alertDiv.style.border = '1px solid var(--error-color)';
+            alertDiv.style.color = 'var(--error-color)';
+          }
+          return;
+        }
+        if (cleanCode === '91' && cleanPhone.length !== 10) {
+          if (alertDiv) {
+            alertDiv.textContent = 'Please enter a valid 10-digit mobile number for India (+91)';
+            alertDiv.style.display = 'block';
+            alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+            alertDiv.style.border = '1px solid var(--error-color)';
+            alertDiv.style.color = 'var(--error-color)';
+          }
+          return;
+        } else if (cleanPhone.length < 6 || cleanPhone.length > 15) {
+          if (alertDiv) {
+            alertDiv.textContent = 'Please enter a valid mobile number (6-15 digits)';
+            alertDiv.style.display = 'block';
+            alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+            alertDiv.style.border = '1px solid var(--error-color)';
+            alertDiv.style.color = 'var(--error-color)';
+          }
+          return;
+        }
+        fullPhone = cleanCode + cleanPhone;
+      }
+
+      if (alertDiv) alertDiv.style.display = 'none';
+
+      try {
+        const res = await fetch('/auth/profile', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name,
+            phone: fullPhone,
+            countryCode,
+            localPhone: cleanPhone
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update profile');
+
+        state.user = data.user;
+        if (alertDiv) {
+          alertDiv.textContent = data.message || 'Profile updated successfully!';
+          alertDiv.style.display = 'block';
+          alertDiv.style.background = 'rgba(16, 185, 129, 0.15)';
+          alertDiv.style.border = '1px solid var(--accent-color)';
+          alertDiv.style.color = 'var(--accent-color)';
+        }
+        await fetchUserProfile();
+        renderApp();
+      } catch (err) {
+        if (alertDiv) {
+          alertDiv.textContent = err.message;
+          alertDiv.style.display = 'block';
+          alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+          alertDiv.style.border = '1px solid var(--error-color)';
+          alertDiv.style.color = 'var(--error-color)';
+        }
+      }
+    }
+
+    async function handleChangePassword(e) {
+      e.preventDefault();
+      const form = e.target;
+      const currentPasswordInput = form ? form.querySelector('#currentPassword') : document.getElementById('currentPassword');
+      const newPasswordInput = form ? form.querySelector('#newPassword') : document.getElementById('newPassword');
+      const confirmNewPasswordInput = form ? form.querySelector('#confirmNewPassword') : document.getElementById('confirmNewPassword');
+      const alertDiv = form ? form.querySelector('#changePwAlert') : document.getElementById('changePwAlert');
+      const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+
+      const currentPassword = currentPasswordInput ? currentPasswordInput.value : '';
+      const newPassword = newPasswordInput ? newPasswordInput.value : '';
+      const confirmNewPassword = confirmNewPasswordInput ? confirmNewPasswordInput.value : '';
+
+      // Reset alert
+      if (alertDiv) {
+        alertDiv.style.display = 'none';
+        alertDiv.textContent = '';
+      }
+
+      if (!currentPassword) {
+        const msg = 'Please enter your current password';
+        if (alertDiv) {
+          alertDiv.innerHTML = `⚠️ ${msg}`;
+          alertDiv.style.display = 'block';
+          alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+          alertDiv.style.border = '1px solid var(--error-color)';
+          alertDiv.style.color = 'var(--error-color)';
+        }
+        alert(msg);
+        return;
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        const msg = 'New password and confirm password do not match';
+        if (alertDiv) {
+          alertDiv.innerHTML = `⚠️ ${msg}`;
+          alertDiv.style.display = 'block';
+          alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+          alertDiv.style.border = '1px solid var(--error-color)';
+          alertDiv.style.color = 'var(--error-color)';
+        }
+        alert(msg);
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        const msg = 'New password must be at least 6 characters long';
+        if (alertDiv) {
+          alertDiv.innerHTML = `⚠️ ${msg}`;
+          alertDiv.style.display = 'block';
+          alertDiv.style.background = 'rgba(244, 63, 94, 0.15)';
+          alertDiv.style.border = '1px solid var(--error-color)';
+          alertDiv.style.color = 'var(--error-color)';
+        }
+        alert(msg);
+        return;
+      }
+
+      const origBtnText = submitBtn ? submitBtn.innerHTML : '🔒 Update Password';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="btn-spinner"></span> <span>Updating Password...</span>';
+      }
+
+      try {
+        const res = await fetch('/auth/change-password', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to change password');
+
+        const successMsg = data.message || 'Password changed successfully! A confirmation message has been sent to your WhatsApp.';
+
+        if (alertDiv) {
+          alertDiv.innerHTML = `✅ <strong>Success:</strong> ${successMsg}`;
+          alertDiv.style.display = 'block';
+          alertDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+          alertDiv.style.border = '1.5px solid #10b981';
+          alertDiv.style.color = '#34d399';
+          alertDiv.style.fontSize = '0.9rem';
+          alertDiv.style.lineHeight = '1.5';
+        }
+
+        // Clear form fields
+        if (currentPasswordInput) currentPasswordInput.value = '';
+        if (newPasswordInput) newPasswordInput.value = '';
+        if (confirmNewPasswordInput) confirmNewPasswordInput.value = '';
+
+        // Immediate visual alert dialog
+        alert(`✅ ${successMsg}`);
+      } catch (err) {
+        if (alertDiv) {
+          alertDiv.innerHTML = `❌ <strong>Error:</strong> ${err.message}`;
+          alertDiv.style.display = 'block';
+          alertDiv.style.background = 'rgba(244, 63, 94, 0.2)';
+          alertDiv.style.border = '1.5px solid var(--error-color)';
+          alertDiv.style.color = '#fca5a5';
+        }
+        alert(`❌ ${err.message}`);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnText;
+        }
+      }
+    }
+
+    // GENERAL DASHBOARD CONTROLS & SIDEBAR ACCORDION
+    state.openGroups = state.openGroups || {};
+
+    function isGroupOpen(groupKey, memberTabs = []) {
+      if (memberTabs.includes(state.currentTab)) return true;
+      if (state.openGroups[groupKey] !== undefined) return state.openGroups[groupKey];
+      return false; // Default closed unless active
+    }
+
+    function toggleSidebarGroup(groupKey) {
+      const itemsEl = document.getElementById(`group_${groupKey}`);
+      const arrowEl = document.getElementById(`arrow_${groupKey}`);
+      if (!itemsEl) return;
+      const isCollapsed = itemsEl.classList.contains('collapsed');
+      if (isCollapsed) {
+        itemsEl.classList.remove('collapsed');
+        if (arrowEl) arrowEl.innerText = '▾';
+        state.openGroups[groupKey] = true;
+      } else {
+        itemsEl.classList.add('collapsed');
+        if (arrowEl) arrowEl.innerText = '▸';
+        state.openGroups[groupKey] = false;
+      }
+    }
+
+    function toggleAllSidebarGroups() {
+      const groups = ['account', 'whatsapp', 'contacts', 'campaigns', 'automation', 'api', 'reports', 'more'];
+      const anyClosed = groups.some(g => {
+        const el = document.getElementById(`group_${g}`);
+        return el && el.classList.contains('collapsed');
+      });
+      groups.forEach(g => {
+        const el = document.getElementById(`group_${g}`);
+        const arrow = document.getElementById(`arrow_${g}`);
+        if (el) {
+          if (anyClosed) {
+            el.classList.remove('collapsed');
+            if (arrow) arrow.innerText = '▾';
+            state.openGroups[g] = true;
+          } else {
+            el.classList.add('collapsed');
+            if (arrow) arrow.innerText = '▸';
+            state.openGroups[g] = false;
+          }
+        }
+      });
+    }
+
+    function filterSidebarMenu(query) {
+      const q = query.trim().toLowerCase();
+      const items = document.querySelectorAll('.dash-sidebar-item');
+      items.forEach(item => {
+        const text = item.innerText.toLowerCase();
+        if (!q || text.includes(q)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+      if (q) {
+        // Automatically expand all groups when searching
+        const groups = document.querySelectorAll('.dash-sidebar-group-items');
+        groups.forEach(g => g.classList.remove('collapsed'));
+      }
+    }
+
+    // ─── Top Navigation Helper Functions ──────────────────────────────
+
+    function getActiveCategory(currentTab) {
+      const categoryMap = {
+        plansTab: 'account', banksTab: 'account', depositTab: 'account', adminProfileTab: 'account',
+        whatsappTab: 'whatsapp', templatesTab: 'whatsapp',
+        contactsTab: 'contacts', contactGroupsTab: 'contacts', tagsTab: 'contacts', importContactsTab: 'contacts', exportContactsTab: 'contacts',
+        campaignsTab: 'campaigns', campaignAnalyticsTab: 'campaigns', campaignSchedulerTab: 'campaigns',
+        autoRespondersTab: 'automation', remindersTab: 'automation', birthdayTab: 'automation', paymentReminderTab: 'automation', orderNotifyTab: 'automation', followUpTab: 'automation',
+        apiDocsTab: 'api', apiKeysTab: 'api', webhooksTab: 'api',
+        reportsTab: 'reports', userExpiryReportTab: 'reports', ordersTab: 'reports',
+        catalogTab: 'more', changePasswordTab: 'more', profileTab: 'more'
+      };
+      return categoryMap[currentTab] || 'whatsapp';
+    }
+
+    function selectCategory(catKey, defaultTab) {
+      state.activeCategory = catKey;
+      switchTab(defaultTab);
+    }
+
+    function renderSubPills(catKey) {
+      const pillsMap = {
+        account: [
+          { tab: 'plansTab', label: '💎 Subscription Plans' },
+          { tab: 'banksTab', label: '🏦 Bank Accounts' },
+          { tab: 'depositTab', label: '📥 Submit Deposit' }
+        ],
+        whatsapp: [
+          { tab: 'whatsappTab', label: '📱 Studio' },
+          { tab: 'templatesTab', label: '📝 Templates' }
+        ],
+        contacts: [
+          { tab: 'contactsTab', label: '👥 Contact Management' },
+          { tab: 'contactGroupsTab', label: '📋 Contact Groups' }
+        ],
+        campaigns: [
+          { tab: 'campaignsTab', label: '📢 Broadcast Campaigns' },
+          { tab: 'campaignAnalyticsTab', label: '📈 Campaign Analytics' },
+          { tab: 'campaignSchedulerTab', label: '📅 Campaign Scheduler' }
+        ],
+        automation: [
+          { tab: 'autoRespondersTab', label: '🤖 Welcome & Away' },
+          { tab: 'remindersTab', label: '⏰ Reminder Messages' },
+          { tab: 'birthdayTab', label: '🎂 Birthday Wishes' },
+          { tab: 'paymentReminderTab', label: '💳 Payment Reminder' },
+          { tab: 'orderNotifyTab', label: '📦 Order Notifications' },
+          { tab: 'followUpTab', label: '🔔 Follow-up Automation' }
+        ],
+        api: [
+          { tab: 'apiDocsTab', label: '📚 API Documentation' },
+          { tab: 'apiKeysTab', label: '🔑 API Keys (Soon)' },
+          { tab: 'webhooksTab', label: '📄 Webhooks (Soon)' }
+        ],
+        reports: [
+          { tab: 'reportsTab', label: '📊 Messages Report' },
+          { tab: 'userExpiryReportTab', label: '📈 Expiry Report' },
+          { tab: 'ordersTab', label: '🧾 Order History' }
+        ],
+        more: [
+          { tab: 'profileTab', label: '👤 My Profile' },
+          { tab: 'catalogTab', label: '🛍️ Digital Catalog' }
+        ]
+      };
+
+      const pills = pillsMap[catKey] || [];
+      return pills.map(p => `
+        <button class="top-sub-pill ${state.currentTab === p.tab ? 'active' : ''}" onclick="switchTab('${p.tab}')">${p.label}</button>
+      `).join('');
+    }
+
+    function switchTab(tabId) {
+      state.currentTab = tabId;
+      renderApp();
+      bindDashboardEvents();
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 50);
+    }
+
+    function switchSubTab(subTabId) {
+      state.whatsappSubTab = subTabId;
+      renderApp();
+    }
+
+    function handleLogout() {
+      stopPollingWhatsappStatus();
+      localStorage.removeItem('token');
+      state.token = null;
+      state.user = null;
+      state.plan = null;
+      state.plans = [];
+      state.orders = [];
+      state.transactions = [];
+      state.contacts = [];
+      state.autoReplies = [];
+      state.reminders = [];
+      state.catalog = null;
+      state.services = [];
+      state.currentTab = 'whatsappTab';
+      state.whatsappSubTab = 'textTab';
+      state.publicPage = 'home';
+      state.authTab = 'login';
+      renderApp();
+    }
+
+    async function fetchUserProfile() {
+
+      if (!state.token) return;
+      try {
+        const res = await fetch('/auth/me', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.status === 401 || res.status === 403) {
+          alert('Session expired or account blocked.');
+          handleLogout();
+          return;
+        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        state.user = data.user;
+        state.plan = data.plan;
+        state.plans = data.plans || [];
+        state.orders = data.orders || [];
+        state.transactions = data.transactions || [];
+
+        // Dynamic settings
+        state.banks = data.banks || [];
+        state.planPrice = data.planPrice || 149;
+        state.planOptions = data.planOptions || [];
+
+        renderApp();
+
+        // Check session status once on load if subscriber and plan is active
+        const hasActivePlan = state.plan && state.plan.status === 'active' && new Date(state.plan.expires_at) > new Date();
+        if (hasActivePlan && state.user.role !== 'admin') {
+          checkWhatsappStatus();
+        }
+        if (state.user.role !== 'admin') {
+          fetchContacts();
+          fetchContactGroups();
+          fetchTemplates();
+          fetchAutomationSettings();
+          fetchCampaigns();
+          fetchReminders();
+          startRemindersStatusPolling();
+          fetchCatalog();
+          fetchBirthdayWishes();
+          fetchPaymentReminders();
+          fetchOrderNotifications();
+          fetchFollowupAutomations();
+        }
+        bindDashboardEvents();
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      }
+    }
+
+    // USER ORDER SUBMIT
+    async function handleOrderSubmit(e) {
+      e.preventDefault();
+      const bankId = document.getElementById('orderBankSelect').value;
+      const userPhoneInput = document.getElementById('orderUserPhone');
+      const account_name = document.getElementById('orderAccountName').value.trim();
+      const utr = document.getElementById('orderUtr').value.trim();
+      const fileInput = document.getElementById('orderScreenshot');
+      const plan_type = document.getElementById('orderPlanTypeSelect').value;
+      const amount = document.getElementById('orderAmountInput').value.trim();
+      const user_phone = userPhoneInput ? userPhoneInput.value.trim() : '';
+
+      if (!bankId) {
+        alert('Please choose the destination bank account where you transferred funds.');
+        return;
+      }
+
+      // Find selected bank details
+      const selectedBank = state.banks.find(b => b.id == bankId);
+      if (!selectedBank) return;
+
+      const formData = new FormData();
+      formData.append('bank_name', selectedBank.bank_name);
+      formData.append('account_name', account_name);
+      formData.append('utr', utr);
+      formData.append('plan_type', plan_type);
+      formData.append('amount', amount);
+      if (user_phone) {
+        formData.append('user_phone', user_phone);
+      }
+      if (fileInput.files.length > 0) {
+        formData.append('screenshot', fileInput.files[0]);
+      }
+
+      try {
+        const res = await fetch('/auth/orders', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Submission failed');
+
+        alert(data.message);
+        fetchUserProfile(); // reload dashboard
+      } catch (err) {
+        alert(`Failed to submit deposit: ${err.message}`);
+      }
+    }
+
+    function handleOrderPlanSelectChange(select) {
+      const amountInput = document.getElementById('orderAmountInput');
+      if (!amountInput) return;
+      if (select.value === 'wallet') {
+        amountInput.readOnly = false;
+        amountInput.value = '';
+        amountInput.placeholder = 'Enter amount to recharge';
+        amountInput.focus();
+      } else {
+        const plan = state.planOptions.find(p => p.type === select.value);
+        if (plan) {
+          amountInput.value = plan.price;
+          amountInput.readOnly = true;
+        }
+      }
+    }
+
+    async function purchasePlan(planType, price, durationDays) {
+      if (planType === 'demo') {
+        if (!confirm('Are you sure you want to claim your 5-day Free Demo Plan? This can only be claimed once.')) return;
+      } else {
+        const planName = planType === 'plan_28' ? 'Monthly' : planType === 'quarter' ? 'Quarter' : planType === 'half_year' ? 'Half-Year' : 'Year';
+        if (!confirm(`Are you sure you want to subscribe to the ${planName} Plan for ₹${price}?`)) return;
+      }
+
+      try {
+        const res = await fetch('/auth/subscribe', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ planType })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          // If insufficient balance, redirect to deposit form
+          if (data.error && data.error.includes('Insufficient wallet balance')) {
+            alert(data.error);
+            const planSelect = document.getElementById('orderPlanTypeSelect');
+            const amountInput = document.getElementById('orderAmountInput');
+
+            if (planSelect) {
+              planSelect.value = planType;
+              if (amountInput) {
+                amountInput.value = price;
+                amountInput.readOnly = true;
+              }
+            }
+            const orderForm = document.getElementById('orderForm');
+            if (orderForm) {
+              orderForm.scrollIntoView({ behavior: 'smooth' });
+              orderForm.parentElement.style.border = '1px solid var(--accent-color)';
+              setTimeout(() => {
+                orderForm.parentElement.style.border = '1px solid var(--glass-border)';
+              }, 2500);
+            }
+            return;
+          }
+          throw new Error(data.error || 'Failed to purchase subscription');
+        }
+
+        // Instant optimistic state update — zero waiting time
+        if (data.plan) {
+          state.plan = data.plan;
+          if (!state.plans) state.plans = [];
+          state.plans.unshift(data.plan);
+        }
+        if (data.user) {
+          state.user = data.user;
+        }
+        renderApp();
+
+        alert(data.message || 'Subscription activated successfully!');
+        fetchUserProfile();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // BIND EVENT DISPATCHERS & FETCH DATA ON TAB ACTIVE
+    function bindDashboardEvents() {
+      if (state.currentTab === 'whatsappTab') {
+        checkWhatsappStatus();
+      } else if (state.currentTab === 'adminOrdersTab') {
+        fetchAdminOrders();
+      } else if (state.currentTab === 'adminUsersTab') {
+        fetchAdminUsers();
+      } else if (state.currentTab === 'adminExpiryReportTab') {
+        fetchAdminUsers().then(() => renderExpiryReport());
+      } else if (state.currentTab === 'adminBanksTab') {
+        fetchAdminBanks();
+      } else if (state.currentTab === 'adminSettingsTab') {
+        fetchAdminSettings();
+      } else if (state.currentTab === 'adminWhatsappTab') {
+        fetchAdminWaStatus();
+        fetchAdminSettings(); // loads admin_whatsapp_number into input
+      } else if (state.currentTab === 'ordersTab') {
+        renderUserOrders();
+      } else if (state.currentTab === 'userExpiryReportTab') {
+        renderUserExpiryReport();
+      } else if (state.currentTab === 'apiDocsTab') {
+        loadApiDocs();
+      }
+    }
+
+    async function loadApiDocs() {
+      try {
+        const res = await fetch('/api_documentation.md');
+        if (res.ok) {
+          const text = await res.text();
+          const pre = document.getElementById('apiDocsContent');
+          if (pre) pre.textContent = text;
+        } else {
+          const pre = document.getElementById('apiDocsContent');
+          if (pre) pre.textContent = 'Error: Failed to load API documentation file.';
+        }
+      } catch (err) {
+        console.error('Failed to load API docs:', err);
+        const pre = document.getElementById('apiDocsContent');
+        if (pre) pre.textContent = 'Error: Failed to load API documentation file.';
+      }
+    }
+
+    function copyUserApiToken() {
+      if (!state.token) return;
+      navigator.clipboard.writeText(state.token).then(() => {
+        const btn = document.getElementById('copyUserApiTokenBtn');
+        if (btn) {
+          const orig = btn.innerHTML;
+          btn.innerHTML = '✅ Copied!';
+          setTimeout(() => { btn.innerHTML = orig; }, 2000);
+        }
+      }).catch(() => {
+        alert('Failed to copy to clipboard. Please copy manually from the box.');
+      });
+    }
+
+    async function regenerateUserApiToken() {
+      if (!confirm('Are you sure you want to generate a new API token? Your previous token will be replaced.')) return;
+      const btn = document.getElementById('regenerateUserApiTokenBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating...'; }
+      try {
+        const res = await fetch('/auth/regenerate-token', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to generate token');
+
+        state.token = data.token;
+        localStorage.setItem('token', data.token);
+        renderApp();
+        alert('New permanent API token generated successfully!');
+      } catch (err) {
+        alert('Error generating API token: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 Generate New Token'; }
+      }
+    }
+    // ADMIN TAB: settings (plan price)
+    async function fetchAdminSettings() {
+      try {
+        const res = await fetch('/admin/settings', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+
+        const p28Input = document.getElementById('settingPlanPrice28');
+        const pQuarterInput = document.getElementById('settingPlanPriceQuarter');
+        const pHalfYearInput = document.getElementById('settingPlanPriceHalfYear');
+        const pYearInput = document.getElementById('settingPlanPriceYear');
+
+        if (p28Input && data.plan_price_28) p28Input.value = data.plan_price_28;
+        if (pQuarterInput && data.plan_price_quarter) pQuarterInput.value = data.plan_price_quarter;
+        if (pHalfYearInput && data.plan_price_half_year) pHalfYearInput.value = data.plan_price_half_year;
+        if (pYearInput && data.plan_price_year) pYearInput.value = data.plan_price_year;
+
+        const rzpKeyInput = document.getElementById('settingRazorpayKeyId');
+        const rzpSecretInput = document.getElementById('settingRazorpayKeySecret');
+        if (rzpKeyInput && data.razorpay_key_id) rzpKeyInput.value = data.razorpay_key_id;
+        if (rzpSecretInput && data.razorpay_key_secret) rzpSecretInput.value = data.razorpay_key_secret;
+
+        // Populate admin WA number if the field is present
+        const adminWaNumField = document.getElementById('adminWaNumber');
+        if (adminWaNumField && data.admin_whatsapp_number) {
+          adminWaNumField.value = data.admin_whatsapp_number;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // ─── Admin WhatsApp Session Functions ────────────────────────────────────────
+
+    let adminWaPollTimer = null;
+
+    function setAdminWaLinkMode(mode) {
+      state.adminWaLinkMode = mode;
+      const pairingBox = document.getElementById('adminWaPairingContainer');
+      const qrBox = document.getElementById('adminWaQrContainer');
+      const buttons = document.querySelectorAll('#adminWhatsappTab .wa-mode-btn');
+
+      if (buttons && buttons.length === 2) {
+        buttons[0].classList.toggle('active', mode === 'code');
+        buttons[1].classList.toggle('active', mode === 'qr');
+      }
+
+      if (pairingBox) pairingBox.style.display = mode === 'code' ? 'flex' : 'none';
+      if (qrBox) {
+        if (mode === 'qr' && state.whatsappStatus === 'QR') {
+          qrBox.style.display = 'flex';
+        } else {
+          qrBox.style.display = 'none';
+        }
+      }
+    }
+
+    async function adminWaRequestCode() {
+      const input = document.getElementById('adminWaPairingInput');
+      const raw = (input ? input.value : '').trim();
+      let digits = raw.replace(/\D/g, '');
+      if (digits.length === 10) digits = '91' + digits;
+      if (!digits || digits.length < 10) {
+        alert('Please enter a valid mobile number (10-15 digits with country code, e.g. 919876543210).');
+        return;
+      }
+
+      const codeBox = document.getElementById('adminWaCodeBox');
+      const codeText = document.getElementById('adminWaCodeText');
+      if (codeText) codeText.textContent = 'Generating...';
+      if (codeBox) codeBox.style.display = 'flex';
+
+      try {
+        const res = await fetch('/admin/session/pairing-code', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: digits })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to request pairing code');
+
+        const code = data.formattedCode || data.pairingCode;
+        state.adminWaPairingCode = code;
+        if (codeText) codeText.textContent = code;
+        if (codeBox) codeBox.style.display = 'flex';
+
+        updateAdminWaStatusUI('PAIRING_CODE', null, code);
+        startAdminWaPoll();
+      } catch (err) {
+        alert('Error generating admin pairing code: ' + err.message);
+        if (codeBox) codeBox.style.display = 'none';
+      }
+    }
+
+    function updateAdminWaStatusUI(status, qr, pairingCode, formattedCode) {
+      const dot = document.getElementById('adminWaStatusDot');
+      const label = document.getElementById('adminWaStatusLabel');
+      const qrBox = document.getElementById('adminWaQrContainer');
+      const qrImg = document.getElementById('adminWaQrImage');
+      const codeBox = document.getElementById('adminWaCodeBox');
+      const codeText = document.getElementById('adminWaCodeText');
+      if (!dot || !label) return;
+
+      const code = formattedCode || pairingCode || state.adminWaPairingCode;
+
+      if (status === 'CONNECTED') {
+        dot.style.background = '#22c55e';
+        dot.style.boxShadow = '0 0 10px rgba(34,197,94,0.7)';
+        label.textContent = '✅ Connected';
+        label.style.color = '#86efac';
+        if (qrBox) qrBox.style.display = 'none';
+        if (codeBox) codeBox.style.display = 'none';
+        stopAdminWaPoll();
+      } else if (status === 'PAIRING_CODE' || code) {
+        dot.style.background = '#38bdf8';
+        dot.style.boxShadow = '0 0 10px rgba(56,189,248,0.7)';
+        label.textContent = '⚡ Code Ready — Enter in WhatsApp';
+        label.style.color = '#7dd3fc';
+        if (codeBox && code) {
+          codeBox.style.display = 'flex';
+          if (codeText) codeText.textContent = code;
+        }
+        if (qrBox) qrBox.style.display = 'none';
+      } else if (status === 'QR') {
+        dot.style.background = '#f59e0b';
+        dot.style.boxShadow = '0 0 10px rgba(245,158,11,0.7)';
+        label.textContent = '⏳ Waiting for QR Scan…';
+        label.style.color = '#fde68a';
+        if (qrBox && !isMobileBrowser()) { qrBox.style.display = 'flex'; }
+        if (qrImg && qr) { qrImg.src = qr; }
+        if (codeBox) codeBox.style.display = 'none';
+      } else if (status === 'CONNECTING') {
+        dot.style.background = '#a78bfa';
+        dot.style.boxShadow = '0 0 10px rgba(167,139,250,0.7)';
+        label.textContent = '🔄 Connecting…';
+        label.style.color = '#c4b5fd';
+        if (qrBox) qrBox.style.display = 'none';
+      } else {
+        dot.style.background = '#ef4444';
+        dot.style.boxShadow = '0 0 8px rgba(239,68,68,0.6)';
+        label.textContent = '🔴 Disconnected';
+        label.style.color = '#fca5a5';
+        if (qrBox) qrBox.style.display = 'none';
+        if (codeBox) codeBox.style.display = 'none';
+      }
+    }
+
+    async function fetchAdminWaStatus() {
+      try {
+        const res = await fetch('/admin/session/status', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        updateAdminWaStatusUI(data.status, data.qr, data.pairingCode, data.formattedCode);
+        return data.status;
+      } catch (e) {
+        console.error('[Admin WA] Status fetch error:', e);
+      }
+    }
+
+    function startAdminWaPoll() {
+      stopAdminWaPoll();
+      adminWaPollTimer = setInterval(async () => {
+        const status = await fetchAdminWaStatus();
+        if (status === 'CONNECTED') stopAdminWaPoll();
+      }, 2500);
+    }
+
+    function stopAdminWaPoll() {
+      if (adminWaPollTimer) {
+        clearInterval(adminWaPollTimer);
+        adminWaPollTimer = null;
+      }
+    }
+
+    async function adminWaConnect() {
+      const btn = document.getElementById('adminWaConnectBtn');
+      if (btn) { btn.textContent = '⏳ Connecting…'; btn.disabled = true; }
+      try {
+        if (isMobileBrowser()) {
+          await adminWaRequestCode();
+        } else {
+          const res = await fetch('/admin/session/login', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' }
+          });
+          const data = await res.json();
+          updateAdminWaStatusUI(data.status, data.qr, data.pairingCode, data.formattedCode);
+          if (data.status !== 'CONNECTED') startAdminWaPoll();
+        }
+      } catch (err) {
+        alert('Failed to connect admin WhatsApp: ' + err.message);
+      } finally {
+        if (btn) { btn.textContent = '⚡ Connect WhatsApp'; btn.disabled = false; }
+      }
+    }
+
+    async function adminWaDisconnect() {
+      if (!confirm('Disconnect the admin WhatsApp session? Notifications will stop until reconnected.')) return;
+      try {
+        const res = await fetch('/admin/session/logout', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        updateAdminWaStatusUI('DISCONNECTED', null);
+        stopAdminWaPoll();
+        state.adminWaPairingCode = null;
+        alert(data.message || 'Admin WhatsApp disconnected.');
+      } catch (err) {
+        alert('Error disconnecting: ' + err.message);
+      }
+    }
+
+    async function saveAdminWaNumber() {
+      const val = (document.getElementById('adminWaNumber')?.value || '').trim();
+      if (!val) { alert('Please enter a valid WhatsApp number.'); return; }
+      const digits = val.replace(/\D/g, '');
+      if (digits.length < 10) { alert('Number must be at least 10 digits (include country code, e.g. 919876543210).'); return; }
+      try {
+        const res = await fetch('/admin/settings', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'admin_whatsapp_number', value: digits })
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+        alert('✅ Admin WhatsApp number saved! Notifications will be sent to ' + digits);
+      } catch (err) {
+        alert('Failed to save number: ' + err.message);
+      }
+    }
+
+    async function handlePriceSubmit(e) {
+      e.preventDefault();
+      const p28 = document.getElementById('settingPlanPrice28').value.trim();
+      const pQuarter = document.getElementById('settingPlanPriceQuarter').value.trim();
+      const pHalfYear = document.getElementById('settingPlanPriceHalfYear').value.trim();
+      const pYear = document.getElementById('settingPlanPriceYear').value.trim();
+
+      try {
+        const updateSetting = async (key, value) => {
+          const res = await fetch('/admin/settings', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${state.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ key, value })
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || `Failed to update ${key}`);
+          }
+        };
+
+        await updateSetting('plan_price_28', p28);
+        await updateSetting('plan_price', p28); // legacy fallback
+        await updateSetting('plan_price_quarter', pQuarter);
+        await updateSetting('plan_price_half_year', pHalfYear);
+        await updateSetting('plan_price_year', pYear);
+
+        alert('Pricing settings updated successfully!');
+        fetchUserProfile();
+      } catch (err) {
+        alert(`Failed to update setting: ${err.message}`);
+      }
+    }
+
+    async function handleRazorpaySettingsSubmit(e) {
+      e.preventDefault();
+      const keyId = document.getElementById('settingRazorpayKeyId').value.trim();
+      const keySecret = document.getElementById('settingRazorpayKeySecret').value.trim();
+
+      try {
+        const updateSetting = async (key, value) => {
+          const res = await fetch('/admin/settings', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${state.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ key, value })
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || `Failed to update ${key}`);
+          }
+        };
+
+        await updateSetting('razorpay_key_id', keyId);
+        await updateSetting('razorpay_key_secret', keySecret);
+
+        alert('✅ Razorpay credentials updated successfully!');
+        fetchAdminSettings();
+      } catch (err) {
+        alert(`Failed to save Razorpay credentials: ${err.message}`);
+      }
+    }
+
+    async function payWithRazorpay(planType, amount) {
+      if (!amount || amount <= 0) {
+        alert('Please specify a valid payment amount.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/razorpay/create-order', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ plan_type: planType, amount })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to create payment order.');
+        }
+
+        const options = {
+          key: data.key_id,
+          amount: data.amount,
+          currency: data.currency,
+          name: 'WhatsApp Automation',
+          description: `Payment for ${planType === 'wallet' ? 'Wallet Recharge' : planType + ' Plan'}`,
+          order_id: data.razorpay_order_id,
+          prefill: {
+            name: data.user?.name || state.user?.name || '',
+            email: data.user?.email || state.user?.email || '',
+            contact: data.user?.phone || state.user?.phone || ''
+          },
+          config: {
+            display: {
+              blocks: {
+                upi_block: {
+                  name: 'Pay via UPI / QR Code',
+                  instruments: [
+                    {
+                      method: 'upi'
+                    }
+                  ]
+                }
+              },
+              sequence: ['block.upi_block'],
+              preferences: {
+                show_default_blocks: false
+              }
+            }
+          },
+          theme: {
+            color: '#6366f1'
+          },
+          handler: async function (response) {
+            try {
+              const verifyRes = await fetch('/razorpay/verify-payment', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${state.token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature
+                })
+              });
+
+              const verifyData = await verifyRes.json();
+              if (!verifyRes.ok) {
+                throw new Error(verifyData.error || 'Payment verification failed.');
+              }
+
+              alert('🎉 Payment verified successfully! Your plan has been activated.');
+              fetchUserProfile();
+            } catch (err) {
+              alert(`Payment verification failed: ${err.message}`);
+            }
+          }
+        };
+
+        if (typeof Razorpay === 'undefined') {
+          alert('Razorpay Checkout SDK is still loading or blocked. Please check your internet connection.');
+          return;
+        }
+
+        const rzp1 = new Razorpay(options);
+        rzp1.on('payment.failed', function (response) {
+          alert(`Payment failed: ${response.error.description || 'Transaction cancelled or failed.'}`);
+        });
+        rzp1.open();
+      } catch (err) {
+        alert(`Failed to start Razorpay payment: ${err.message}`);
+      }
+    }
+
+    // ADMIN TAB: orders history list & filtering
+    let allAdminOrders = [];
+
+    function getLocalDateString() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function normalizeDateString(value) {
+      if (!value) return value;
+      if (value.includes(' ') && !value.includes('T')) {
+        return value.replace(' ', 'T') + 'Z';
+      }
+      if (!value.includes('Z') && !value.includes('+')) {
+        return value + 'Z';
+      }
+      return value;
+    }
+
+    async function fetchAdminOrders() {
+      const tableBody = document.querySelector('#adminPendingOrdersTable tbody');
+      if (!tableBody) return;
+
+      // Initialize date inputs to current date by default if they are empty
+      const fromDateInput = document.getElementById('adminOrderFromDate');
+      const toDateInput = document.getElementById('adminOrderToDate');
+      const todayStr = getLocalDateString();
+      if (fromDateInput && !fromDateInput.value) {
+        fromDateInput.value = todayStr;
+      }
+      if (toDateInput && !toDateInput.value) {
+        toDateInput.value = todayStr;
+      }
+
+      try {
+        const res = await fetch('/admin/orders', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        allAdminOrders = data.orders || [];
+
+        // Populate User Filter dropdown once
+        populateAdminOrderUserFilter(allAdminOrders);
+
+        // Run filtering & rendering
+        filterAdminOrders();
+      } catch (err) {
+        tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--error-color);">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function populateAdminOrderUserFilter(orders) {
+      const select = document.getElementById('adminOrderUserFilter');
+      if (!select) return;
+
+      const currentVal = select.value;
+      const usersMap = {};
+      orders.forEach(o => {
+        if (o.user_id) {
+          usersMap[o.user_id] = o.user_name || `User #${o.user_id}`;
+        }
+      });
+
+      let optionsHtml = '<option value="">All Users</option>';
+      Object.keys(usersMap).forEach(userId => {
+        optionsHtml += `<option value="${userId}">${usersMap[userId]} (ID: ${userId})</option>`;
+      });
+
+      select.innerHTML = optionsHtml;
+      select.value = currentVal;
+    }
+
+    function filterAdminOrders() {
+      const tableBody = document.querySelector('#adminPendingOrdersTable tbody');
+      if (!tableBody) return;
+
+      const fromDateVal = document.getElementById('adminOrderFromDate')?.value || '';
+      const toDateVal = document.getElementById('adminOrderToDate')?.value || '';
+      const userFilterVal = document.getElementById('adminOrderUserFilter')?.value || '';
+      const statusFilterVal = document.getElementById('adminOrderStatusFilter')?.value || '';
+
+      const filtered = allAdminOrders.filter(o => {
+        if (userFilterVal && String(o.user_id) !== String(userFilterVal)) {
+          return false;
+        }
+        if (statusFilterVal && o.status !== statusFilterVal) {
+          return false;
+        }
+        if (o.created_at) {
+          // Parse o.created_at as UTC (normalizing space to T and appending Z if needed)
+          let dateStr = o.created_at;
+          if (dateStr.includes(' ') && !dateStr.includes('T')) {
+            dateStr = dateStr.replace(' ', 'T') + 'Z';
+          } else if (!dateStr.includes('Z') && !dateStr.includes('+')) {
+            dateStr = dateStr + 'Z';
+          }
+
+          const orderLocalDate = new Date(dateStr);
+          const yyyy = orderLocalDate.getFullYear();
+          const mm = String(orderLocalDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(orderLocalDate.getDate()).padStart(2, '0');
+          const orderDateOnly = `${yyyy}-${mm}-${dd}`;
+
+          if (fromDateVal && orderDateOnly < fromDateVal) return false;
+          if (toDateVal && orderDateOnly > toDateVal) return false;
+        }
+        return true;
+      });
+
+      // Sort: pending first, then by date descending
+      filtered.sort((a, b) => {
+        if (a.status === 'pending' && b.status !== 'pending') return -1;
+        if (a.status !== 'pending' && b.status === 'pending') return 1;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
+      if (filtered.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No matching deposit requests found.</td></tr>`;
+        return;
+      }
+
+      tableBody.innerHTML = filtered.map(o => {
+        let dateStr = o.created_at;
+        if (dateStr.includes(' ') && !dateStr.includes('T')) {
+          dateStr = dateStr.replace(' ', 'T') + 'Z';
+        } else if (!dateStr.includes('Z') && !dateStr.includes('+')) {
+          dateStr = dateStr + 'Z';
+        }
+        const orderDateFormatted = new Date(dateStr).toLocaleString();
+        const isRazorpay = o.payment_method === 'razorpay';
+        const methodBadge = isRazorpay
+          ? `<span class="badge" style="background:rgba(99,102,241,0.2);color:#a5b4fc;border:1px solid rgba(99,102,241,0.4);">💳 Razorpay</span>`
+          : `<span class="badge" style="background:rgba(234,179,8,0.15);color:#fde68a;border:1px solid rgba(234,179,8,0.3);">🏦 Bank Transfer</span>`;
+        const refCode = isRazorpay ? (o.razorpay_payment_id || o.razorpay_order_id || 'Razorpay') : o.utr;
+        const detailsText = isRazorpay ? 'Razorpay Gateway' : `${o.bank_name} - ${o.account_name}`;
+
+        return `
+          <tr>
+            <td>${orderDateFormatted}</td>
+            <td>
+              <strong>${o.user_name}</strong><br>
+              <span style="color: var(--text-muted); font-size: 0.75rem;">${o.user_email}</span>
+            </td>
+            <td>₹${(o.amount || 0).toFixed(2)}</td>
+            <td><code>${refCode}</code></td>
+            <td>${methodBadge}<br><span style="font-size: 0.75rem; color: var(--text-muted);">${detailsText}</span></td>
+            <td>
+              ${o.screenshot_path ? `
+                <a href="/uploads/${o.screenshot_path}" target="_blank" style="color: var(--info-color); text-decoration: underline; font-weight: 500;">
+                  View Attachment
+                </a>
+              ` : '<span style="color: var(--text-muted); font-size: 0.8rem;">Auto-Verified</span>'}
+            </td>
+            <td>
+              <span class="badge ${o.status === 'pending'
+            ? 'badge-pending'
+            : o.status === 'confirmed'
+              ? 'badge-active'
+              : 'badge-expired'
+          }">${o.status}</span>
+            </td>
+            <td>
+              ${o.status === 'pending' ? `
+                <div style="display: flex; gap: 0.25rem;">
+                  <button onclick="adminConfirmOrder(${o.id})" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: var(--accent-color);">Confirm</button>
+                  <button onclick="adminRejectOrder(${o.id})" class="btn-danger" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;">Reject</button>
+                </div>
+              ` : `<span style="color: var(--text-muted); font-size: 0.85rem;">${isRazorpay ? 'Auto-Confirmed' : 'Processed'}</span>`}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function clearAdminOrderFilters() {
+      const fromDate = document.getElementById('adminOrderFromDate');
+      const toDate = document.getElementById('adminOrderToDate');
+      const userFilter = document.getElementById('adminOrderUserFilter');
+      const statusFilter = document.getElementById('adminOrderStatusFilter');
+
+      const todayStr = getLocalDateString();
+      if (fromDate) fromDate.value = todayStr;
+      if (toDate) toDate.value = todayStr;
+      if (userFilter) userFilter.value = '';
+      if (statusFilter) statusFilter.value = '';
+
+      filterAdminOrders();
+    }
+
+    // USER TAB: orders history list & filtering
+    function populateUserOrderUserFilter(orders) {
+      const select = document.getElementById('userOrderUserFilter');
+      if (!select) return;
+
+      const currentVal = select.value;
+      const usersMap = {};
+      orders.forEach(o => {
+        if (o.user_id) {
+          usersMap[o.user_id] = o.user_name || state.user?.name || `User #${o.user_id}`;
+        }
+      });
+
+      let optionsHtml = '<option value="">All Users</option>';
+      Object.keys(usersMap).forEach(userId => {
+        optionsHtml += `<option value="${userId}">${usersMap[userId]} (ID: ${userId})</option>`;
+      });
+
+      select.innerHTML = optionsHtml;
+
+      // Restore previous selection if it is still valid
+      if (currentVal && usersMap[currentVal]) {
+        select.value = currentVal;
+      } else {
+        select.value = "";
+      }
+    }
+
+    function renderUserOrderRow(o) {
+      const orderDateFormatted = o.created_at ? new Date(normalizeDateString(o.created_at)).toLocaleString() : '-';
+      const amount = Number(o.amount || 0);
+      const isRazorpay = o.payment_method === 'razorpay';
+      const methodBadge = isRazorpay
+        ? `<span class="badge" style="background:rgba(99,102,241,0.2);color:#a5b4fc;border:1px solid rgba(99,102,241,0.4);">💳 Razorpay</span>`
+        : `<span class="badge" style="background:rgba(234,179,8,0.15);color:#fde68a;border:1px solid rgba(234,179,8,0.3);">🏦 Bank Transfer</span>`;
+      const refCode = isRazorpay ? (o.razorpay_payment_id || o.razorpay_order_id || 'Razorpay') : o.utr;
+      const detailsText = isRazorpay ? 'Razorpay Gateway' : `${o.bank_name} - ${o.account_name}`;
+
+      return `
+        <tr>
+          <td>${orderDateFormatted}</td>
+          <td>
+            <strong>${o.user_name || state.user?.name || 'Current User'}</strong><br>
+            <span style="color: var(--text-muted); font-size: 0.75rem;">${o.user_email || state.user?.email || ''}</span>
+          </td>
+          <td>₹${(amount || 0).toFixed(2)}</td>
+          <td><code>${refCode}</code></td>
+          <td>${methodBadge}<br><span style="font-size: 0.75rem; color: var(--text-muted);">${detailsText}</span></td>
+          <td>
+            ${o.screenshot_path ? `
+              <a href="/uploads/${o.screenshot_path}" target="_blank" style="color: var(--info-color); text-decoration: underline; font-weight: 500;">
+                View Attachment
+              </a>
+            ` : '<span style="color: var(--text-muted); font-size: 0.8rem;">Auto-Verified</span>'}
+          </td>
+          <td>
+            <span class="badge ${o.status === 'pending'
+          ? 'badge-pending'
+          : o.status === 'confirmed'
+            ? 'badge-active'
+            : 'badge-expired'
+        }">${o.status === 'pending' ? 'Pending Review' : o.status}</span>
+            ${o.notes ? `<div style="font-size: 0.75rem; color: var(--error-color); margin-top: 0.2rem;">Reason: ${o.notes}</div>` : ''}
+          </td>
+        </tr>
+      `;
+    }
+
+    function renderUserOrders() {
+      const tableBody = document.getElementById('userOrdersTableBody');
+      if (!tableBody) return;
+
+      // Populate User Filter dropdown
+      populateUserOrderUserFilter(state.orders || []);
+
+      // Initialize date inputs to current date by default if they are empty
+      const fromDateInput = document.getElementById('userOrderFromDate');
+      const toDateInput = document.getElementById('userOrderToDate');
+      const todayStr = getLocalDateString();
+      if (fromDateInput && !fromDateInput.value) {
+        fromDateInput.value = todayStr;
+      }
+      if (toDateInput && !toDateInput.value) {
+        toDateInput.value = todayStr;
+      }
+
+      const fromDateVal = fromDateInput?.value || '';
+      const toDateVal = toDateInput?.value || '';
+      const userFilterVal = document.getElementById('userOrderUserFilter')?.value || '';
+      const statusFilterVal = document.getElementById('userOrderStatusFilter')?.value || '';
+
+      const filtered = (state.orders || []).filter(o => {
+        if (userFilterVal && String(o.user_id) !== String(userFilterVal)) {
+          return false;
+        }
+        if (statusFilterVal && o.status !== statusFilterVal) {
+          return false;
+        }
+        if (o.created_at) {
+          // Parse o.created_at as UTC (normalizing space to T and appending Z if needed)
+          let dateStr = o.created_at;
+          if (dateStr.includes(' ') && !dateStr.includes('T')) {
+            dateStr = dateStr.replace(' ', 'T') + 'Z';
+          } else if (!dateStr.includes('Z') && !dateStr.includes('+')) {
+            dateStr = dateStr + 'Z';
+          }
+
+          const orderLocalDate = new Date(dateStr);
+          const yyyy = orderLocalDate.getFullYear();
+          const mm = String(orderLocalDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(orderLocalDate.getDate()).padStart(2, '0');
+          const orderDateOnly = `${yyyy}-${mm}-${dd}`;
+
+          if (fromDateVal && orderDateOnly < fromDateVal) return false;
+          if (toDateVal && orderDateOnly > toDateVal) return false;
+        }
+        return true;
+      });
+
+      // Sort: pending first, then by date descending
+      filtered.sort((a, b) => {
+        if (a.status === 'pending' && b.status !== 'pending') return -1;
+        if (a.status !== 'pending' && b.status === 'pending') return 1;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
+      if (filtered.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No matching deposit requests found.</td></tr>`;
+        return;
+      }
+
+      tableBody.innerHTML = filtered.map(renderUserOrderRow).join('');
+      return;
+
+      tableBody.innerHTML = filtered.map(o => {
+        let dateStr = o.created_at;
+        if (dateStr.includes(' ') && !dateStr.includes('T')) {
+          dateStr = dateStr.replace(' ', 'T') + 'Z';
+        } else if (!dateStr.includes('Z') && !dateStr.includes('+')) {
+          dateStr = dateStr + 'Z';
+        }
+        const orderDateFormatted = new Date(dateStr).toLocaleString();
+
+        return `
+          <tr>
+            <td>${orderDateFormatted}</td>
+            <td>₹${o.amount.toFixed(2)}</td>
+            <td><code>${o.utr}</code></td>
+            <td>${o.bank_name} - ${o.account_name}</td>
+            <td>
+              <span class="badge ${o.status === 'pending'
+            ? 'badge-pending'
+            : o.status === 'confirmed'
+              ? 'badge-active'
+              : 'badge-expired'
+          }">${o.status === 'pending' ? 'Pending Review' : o.status}</span>
+              ${o.notes ? `<div style="font-size: 0.75rem; color: var(--error-color); margin-top: 0.2rem;">Reason: ${o.notes}</div>` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function clearUserOrderFilters() {
+      const fromDate = document.getElementById('userOrderFromDate');
+      const toDate = document.getElementById('userOrderToDate');
+      const userFilter = document.getElementById('userOrderUserFilter');
+      const statusFilter = document.getElementById('userOrderStatusFilter');
+
+      const todayStr = getLocalDateString();
+      if (fromDate) fromDate.value = todayStr;
+      if (toDate) toDate.value = todayStr;
+      if (userFilter) userFilter.value = '';
+      if (statusFilter) statusFilter.value = '';
+
+      renderUserOrders();
+    }
+
+    // USER TAB: Expiry Report list & filtering
+    function renderUserExpiryReport() {
+      const tableBody = document.getElementById('userExpiryReportTableBody');
+      if (!tableBody) return;
+
+      const filterVal = document.getElementById('userExpiryStatusFilter')?.value || 'all';
+      const now = Date.now();
+
+      if (!state.user) {
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading user details...</td></tr>`;
+        return;
+      }
+
+      const plans = [...(state.plans || [])].sort((a, b) => {
+        const aTime = a.expires_at ? new Date(normalizeDateString(a.expires_at)).getTime() : 0;
+        const bTime = b.expires_at ? new Date(normalizeDateString(b.expires_at)).getTime() : 0;
+        return bTime - aTime;
+      });
+
+      const latestPlan = state.plan || plans[0] || null;
+      const expiresAt = latestPlan?.expires_at || null;
+      const isActive = latestPlan?.status === 'active' && expiresAt && new Date(normalizeDateString(expiresAt)).getTime() > now;
+
+      if (filterVal === 'active' && !isActive) {
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No active subscription found.</td></tr>`;
+        return;
+      }
+      if (filterVal === 'deactive' && isActive) {
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No deactivated or expired subscription found.</td></tr>`;
+        return;
+      }
+
+      let expiresDateFormatted = 'Never';
+      let timeRemainingStr = '<span style="color: var(--text-muted);">No active plan history</span>';
+
+      if (expiresAt) {
+        const expiryDate = new Date(normalizeDateString(expiresAt));
+        expiresDateFormatted = expiryDate.toLocaleString();
+        const diffMs = expiryDate.getTime() - now;
+        const diffDays = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+        if (diffDays > 0) {
+          timeRemainingStr = `<span style="color: var(--accent-color); font-weight: 600;">${diffDays} days left</span>`;
+        } else {
+          timeRemainingStr = `<span style="color: var(--error-color);">Expired ${Math.abs(diffDays)} days ago</span>`;
+        }
+      }
+
+      tableBody.innerHTML = `
+        <tr>
+          <td><code>${state.user.id}</code></td>
+          <td><strong>${state.user.name}</strong></td>
+          <td>
+            ${state.user.email}<br>
+            <span style="color: var(--text-muted); font-size: 0.75rem;">${state.user.phone ? '+' + state.user.phone.replace(/^\+/, '') : 'No phone'}</span>
+          </td>
+          <td>${expiresDateFormatted}</td>
+          <td>${timeRemainingStr}</td>
+          <td>
+            ${isActive
+          ? `<span class="badge badge-active">Active</span>`
+          : `<span class="badge badge-expired">Deactive</span>`
+        }
+          </td>
+        </tr>
+      `;
+    }
+
+    function clearUserExpiryFilters() {
+      const statusFilter = document.getElementById('userExpiryStatusFilter');
+
+      if (statusFilter) statusFilter.value = 'all';
+
+      renderUserExpiryReport();
+    }
+
+    async function adminConfirmOrder(id) {
+      if (!confirm(`Approve payment deposit for reference request #${id}?`)) return;
+      try {
+        const res = await fetch(`/admin/orders/${id}/confirm`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert('Payment confirmed & user plan activated successfully!');
+        fetchAdminOrders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function adminRejectOrder(id) {
+      const notes = prompt('Enter a reason for rejecting this deposit reference:');
+      if (notes === null) return; // cancelled
+
+      try {
+        const res = await fetch(`/admin/orders/${id}/reject`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ notes: notes || 'UTR verification failed / reference invalid.' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert('Reference rejected.');
+        fetchAdminOrders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ADMIN TAB: manage users directory (with block/unblock)
+    async function fetchAdminUsers() {
+      const tableBody = document.querySelector('#adminUsersTable tbody');
+
+      try {
+        const res = await fetch('/admin/users', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        state.adminUsers = data.users || [];
+
+        // 1. Calculate Statistics
+        let totalBalance = 0;
+        let activeCount = 0;
+        let expiringSoonCount = 0;
+        const now = Date.now();
+
+        state.adminUsers.forEach(u => {
+          if (u.role !== 'admin') {
+            totalBalance += u.wallet_balance || 0;
+          }
+          if (u.plan_status === 'active') {
+            activeCount++;
+            if (u.expires_at) {
+              const diffMs = new Date(u.expires_at).getTime() - now;
+              const diffDays = diffMs / (24 * 60 * 60 * 1000);
+              if (diffDays > 0 && diffDays <= 5) {
+                expiringSoonCount++;
+              }
+            }
+          }
+        });
+
+        // Update Stat Cards UI
+        const balEl = document.getElementById('totalUserWalletBalance');
+        if (balEl) balEl.textContent = `₹${totalBalance.toFixed(2)}`;
+        const actEl = document.getElementById('totalActiveSubscriptions');
+        if (actEl) actEl.textContent = activeCount;
+        const expEl = document.getElementById('totalExpiringSoon');
+        if (expEl) expEl.textContent = expiringSoonCount;
+
+        // 2. Sort Users: Admins at the bottom, active plans expiring soonest at the top, then other active plans, then expired/no plans
+        const sortedUsers = [...state.adminUsers].sort((a, b) => {
+          if (a.role === 'admin' && b.role !== 'admin') return 1;
+          if (a.role !== 'admin' && b.role === 'admin') return -1;
+
+          const aActive = a.plan_status === 'active' && a.expires_at;
+          const bActive = b.plan_status === 'active' && b.expires_at;
+
+          if (aActive && !bActive) return -1;
+          if (!aActive && bActive) return 1;
+
+          if (aActive && bActive) {
+            return new Date(a.expires_at) - new Date(b.expires_at); // ascending (expires soonest first)
+          }
+
+          return b.id - a.id;
+        });
+
+        if (tableBody) {
+          tableBody.innerHTML = sortedUsers.map(u => `
+          <tr>
+            <td><code>${u.id}</code></td>
+            <td><strong>${u.name}</strong></td>
+            <td>
+              ${u.email}<br>
+              <span style="color: var(--text-muted); font-size: 0.75rem;">${u.phone || 'No phone'}</span>
+            </td>
+            <td><span class="badge ${u.role === 'admin' ? 'badge-active' : 'badge-none'}">${u.role}</span></td>
+            <td><strong>₹${(u.wallet_balance || 0).toFixed(2)}</strong></td>
+            <td>
+              ${u.plan_status === 'active' ? `<span class="badge badge-active">Active</span>` : `<span class="badge badge-expired">Expired / None</span>`}
+            </td>
+            <td>${u.expires_at ? new Date(u.expires_at).toLocaleString() : '-'}</td>
+            <td>
+              ${u.role === 'admin' ? '<span style="color:var(--text-muted);">Admin (Bypassed)</span>' : `
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                  ${u.is_blocked === 1
+                ? `<span style="color:var(--error-color); font-weight:600; font-size:0.8rem;">Blocked</span>
+                       <button onclick="adminSetBlock(${u.id}, false)" class="btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem; width:auto;">Allow Link</button>`
+                : `<span style="color:var(--accent-color); font-weight:600; font-size:0.8rem;">Allowed</span>
+                       <button onclick="adminSetBlock(${u.id}, true)" class="btn-warn" style="padding:0.25rem 0.5rem; font-size:0.75rem; width:auto;">Block Link</button>`
+              }
+                </div>
+              `}
+            </td>
+            <td>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <button onclick="adminGenerateToken(${u.id})" style="padding:0.25rem 0.6rem; font-size:0.75rem; width:auto; background: linear-gradient(135deg,#6366f1,#8b5cf6); border:none; color:#fff; border-radius:6px; cursor:pointer;">🔑 Get Token</button>
+                ${u.role === 'admin' ? '' : `
+                  <button onclick="adminDeleteUser(${u.id})" style="padding:0.25rem 0.6rem; font-size:0.75rem; width:auto; background: var(--error-color); border:none; color:#fff; border-radius:6px; cursor:pointer;">🗑️ Delete</button>
+                `}
+              </div>
+            </td>
+          </tr>
+        `).join('');
+        }
+      } catch (err) {
+        if (tableBody) tableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--error-color);">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function renderExpiryReport() {
+      const tableBody = document.querySelector('#adminExpiryReportTable tbody');
+      if (!tableBody) return;
+
+      const filterVal = document.getElementById('adminExpiryStatusFilter')?.value || 'all';
+      const now = Date.now();
+
+      // Exclude system admins
+      const reportUsers = state.adminUsers.filter(u => u.role !== 'admin');
+
+      // Apply filter
+      const filtered = reportUsers.filter(u => {
+        const isActive = u.plan_status === 'active' && u.expires_at && new Date(u.expires_at).getTime() > now;
+        if (filterVal === 'active') return isActive;
+        if (filterVal === 'deactive') return !isActive;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No users found matching the filter.</td></tr>`;
+        return;
+      }
+
+      tableBody.innerHTML = filtered.map(u => {
+        const isActive = u.plan_status === 'active' && u.expires_at && new Date(u.expires_at).getTime() > now;
+        let timeRemainingStr = '-';
+        if (u.expires_at) {
+          const diffMs = new Date(u.expires_at).getTime() - now;
+          const diffDays = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+          if (diffDays > 0) {
+            timeRemainingStr = `<span style="color: var(--accent-color); font-weight: 600;">${diffDays} days left</span>`;
+          } else {
+            timeRemainingStr = `<span style="color: var(--error-color);">Expired ${Math.abs(diffDays)} days ago</span>`;
+          }
+        } else {
+          timeRemainingStr = '<span style="color: var(--text-muted);">No active plan history</span>';
+        }
+
+        return `
+          <tr>
+            <td><code>${u.id}</code></td>
+            <td><strong>${u.name}</strong></td>
+            <td>
+              ${u.email}<br>
+              <span style="color: var(--text-muted); font-size: 0.75rem;">${u.phone || 'No phone'}</span>
+            </td>
+            <td>${u.expires_at ? new Date(u.expires_at).toLocaleString() : 'Never'}</td>
+            <td>${timeRemainingStr}</td>
+            <td>
+              ${isActive
+            ? `<span class="badge badge-active">Active</span>`
+            : `<span class="badge badge-expired">Deactive</span>`
+          }
+            </td>
+            <td>
+              <button onclick="adminDeleteUser(${u.id})" style="padding:0.25rem 0.6rem; font-size:0.75rem; width:auto; background: var(--error-color); border:none; color:#fff; border-radius:6px; cursor:pointer;">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function adminSetBlock(userId, block) {
+      if (!confirm(`Are you sure you want to ${block ? 'BLOCK' : 'UNBLOCK'} WhatsApp API and connection rights for user #${userId}?`)) return;
+      try {
+        const res = await fetch(`/admin/users/${userId}/block`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ is_blocked: block })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        alert(data.message);
+        fetchAdminUsers();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function adminGenerateToken(userId) {
+      const userName = state.adminUsers.find(u => u.id === userId)?.name || `#${userId}`;
+      try {
+        const res = await fetch(`/admin/users/${userId}/generate-token`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        // Show modal with token
+        const modal = document.getElementById('tokenModal');
+        const tokenDisplay = document.getElementById('tokenModalValue');
+        const tokenUserLabel = document.getElementById('tokenModalUser');
+        if (modal && tokenDisplay) {
+          tokenUserLabel.textContent = `User: ${userName} (ID: ${userId})`;
+          tokenDisplay.textContent = data.token;
+          modal.style.display = 'flex';
+        }
+      } catch (err) {
+        alert('Error generating token: ' + err.message);
+      }
+    }
+
+    async function adminDeleteUser(userId) {
+      const userName = state.adminUsers.find(u => u.id === userId)?.name || `#${userId}`;
+      if (!confirm(`⚠️ WARNING: Are you sure you want to permanently delete user "${userName}" (ID: ${userId})?\nThis will delete all their plans, order history, wallet transactions, password reset tokens, and WhatsApp sessions. This action cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/admin/users/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'User deleted successfully.');
+        await fetchAdminUsers();
+        if (state.currentTab === 'adminExpiryReportTab') {
+          renderExpiryReport();
+        }
+      } catch (err) {
+        alert('Error deleting user: ' + err.message);
+      }
+    }
+
+    function closeTokenModal() {
+      const modal = document.getElementById('tokenModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function copyToken() {
+      const tokenDisplay = document.getElementById('tokenModalValue');
+      if (!tokenDisplay) return;
+      navigator.clipboard.writeText(tokenDisplay.textContent).then(() => {
+        const btn = document.getElementById('copyTokenBtn');
+        if (btn) { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = '📋 Copy Token', 2000); }
+      }).catch(() => {
+        alert('Copy failed. Please select and copy the token manually.');
+      });
+    }
+
+    function copyUserApiToken() {
+      const tokenDisplay = document.getElementById('userApiTokenValue');
+      if (!tokenDisplay) return;
+      navigator.clipboard.writeText(tokenDisplay.textContent.trim()).then(() => {
+        const btn = document.getElementById('copyUserApiTokenBtn');
+        if (btn) {
+          btn.textContent = '✅ Copied!';
+          setTimeout(() => btn.textContent = '📋 Copy Token', 2000);
+        }
+      }).catch(() => {
+        alert('Copy failed. Please select and copy the token manually.');
+      });
+    }
+
+    async function handleAdminCreateUser(e) {
+      e.preventDefault();
+      const name = document.getElementById('adminNewName').value.trim();
+      const email = document.getElementById('adminNewEmail').value.trim();
+      const phone = document.getElementById('adminNewPhone').value.trim();
+      const password = document.getElementById('adminNewPassword').value;
+      const role = (document.getElementById('adminNewRole')?.value) || 'user';
+
+      try {
+        const res = await fetch('/admin/users', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, email, phone, password, role })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Account created successfully!');
+
+        // Reset inputs
+        document.getElementById('adminNewName').value = '';
+        document.getElementById('adminNewEmail').value = '';
+        document.getElementById('adminNewPhone').value = '';
+        document.getElementById('adminNewPassword').value = '';
+
+        fetchAdminUsers();
+      } catch (err) {
+        alert(`Failed to create account: ${err.message}`);
+      }
+    }
+
+    async function handleAdminCredit(e) {
+      e.preventDefault();
+      const userId = document.getElementById('creditUserId').value.trim();
+      const amount = document.getElementById('creditAmount').value.trim();
+      const description = document.getElementById('creditReason').value.trim();
+
+      try {
+        const res = await fetch('/admin/wallet/credit', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ userId, amount, description })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(`Wallet balance credited successfully!`);
+        document.getElementById('creditUserId').value = '';
+        document.getElementById('creditAmount').value = '';
+        document.getElementById('creditReason').value = '';
+        fetchAdminUsers();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function onAdminMsgTargetChange(val) {
+      const userGroup = document.getElementById('adminUserSelectGroup');
+      const phoneGroup = document.getElementById('adminCustomPhoneGroup');
+      if (userGroup) userGroup.style.display = val === 'user' ? 'block' : 'none';
+      if (phoneGroup) phoneGroup.style.display = val === 'custom' ? 'block' : 'none';
+    }
+
+    async function handleAdminSendMessage(e) {
+      e.preventDefault();
+      const targetType = document.querySelector('input[name="adminMsgTarget"]:checked')?.value || 'all';
+      const userId = document.getElementById('adminTargetUserSelect')?.value || '';
+      const phone = document.getElementById('adminTargetPhoneInput')?.value.trim() || '';
+      const message = document.getElementById('adminMsgContentInput')?.value.trim() || '';
+
+      if (!message) {
+        return alert('Please enter message content');
+      }
+
+      if (targetType === 'user' && !userId) {
+        return alert('Please select a target user');
+      }
+
+      if (targetType === 'custom' && (!phone || phone.length < 10)) {
+        return alert('Please enter a valid mobile number with country code');
+      }
+
+      const btn = document.getElementById('adminSendMsgSubmitBtn');
+      const alertBox = document.getElementById('adminSendMsgAlert');
+      btn.disabled = true;
+      btn.innerText = 'Sending WhatsApp message...';
+      if (alertBox) alertBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/admin/send-message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify({ targetType, userId, phone, message })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = 'rgba(16, 185, 129, 0.15)';
+          alertBox.style.border = '1px solid var(--accent-color)';
+          alertBox.style.color = 'var(--accent-color)';
+          alertBox.innerText = '✅ ' + data.message;
+        }
+
+        document.getElementById('adminMsgContentInput').value = '';
+
+      } catch (err) {
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = 'rgba(244, 63, 94, 0.15)';
+          alertBox.style.border = '1px solid var(--error-color)';
+          alertBox.style.color = 'var(--error-color)';
+          alertBox.innerText = '❌ ' + err.message;
+        }
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '🚀 Send WhatsApp Message';
+      }
+    }
+
+    async function handleAdminActiveBroadcast(e) {
+      e.preventDefault();
+      const message = document.getElementById('adminActiveBroadcastMsg')?.value.trim() || '';
+      if (!message) return alert('Please enter a message for active users');
+
+      const btn = document.getElementById('adminActiveBroadcastBtn');
+      const alertBox = document.getElementById('adminActiveBroadcastAlert');
+
+      btn.disabled = true;
+      btn.innerText = '⏳ Broadcasting to active users...';
+      if (alertBox) alertBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/admin/send-message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify({ targetType: 'active_users', message })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = 'rgba(16,185,129,0.15)';
+          alertBox.style.border = '1px solid #10b981';
+          alertBox.style.color = '#34d399';
+          alertBox.innerText = '✅ ' + data.message;
+        }
+        document.getElementById('adminActiveBroadcastMsg').value = '';
+      } catch (err) {
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = 'rgba(244,63,94,0.15)';
+          alertBox.style.border = '1px solid var(--error-color)';
+          alertBox.style.color = 'var(--error-color)';
+          alertBox.innerText = '❌ ' + err.message;
+        }
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '✅ Send to Active Users';
+      }
+    }
+
+    async function handleAdminInactiveBroadcast(e) {
+      e.preventDefault();
+      const message = document.getElementById('adminInactiveBroadcastMsg')?.value.trim() || '';
+      if (!message) return alert('Please enter a re-engagement message for inactive users');
+
+      const btn = document.getElementById('adminInactiveBroadcastBtn');
+      const alertBox = document.getElementById('adminInactiveBroadcastAlert');
+
+      btn.disabled = true;
+      btn.innerText = '⏳ Broadcasting to inactive users...';
+      if (alertBox) alertBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/admin/send-message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify({ targetType: 'inactive_users', message })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = 'rgba(245,158,11,0.15)';
+          alertBox.style.border = '1px solid #f59e0b';
+          alertBox.style.color = '#fbbf24';
+          alertBox.innerText = '✅ ' + data.message;
+        }
+        document.getElementById('adminInactiveBroadcastMsg').value = '';
+      } catch (err) {
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = 'rgba(244,63,94,0.15)';
+          alertBox.style.border = '1px solid var(--error-color)';
+          alertBox.style.color = 'var(--error-color)';
+          alertBox.innerText = '❌ ' + err.message;
+        }
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '💤 Send to Inactive Users';
+      }
+    }
+
+    // ─── ADMIN TAB: Database Sync, Backup & Restore ─────────────────────────
+
+    async function handleAdminDownloadDb() {
+      const btn = document.getElementById('adminDownloadDbBtn');
+      btn.disabled = true;
+      btn.innerText = '⏳ Exporting database...';
+      try {
+        const res = await fetch('/admin/database/backup', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Failed to download database');
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chatautomate_backup_${new Date().toISOString().split('T')[0]}.db`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Download failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '📥 Download Database (.db)';
+      }
+    }
+
+    async function handleAdminRestoreDb(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('adminRestoreDbInput');
+      const file = fileInput?.files?.[0];
+      if (!file) return alert('Please select a .db file to upload');
+
+      if (!confirm(`⚠️ WARNING: Uploading "${file.name}" will completely replace the current database with the uploaded file.\n\nAre you sure you want to proceed?`)) {
+        return;
+      }
+
+      const btn = document.getElementById('adminRestoreDbBtn');
+      const alertBox = document.getElementById('adminRestoreDbAlert');
+      btn.disabled = true;
+      btn.innerText = '⏳ Uploading & restoring database...';
+      if (alertBox) alertBox.style.display = 'none';
+
+      const formData = new FormData();
+      formData.append('db_file', file);
+
+      try {
+        const res = await fetch('/admin/database/restore', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = 'rgba(16,185,129,0.15)';
+          alertBox.style.border = '1px solid #10b981';
+          alertBox.style.color = '#34d399';
+          alertBox.innerText = '✅ ' + data.message;
+        }
+        fileInput.value = '';
+        alert('✅ Database restored successfully! Reloading user directory...');
+        fetchAdminUsers();
+      } catch (err) {
+        if (alertBox) {
+          alertBox.style.display = 'block';
+          alertBox.style.background = 'rgba(244,63,94,0.15)';
+          alertBox.style.border = '1px solid var(--error-color)';
+          alertBox.style.color = 'var(--error-color)';
+          alertBox.innerText = '❌ ' + err.message;
+        }
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '📤 Upload & Restore Database';
+      }
+    }
+
+    // ADMIN TAB: manage banks list (CRUD)
+
+    async function fetchAdminBanks() {
+      const tableBody = document.querySelector('#adminBanksTable tbody');
+      if (!tableBody) return;
+
+      try {
+        const res = await fetch('/admin/banks', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        state.adminBanks = data.banks || [];
+
+        tableBody.innerHTML = state.adminBanks.map(b => `
+          <tr>
+            <td>
+              <strong>${b.bank_name}</strong>
+            </td>
+            <td>
+              A/C: <code>${b.account_number}</code><br>
+              IFSC: <code>${b.ifsc}</code><br>
+              Holder: ${b.account_holder}
+            </td>
+            <td>
+              ${b.is_active === 1
+            ? '<span class="badge badge-active">Active</span>'
+            : '<span class="badge badge-expired">Inactive</span>'
+          }
+            </td>
+            <td>
+              <div style="display:flex; gap:0.25rem;">
+                <button onclick="editBankDetails(${b.id})" style="padding:0.25rem 0.5rem; font-size:0.75rem; background:var(--info-color); width:auto;">Edit</button>
+                <button onclick="deleteBankDetails(${b.id})" class="btn-danger" style="padding:0.25rem 0.5rem; font-size:0.75rem; width:auto;">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--error-color);">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function editBankDetails(id) {
+      const bank = state.adminBanks.find(b => b.id === id);
+      if (!bank) return;
+
+      state.editingBankId = id;
+      document.getElementById('bankFormTitle').textContent = `Edit Bank: ${bank.bank_name}`;
+      document.getElementById('bankNameInput').value = bank.bank_name;
+      document.getElementById('bankAccountInput').value = bank.account_number;
+      document.getElementById('bankIfscInput').value = bank.ifsc;
+      document.getElementById('bankHolderInput').value = bank.account_holder;
+      document.getElementById('bankStatusInput').value = bank.is_active;
+
+      document.getElementById('bankSubmitBtn').textContent = 'Save Bank Details';
+      document.getElementById('bankCancelBtn').style.display = 'inline-flex';
+    }
+
+    function resetBankForm() {
+      state.editingBankId = null;
+      document.getElementById('bankFormTitle').textContent = 'Add New Bank Account';
+      document.getElementById('bankNameInput').value = '';
+      document.getElementById('bankAccountInput').value = '';
+      document.getElementById('bankIfscInput').value = '';
+      document.getElementById('bankHolderInput').value = '';
+      document.getElementById('bankStatusInput').value = '1';
+
+      document.getElementById('bankSubmitBtn').textContent = 'Create Bank Account';
+      document.getElementById('bankCancelBtn').style.display = 'none';
+    }
+
+    async function handleBankSubmit(e) {
+      e.preventDefault();
+      const bank_name = document.getElementById('bankNameInput').value.trim();
+      const account_number = document.getElementById('bankAccountInput').value.trim();
+      const ifsc = document.getElementById('bankIfscInput').value.trim();
+      const account_holder = document.getElementById('bankHolderInput').value.trim();
+      const is_active = parseInt(document.getElementById('bankStatusInput').value);
+
+      const payload = { bank_name, account_number, ifsc, account_holder, is_active };
+
+      try {
+        let res, data;
+        if (state.editingBankId) {
+          // Update
+          res = await fetch(`/admin/banks/${state.editingBankId}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${state.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          // Create
+          res = await fetch('/admin/banks', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${state.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Bank account details saved!');
+        resetBankForm();
+        fetchAdminBanks();
+        fetchUserProfile(); // Sync bank option lists
+      } catch (err) {
+        alert(`Failed to save bank: ${err.message}`);
+      }
+    }
+
+    async function deleteBankDetails(id) {
+      if (!confirm('Are you sure you want to delete this bank details config?')) return;
+      try {
+        const res = await fetch(`/admin/banks/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        alert(data.message);
+        fetchAdminBanks();
+        fetchUserProfile();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // WHATSAPP CONTROLS (Only rendered/used by Subscribers with active plans)
+    let statusPollInterval = null;
+
+    function setWhatsappLinkMode(mode) {
+      state.whatsappLinkMode = mode;
+      const buttons = document.querySelectorAll('#whatsappTab .wa-mode-btn');
+      if (buttons && buttons.length === 2) {
+        buttons[0].classList.toggle('active', mode === 'code');
+        buttons[1].classList.toggle('active', mode === 'qr');
+      }
+      const qrContainer = document.getElementById('qrContainer');
+      if (qrContainer && state.whatsappStatus !== 'CONNECTED') {
+        qrContainer.innerHTML = renderWhatsappConnectArea();
+      }
+    }
+
+    function copyPairingCode(elementIdOrText) {
+      let text = '';
+      if (typeof elementIdOrText === 'string') {
+        const el = document.getElementById(elementIdOrText);
+        text = el ? el.innerText.trim() : elementIdOrText;
+      }
+      if (!text) return;
+      const cleanCode = text.replace(/[^A-Za-z0-9]/g, '');
+      navigator.clipboard.writeText(cleanCode).then(() => {
+        alert(`✅ Pairing code "${text}" copied to clipboard!\n\nNow open WhatsApp > Linked Devices > Link with phone number instead, and paste this code.`);
+      }).catch(() => {
+        alert(`Please copy code manually: ${text}`);
+      });
+    }
+
+    function openWhatsappMobileApp() {
+      window.location.href = 'whatsapp://';
+    }
+
+    function renderWhatsappConnectArea() {
+      const status = state.whatsappStatus;
+      const hasFiles = state.whatsappHasFiles;
+      const isMobile = isMobileBrowser();
+      const code = state.whatsappPairingCode;
+      const userPhone = state.user?.phone ? (state.user.phone.length === 10 ? '91' + state.user.phone : state.user.phone) : '';
+
+      if (status === 'CONNECTED') {
+        return `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.4rem; padding: 0.5rem 0;">
+            <span style="color: var(--accent-color); font-weight: 600; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+              <div class="pulse" style="background-color: var(--accent-color)"></div> Connection Secured
+            </span>
+            <span style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">
+              WhatsApp Messaging API engine is connected & running in background.
+            </span>
+          </div>
+        `;
+      }
+
+      if (status === 'CONNECTING') {
+        const restoringMsg = hasFiles
+          ? 'Restoring your WhatsApp session from cloud storage — please wait…'
+          : 'Initializing WebSocket link…';
+        return `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.6rem; padding:1.25rem 0;">
+            <div class="pulse" style="background-color: var(--warning-color); width: 18px; height: 18px;"></div>
+            <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 500;">${restoringMsg}</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Please wait a moment...</span>
+          </div>
+        `;
+      }
+
+      // If Mobile Browser is detected -> Auto-use 8-Digit Pairing Code
+      if (isMobile) {
+        if (code) {
+          return `
+            <div style="display:flex; flex-direction:column; align-items:center; gap:0.9rem; width:100%; max-width:440px; padding:0.5rem 0;">
+              <div style="display:flex; align-items:center; gap:0.4rem; color:#7dd3fc; font-weight:700; font-size:0.9rem;">
+                <span>⚡ Enter this 8-digit code in WhatsApp:</span>
+              </div>
+
+              <div id="activeUserPairingCode" class="wa-code-display">${code}</div>
+
+              <div style="display:flex; gap:0.5rem; width:100%; justify-content:center; flex-wrap:wrap;">
+                <button onclick="copyPairingCode('activeUserPairingCode')" style="background:linear-gradient(135deg,#0284c7,#0369a1); border:none; color:#fff; font-weight:600; padding:0.6rem 1.25rem; border-radius:8px; cursor:pointer; font-size:0.85rem;">
+                  📋 Copy Code
+                </button>
+                <button onclick="openWhatsappMobileApp()" style="background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.35); color:#86efac; font-weight:600; padding:0.6rem 1.25rem; border-radius:8px; cursor:pointer; font-size:0.85rem;">
+                  📲 Open WhatsApp App
+                </button>
+              </div>
+
+              <div style="background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:0.75rem 1rem; width:100%; text-align:left; font-size:0.78rem; color:var(--text-muted); line-height:1.7;">
+                <strong style="color:#f8fafc;">How to Link on this Mobile Phone:</strong>
+                <ol style="margin:0.25rem 0 0 1.1rem; padding:0;">
+                  <li>Open <strong>WhatsApp</strong> on this phone</li>
+                  <li>Tap <strong>Menu (⋮)</strong> or <strong>Settings (⚙️)</strong> ➔ <strong>Linked Devices</strong></li>
+                  <li>Tap <strong>Link a Device</strong></li>
+                  <li>Tap <strong>"Link with phone number instead"</strong> at the bottom</li>
+                  <li>Type or paste the <strong>8-digit code</strong> shown above</li>
+                </ol>
+              </div>
+              
+              <button onclick="requestUserPairingCode()" style="background:transparent; border:none; color:#a5b4fc; font-size:0.8rem; cursor:pointer; text-decoration:underline;">
+                🔄 Request New Code
+              </button>
+            </div>
+          `;
+        }
+
+        // Mobile Code Form
+        return `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.9rem; width:100%; max-width:420px; padding:0.5rem 0;">
+            <div style="font-size: 2.2rem;">📱</div>
+            <div style="font-weight: 700; color: var(--text-main); font-size: 1.05rem; text-align:center;">
+              Link WhatsApp with 8-Digit Pairing Code
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.82rem; text-align: center; margin:0; line-height:1.5;">
+              Mobile browser auto-detected. No QR scan needed — click below to generate your 8-digit WhatsApp linking code.
+            </p>
+
+            <div style="display:flex; flex-direction:column; gap:0.5rem; width:100%;">
+              <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">Your WhatsApp Mobile Number:</label>
+              <div style="display:flex; gap:0.5rem;">
+                <input type="tel" id="userPairingPhone" placeholder="e.g. 919876543210" value="${userPhone}" style="flex:1; font-family:monospace; padding:0.6rem 0.8rem; border-radius:8px; background:rgba(15,23,42,0.8); border:1px solid var(--glass-border); color:#fff; font-size:0.95rem;">
+                <button onclick="requestUserPairingCode()" id="requestPairingBtn" style="background:linear-gradient(135deg, #0284c7, #0369a1); border:none; padding:0.6rem 1.1rem; border-radius:8px; color:#fff; font-weight:600; font-size:0.85rem; cursor:pointer; white-space:nowrap;">
+                  ⚡ Get 8-Digit Code
+                </button>
+              </div>
+            </div>
+
+            ${hasFiles ? `
+              <div style="display:flex; flex-direction:column; align-items:center; gap:0.3rem; margin-top:0.4rem;">
+                <span style="font-size:0.75rem; color:#a5b4fc;">Or reconnect saved previous session without entering code:</span>
+                <button onclick="triggerLogin('reconnect')" style="background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:#fff; font-size:0.78rem; padding:0.35rem 0.8rem; border-radius:6px; cursor:pointer;">
+                  🔄 Quick Reconnect Saved Session
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      // If Desktop Browser is detected -> Auto-use QR Code
+      if (state.whatsappQr) {
+        return `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.6rem; padding:0.5rem 0;">
+            <img class="qr-image" src="${state.whatsappQr}" alt="Scan QR Code">
+            <span style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--warning-color); font-weight: 600; text-align: center;">
+              Open WhatsApp on your phone → Linked Devices → Link a Device → Scan QR
+            </span>
+          </div>
+        `;
+      }
+
+      return `
+        <div style="display:flex; flex-direction:column; align-items:center; gap:0.6rem; padding:1rem 0;">
+          <div style="font-size: 2.2rem;">💻</div>
+          <div style="font-weight: 600; color: var(--text-main); font-size: 1rem;">Desktop Browser — Scan QR Code</div>
+          <span style="color: var(--text-muted); font-size: 0.85rem; text-align: center; max-width: 360px;">
+            ${hasFiles ? 'Saved session credentials found on server. Click below to reconnect or generate a new QR code.' : 'Click below to initialize and scan your WhatsApp QR code with your phone camera.'}
+          </span>
+          <button onclick="triggerLogin('qr')" style="margin-top: 0.5rem; background: var(--accent-color); padding: 0.6rem 1.25rem; font-size: 0.9rem; font-weight: 600; border-radius: 8px;">
+            🔗 Connect WhatsApp & Scan QR
+          </button>
+        </div>
+      `;
+    }
+
+    async function requestUserPairingCode() {
+      const phoneInput = document.getElementById('userPairingPhone');
+      let rawPhone = (phoneInput ? phoneInput.value : '').trim();
+      if (!rawPhone && state.user?.phone) rawPhone = state.user.phone;
+
+      let digits = rawPhone.replace(/\D/g, '');
+      if (digits.length === 10) digits = '91' + digits;
+      if (!digits || digits.length < 10) {
+        alert('Please enter a valid mobile number (10-15 digits with country code, e.g. 919876543210).');
+        return;
+      }
+
+      const qrContainer = document.getElementById('qrContainer');
+      if (qrContainer) {
+        qrContainer.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.6rem; padding:1.5rem 0;">
+            <div class="pulse" style="background-color: #38bdf8; width: 20px; height: 20px;"></div>
+            <span style="font-size: 0.95rem; color: #7dd3fc; font-weight: 600;">Requesting 8-Digit Pairing Code for +${digits}...</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Please wait a moment...</span>
+          </div>
+        `;
+      }
+      updateWhatsappBadge('CONNECTING');
+
+      try {
+        const res = await fetch('/api/session/pairing-code', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ phoneNumber: digits })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to generate pairing code');
+
+        state.whatsappPairingCode = data.formattedCode || data.pairingCode;
+        state.whatsappStatus = 'PAIRING_CODE';
+        handleWhatsappStateChange(data);
+
+        // Start fast 2-second polling to auto-detect connection when user enters code
+        stopPollingWhatsappStatus();
+        statusPollInterval = setInterval(checkWhatsappStatus, 2000);
+        statusPollInterval._fast = true;
+      } catch (err) {
+        alert('Pairing Code Error: ' + err.message);
+        updateWhatsappBadge('DISCONNECTED');
+        if (qrContainer) qrContainer.innerHTML = renderWhatsappConnectArea();
+      }
+    }
+
+    async function checkWhatsappStatus() {
+      if (!state.token || document.hidden) return;
+      try {
+        const res = await fetch('/api/session/status?autoConnect=false', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.status === 403) {
+          stopPollingWhatsappStatus();
+          return;
+        }
+        const data = await res.json();
+        handleWhatsappStateChange(data);
+
+        // If connected, keep a light 30-second heartbeat to detect disconnections
+        if (data.status === 'CONNECTED') {
+          if (!statusPollInterval || statusPollInterval._fast) {
+            stopPollingWhatsappStatus();
+            statusPollInterval = setInterval(checkWhatsappStatus, 30000);
+            statusPollInterval._fast = false;
+          }
+        } else if (data.status === 'CONNECTING' || data.status === 'QR' || data.status === 'PAIRING_CODE') {
+          // If actively connecting or waiting for scan/code entry, poll every 2s
+          if (!statusPollInterval || !statusPollInterval._fast) {
+            stopPollingWhatsappStatus();
+            statusPollInterval = setInterval(checkWhatsappStatus, 2000);
+            statusPollInterval._fast = true;
+          }
+        } else {
+          // Disconnected — stop polling to reduce server/DB load until user clicks Connect
+          stopPollingWhatsappStatus();
+        }
+        return data;
+      } catch (err) {
+        console.error('Status check error:', err);
+      }
+    }
+
+    async function triggerLogin(overrideMode) {
+      const isMobile = isMobileBrowser();
+
+      // If user is on Mobile and hasn't generated a pairing code yet, automatically trigger pairing code!
+      if (isMobile && overrideMode !== 'reconnect' && !state.whatsappPairingCode) {
+        await requestUserPairingCode();
+        return;
+      }
+
+      const qrContainer = document.getElementById('qrContainer');
+      if (qrContainer) {
+        qrContainer.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 0;">
+            <div class="pulse" style="background-color: var(--warning-color); width: 18px; height: 18px;"></div>
+            <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 500;">Initializing WhatsApp connection...</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Please wait a moment...</span>
+          </div>
+        `;
+      }
+      updateWhatsappBadge('CONNECTING');
+
+      try {
+        const res = await fetch('/api/session/login', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const data = await res.json();
+        handleWhatsappStateChange(data);
+
+        // Start active polling every 2s while in QR / Connecting state
+        stopPollingWhatsappStatus();
+        statusPollInterval = setInterval(checkWhatsappStatus, 2000);
+        statusPollInterval._fast = true;
+      } catch (err) {
+        console.error('Connection setup error:', err.message);
+        updateWhatsappBadge('DISCONNECTED');
+        if (qrContainer) {
+          qrContainer.innerHTML = `<span style="color:var(--error-color); font-size:0.85rem;">Failed to initialize session: ${err.message}</span>`;
+        }
+      }
+    }
+
+    async function triggerLogout() {
+      if (!confirm('Are you sure you want to log out and unlink this phone from WhatsApp servers?')) return;
+      stopPollingWhatsappStatus();
+      state.whatsappPairingCode = null;
+      try {
+        const res = await fetch('/api/session/logout', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        handleWhatsappStateChange({ status: 'DISCONNECTED' });
+      } catch (err) {
+        alert(`Logout error: ${err.message}`);
+      }
+    }
+
+    function stopPollingWhatsappStatus() {
+      if (statusPollInterval) {
+        clearInterval(statusPollInterval);
+        statusPollInterval = null;
+      }
+    }
+
+    function updateWhatsappBadge(status) {
+      const badge = document.getElementById('statusBadge');
+      const text = document.getElementById('statusText');
+      const disconnBtn = document.getElementById('disconnectSessionBtn');
+      const sendMsgBtn = document.getElementById('sendMsgBtn');
+      const sendMediaBtn = document.getElementById('sendMediaBtn');
+      const sendGroupMsgBtn = document.getElementById('sendGroupMsgBtn');
+
+      if (!badge) return;
+
+      badge.className = 'badge';
+
+      const active = (status === 'CONNECTED');
+      if (sendMsgBtn) sendMsgBtn.disabled = !active;
+      if (sendMediaBtn) sendMediaBtn.disabled = !active;
+      if (sendGroupMsgBtn) sendGroupMsgBtn.disabled = !active;
+      if (disconnBtn) disconnBtn.disabled = (status === 'DISCONNECTED');
+
+      // Update bulk buttons if function exists
+      if (typeof updateBulkCampaignControls === 'function') {
+        updateBulkCampaignControls();
+      }
+
+      if (status === 'CONNECTED') {
+        badge.classList.add('badge-active');
+        text.textContent = 'Connected';
+      } else if (status === 'PAIRING_CODE') {
+        badge.classList.add('badge-pending');
+        text.textContent = 'Enter Code';
+      } else if (status === 'QR') {
+        badge.classList.add('badge-pending');
+        text.textContent = 'Scan QR';
+      } else if (status === 'CONNECTING') {
+        badge.classList.add('badge-pending');
+        text.textContent = 'Connecting';
+      } else {
+        badge.classList.add('badge-none');
+        text.textContent = 'Disconnected';
+      }
+    }
+
+    function handleWhatsappStateChange(data) {
+      state.whatsappStatus = data.status;
+      if (data.qr) state.whatsappQr = data.qr;
+      if (data.pairingCode || data.formattedCode) {
+        state.whatsappPairingCode = data.formattedCode || data.pairingCode;
+      }
+      state.whatsappAccount = data.user;
+      state.whatsappHasFiles = data.hasFiles || false;
+
+      updateWhatsappBadge(data.status);
+
+      const qrContainer = document.getElementById('qrContainer');
+      const profileContainer = document.getElementById('profileContainer');
+
+      if (!qrContainer) return;
+
+      if (data.status === 'CONNECTED') {
+        state.whatsappPairingCode = null;
+        qrContainer.innerHTML = renderWhatsappConnectArea();
+
+        if (profileContainer) {
+          if (data.user) {
+            profileContainer.style.display = 'flex';
+            document.getElementById('profileName').textContent = data.user.name || 'Connected Device';
+            document.getElementById('profileNumber').textContent = `Phone: +${data.user.phone}`;
+            fetchOwnAvatar();
+          }
+        }
+      } else {
+        if (profileContainer) profileContainer.style.display = 'none';
+        qrContainer.innerHTML = renderWhatsappConnectArea();
+      }
+    }
+
+
+    async function fetchOwnAvatar() {
+      try {
+        const res = await fetch('/api/profile', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const profile = await res.json();
+        const avatar = document.getElementById('profileAvatar');
+        if (avatar && profile.profilePictureUrl) {
+          avatar.src = profile.profilePictureUrl;
+        }
+      } catch (e) {
+        console.error('Error loading own avatar:', e);
+      }
+    }
+
+    async function sendMessage() {
+      const to = document.getElementById('msgTo').value.trim();
+      const message = document.getElementById('msgBody').value.trim();
+
+      if (!to || !message) {
+        alert('Please specify recipient and message body');
+        return;
+      }
+
+      logToConsole('apiConsole', `Sending message to ${to}...`, 'system');
+      try {
+        const res = await fetch('/api/message/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ to, message })
+        });
+        const data = await res.json();
+        if (data.success) {
+          logToConsole('apiConsole', `Success! Message ID: ${data.messageId}`);
+          document.getElementById('msgBody').value = '';
+        } else {
+          logToConsole('apiConsole', `API Error: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        logToConsole('apiConsole', `Network/HTTP error: ${err.message}`, 'error');
+      }
+    }
+
+    // BULK CAMPAIGN ACTIONS
+    async function parseExcelFile() {
+      const fileInput = document.getElementById('bulkExcelFile');
+      const msgTemplate = document.getElementById('bulkMsgBody').value.trim();
+      const delayInput = document.getElementById('bulkDelay');
+
+      if (!fileInput || fileInput.files.length === 0) {
+        alert('Please select an Excel file first.');
+        return;
+      }
+      if (!msgTemplate) {
+        alert('Please enter a message template.');
+        return;
+      }
+
+      state.bulkDelay = parseInt(delayInput.value, 10) || 2;
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('message', msgTemplate);
+
+      logToConsole('bulkConsole', `Uploading and parsing Excel file: ${file.name}...`, 'system');
+
+      const parseBtn = document.getElementById('parseExcelBtn');
+      if (parseBtn) parseBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/message/parse-excel', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Failed to parse Excel file');
+
+        state.bulkTasks = data.tasks;
+        state.bulkCampaignIndex = 0;
+        state.bulkCampaignStatus = 'idle';
+
+        logToConsole('bulkConsole', `Excel parsed successfully! Found ${data.recipientCount} valid recipients. (Phone column: "${data.phoneColumnUsed}")`);
+
+        // Render preview table
+        renderBulkPreviewTable();
+        updateBulkCampaignControls();
+
+      } catch (err) {
+        logToConsole('bulkConsole', `Parsing Error: ${err.message}`, 'error');
+        alert(err.message);
+      } finally {
+        if (parseBtn) parseBtn.disabled = false;
+      }
+    }
+
+    function renderBulkPreviewTable() {
+      const container = document.getElementById('bulkPreviewContainer');
+      if (!container) return;
+
+      if (!state.bulkTasks || state.bulkTasks.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = `
+        <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+          <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Recipients Preview (${state.bulkTasks.length} rows)</div>
+          <div class="table-container" style="max-height: 200px; overflow-y: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Row</th>
+                  <th>Recipient Phone</th>
+                  <th>Message Preview</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${state.bulkTasks.map(t => `
+                  <tr>
+                    <td>${t.id}</td>
+                    <td><code>${t.phone}</code></td>
+                    <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(t.message)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      container.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function updateBulkCampaignControls() {
+      const startBtn = document.getElementById('startBulkBtn');
+      const pauseBtn = document.getElementById('pauseBulkBtn');
+      const stopBtn = document.getElementById('stopBulkBtn');
+      const progressContainer = document.getElementById('bulkProgressContainer');
+      const progressBar = document.getElementById('bulkProgressBar');
+      const progressText = document.getElementById('bulkProgressText');
+
+      if (!startBtn) return;
+
+      const isConnected = state.whatsappStatus === 'CONNECTED';
+      const hasTasks = state.bulkTasks && state.bulkTasks.length > 0;
+      const status = state.bulkCampaignStatus;
+
+      // Update Connection Warning Banner
+      const warningBanner = document.getElementById('bulkConnectionWarning');
+      if (warningBanner) {
+        warningBanner.style.display = isConnected ? 'none' : 'flex';
+      }
+
+      // Start/Resume Button - Keep active even if not connected so user can click to trigger connection alert helper
+      startBtn.disabled = !hasTasks || status === 'sending';
+      if (status === 'paused') {
+        startBtn.textContent = 'Resume Campaign';
+      } else {
+        startBtn.textContent = 'Start Bulk Campaign';
+      }
+
+      // Pause Button
+      if (pauseBtn) pauseBtn.disabled = status !== 'sending';
+
+      // Stop Button
+      if (stopBtn) stopBtn.disabled = status !== 'sending' && status !== 'paused';
+
+      // Progress bar visibility
+      if (progressContainer) {
+        if (status !== 'idle' || hasTasks) {
+          progressContainer.style.display = 'block';
+          const pct = hasTasks ? Math.round((state.bulkCampaignIndex / state.bulkTasks.length) * 100) : 0;
+          if (progressBar) progressBar.style.width = `${pct}%`;
+          if (progressText) progressText.textContent = `Progress: ${state.bulkCampaignIndex} / ${state.bulkTasks.length} sent (${pct}%)`;
+        } else {
+          progressContainer.style.display = 'none';
+        }
+      }
+    }
+
+    function startBulkCampaign() {
+      if (!state.bulkTasks || state.bulkTasks.length === 0) return;
+
+      if (state.whatsappStatus !== 'CONNECTED') {
+        alert('Error: WhatsApp is not connected. Please go to the "WhatsApp Connection" tab and link your device (scan QR code) before starting the campaign.');
+        logToConsole('bulkConsole', 'Error: Cannot start campaign. WhatsApp is not connected.', 'error');
+        return;
+      }
+
+      state.bulkCampaignStatus = 'sending';
+      const delayInput = document.getElementById('bulkDelay');
+      state.bulkDelay = parseInt(delayInput.value, 10) || 2;
+
+      logToConsole('bulkConsole', `Campaign started. Delay: ${state.bulkDelay} seconds between messages.`, 'system');
+      updateBulkCampaignControls();
+      sendNextBulkMessage();
+    }
+
+    function pauseBulkCampaign() {
+      state.bulkCampaignStatus = 'paused';
+      logToConsole('bulkConsole', 'Campaign paused by user.', 'system');
+      updateBulkCampaignControls();
+    }
+
+    function stopBulkCampaign() {
+      state.bulkCampaignStatus = 'stopped';
+      state.bulkCampaignIndex = 0;
+      logToConsole('bulkConsole', 'Campaign stopped and reset.', 'system');
+      updateBulkCampaignControls();
+    }
+
+    async function sendNextBulkMessage() {
+      if (state.bulkCampaignStatus !== 'sending') {
+        return; // Campaign is paused, stopped, or done
+      }
+
+      if (state.whatsappStatus !== 'CONNECTED') {
+        state.bulkCampaignStatus = 'paused';
+        logToConsole('bulkConsole', 'Error: WhatsApp connection lost. Campaign paused.', 'error');
+        alert('Error: WhatsApp connection lost. Campaign paused. Please reconnect your session.');
+        updateBulkCampaignControls();
+        return;
+      }
+
+      if (state.bulkCampaignIndex >= state.bulkTasks.length) {
+        state.bulkCampaignStatus = 'completed';
+        logToConsole('bulkConsole', 'Campaign completed successfully! All messages sent.', 'system');
+        state.bulkCampaignIndex = 0;
+        updateBulkCampaignControls();
+        return;
+      }
+
+      const task = state.bulkTasks[state.bulkCampaignIndex];
+      logToConsole('bulkConsole', `[${state.bulkCampaignIndex + 1}/${state.bulkTasks.length}] Sending message to ${task.phone}...`, 'system');
+
+      try {
+        const res = await fetch('/api/message/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ to: task.phone, message: task.message })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          logToConsole('bulkConsole', `Sent successfully to ${task.phone}. Message ID: ${data.messageId}`, 'success');
+        } else {
+          logToConsole('bulkConsole', `Failed to send to ${task.phone}: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        logToConsole('bulkConsole', `Network/HTTP error for ${task.phone}: ${err.message}`, 'error');
+      }
+
+      // Move to next recipient
+      state.bulkCampaignIndex++;
+      updateBulkCampaignControls();
+
+      // Schedule next message if still sending
+      if (state.bulkCampaignStatus === 'sending') {
+        setTimeout(sendNextBulkMessage, state.bulkDelay * 1000);
+      }
+    }
+
+    // Media attachments
+    function onMediaTypeChange() {
+      const sel = document.getElementById('mediaTypeSelect');
+      if (!sel) return;
+      const type = sel.value;
+      const fileOverride = document.getElementById('mediaFileNameGroup');
+      const caption = document.getElementById('mediaCaptionGroup');
+      if (fileOverride) fileOverride.style.display = type === 'document' ? 'block' : 'none';
+      if (caption) caption.style.display = type === 'audio' ? 'none' : 'block';
+    }
+
+    function toggleMediaSource(source) {
+      const urlGrp = document.getElementById('mediaUrlGroup');
+      const fileGrp = document.getElementById('mediaFileGroup');
+      if (urlGrp && fileGrp) {
+        urlGrp.style.display = source === 'url' ? 'block' : 'none';
+        fileGrp.style.display = source === 'file' ? 'block' : 'none';
+      }
+    }
+
+    async function sendMedia() {
+      const to = document.getElementById('mediaTo').value.trim();
+      const mediaType = document.getElementById('mediaTypeSelect').value;
+      const caption = document.getElementById('mediaCaption').value.trim();
+      const fileName = document.getElementById('mediaFileName').value.trim();
+      const source = document.querySelector('input[name="mediaSource"]:checked').value;
+
+      if (!to) {
+        alert('Please enter recipient JID/Phone number');
+        return;
+      }
+
+      let mediaUrl = '';
+
+      if (source === 'file') {
+        const fileInput = document.getElementById('mediaFile');
+        if (fileInput.files.length === 0) {
+          alert('Please select a file to upload');
+          return;
+        }
+        const file = fileInput.files[0];
+        logToConsole('mediaConsole', `Reading file: ${file.name} (${Math.round(file.size / 1024)} KB)...`, 'system');
+
+        try {
+          mediaUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('File reading error'));
+            reader.readAsDataURL(file);
+          });
+        } catch (err) {
+          logToConsole('mediaConsole', err.message, 'error');
+          return;
+        }
+      } else {
+        mediaUrl = document.getElementById('mediaUrl').value.trim();
+        if (!mediaUrl) {
+          alert('Please enter the file link URL');
+          return;
+        }
+      }
+
+      logToConsole('mediaConsole', `Transmitting media packet (${mediaType}) to ${to}...`, 'system');
+      const btn = document.getElementById('sendMediaBtn');
+      if (btn) btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/message/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ to, mediaUrl, mediaType, caption, fileName })
+        });
+        const raw = await res.text();
+        let data;
+        try {
+          data = raw ? JSON.parse(raw) : {};
+        } catch (parseErr) {
+          throw new Error(`Server returned non-JSON response (${res.status}). ${raw.slice(0, 120)}`);
+        }
+        if (!res.ok) {
+          throw new Error(data.error || `Server error ${res.status}`);
+        }
+        if (data.success) {
+          logToConsole('mediaConsole', `Success! Message ID: ${data.messageId}`);
+          document.getElementById('mediaCaption').value = '';
+          document.getElementById('mediaFileName').value = '';
+          document.getElementById('mediaUrl').value = '';
+          document.getElementById('mediaFile').value = '';
+        } else {
+          logToConsole('mediaConsole', `API Error: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        logToConsole('mediaConsole', `Error sending: ${err.message}`, 'error');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function loadGroups() {
+      try {
+        const res = await fetch('/api/groups', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        const select = document.getElementById('groupSelect');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">-- Choose target group --</option>';
+        if (data.groups && data.groups.length > 0) {
+          data.groups.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g.id;
+            opt.textContent = `${g.name} (${g.participantsCount} members)`;
+            select.appendChild(opt);
+          });
+          alert(`Fetched ${data.groups.length} groups.`);
+        } else {
+          alert('No groups found on this account.');
+        }
+      } catch (err) {
+        alert(`Failed to load groups: ${err.message}`);
+      }
+    }
+
+    function onGroupSelectChange() {
+      const select = document.getElementById('groupSelect');
+      const btn = document.getElementById('sendGroupMsgBtn');
+      if (select && btn) {
+        btn.disabled = !select.value;
+      }
+    }
+
+    async function sendGroupMessage() {
+      const groupId = document.getElementById('groupSelect').value;
+      const message = document.getElementById('groupMsgBody').value.trim();
+
+      if (!groupId || !message) {
+        alert('Select group and type message');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/groups/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ groupId, message })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Group message dispatched!');
+          document.getElementById('groupMsgBody').value = '';
+        } else {
+          alert(`Failed: ${data.error}`);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function lookupProfile() {
+      const phone = document.getElementById('lookupPhone').value.trim();
+      const div = document.getElementById('lookupResult');
+      const avatar = document.getElementById('lookupAvatar');
+      const phoneText = document.getElementById('lookupResultPhone');
+      const picText = document.getElementById('lookupResultPic');
+
+      if (!div) return;
+
+      try {
+        const res = await fetch(`/api/profile?phone=${phone}`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+
+        div.style.display = 'flex';
+        phoneText.textContent = `Phone: +${data.phone}`;
+
+        if (data.profilePictureUrl) {
+          avatar.src = data.profilePictureUrl;
+          picText.innerHTML = `<a href="${data.profilePictureUrl}" target="_blank" style="color: var(--accent-color);">View Full Profile Picture</a>`;
+        } else {
+          avatar.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+          picText.textContent = 'No avatar found (Privacy settings may block it)';
+        }
+      } catch (err) {
+        alert(`Lookup error: ${err.message}`);
+      }
+    }
+
+    function syncSubTabState() {
+      // Re-trigger visual changes of input fields
+      onMediaTypeChange();
+      toggleMediaSource('url');
+
+      if (state.whatsappSubTab === 'bulkTab') {
+        renderBulkPreviewTable();
+        updateBulkCampaignControls();
+      }
+    }
+
+    function logToConsole(consoleId, message, type = 'success') {
+      const el = document.getElementById(consoleId);
+      if (!el) return;
+      const line = document.createElement('div');
+      line.className = `console-line ${type}`;
+      const time = new Date().toLocaleTimeString();
+      line.textContent = `[${time}] ${message}`;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function clearConsole(consoleId) {
+      const el = document.getElementById(consoleId);
+      if (el) el.innerHTML = '<div class="console-line system">[System] Console logs cleared.</div>';
+    }
+
+    // ─── CRM rendering lists & items functions ───────────────────────────────
+    function getFilteredContacts() {
+      const q = (state.contactSearchQuery || '').trim().toLowerCase();
+      let list = state.contacts || [];
+
+      if (q) {
+        list = list.filter(c => {
+          const name = (c.name || '').toLowerCase();
+          const mobile = (c.mobile || '').toLowerCase();
+          const shop = (c.shop_name || '').toLowerCase();
+          return name.includes(q) || mobile.includes(q) || shop.includes(q);
+        });
+      }
+      return list;
+    }
+
+    function getPaginatedContacts() {
+      const filtered = getFilteredContacts();
+      const pageSize = state.contactsPageSize || 25;
+      const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+      
+      if (state.contactsPage > totalPages) {
+        state.contactsPage = totalPages;
+      }
+      if (state.contactsPage < 1) {
+        state.contactsPage = 1;
+      }
+
+      const startIndex = (state.contactsPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      return {
+        items: filtered.slice(startIndex, endIndex),
+        total: filtered.length,
+        startIndex,
+        endIndex: Math.min(endIndex, filtered.length),
+        page: state.contactsPage,
+        totalPages,
+        pageSize
+      };
+    }
+
+    function renderContactsRows() {
+      const paginated = getPaginatedContacts();
+      const list = paginated.items;
+
+      if (paginated.total === 0) {
+        const msg = state.contactSearchQuery 
+          ? `No contacts match "${state.contactSearchQuery}".` 
+          : 'No contacts found. Click Import or Add Contact to get started.';
+        return `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">${msg}</td></tr>`;
+      }
+
+      return list.map(c => {
+        const isExcluded = c.is_excluded === 1;
+        const btnText = isExcluded ? 'Excluded (Blocked)' : 'Active (Exclude)';
+        const btnColor = isExcluded ? 'var(--error-color)' : 'var(--accent-color)';
+        const isChecked = state.selectedContactIds.includes(c.id);
+        const createdDate = c.created_at ? new Date(c.created_at).toLocaleDateString() : '-';
+
+        return `
+          <tr>
+            <td style="text-align:center;"><input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''} onchange="toggleContactCheck(${c.id}, this.checked)" style="width:auto;"></td>
+            <td><strong>${c.name || 'Unnamed'}</strong></td>
+            <td><span style="font-family:monospace;color:#93c5fd;">${c.mobile}</span></td>
+            <td>${c.shop_name || '-'}</td>
+            <td style="font-size:0.8rem;color:var(--text-muted);">${createdDate}</td>
+            <td>
+              <button onclick="toggleExcludeContact(${c.id}, ${!isExcluded})" style="background:${btnColor};padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;min-width:120px;">
+                ${btnText}
+              </button>
+            </td>
+            <td>
+              <div style="display:flex; gap:0.3rem;">
+                <button onclick="openBroadcastTemplateModal(${c.id})" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;background:#6366f1;">✉️ Send Msg</button>
+                <button onclick="deleteContactEntry(${c.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;" title="Delete Contact">🗑️</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderContactsPaginationBar() {
+      const paginated = getPaginatedContacts();
+      const { total, startIndex, endIndex, page, totalPages, pageSize } = paginated;
+
+      if (total === 0) {
+        return `<div style="color:var(--text-muted);">0 contacts found</div>`;
+      }
+
+      const isFirst = page <= 1;
+      const isLast = page >= totalPages;
+
+      return `
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+          <span style="color:var(--text-muted);">
+            Showing <strong style="color:#f8fafc;">${startIndex + 1} - ${endIndex}</strong> of <strong style="color:#34d399;">${total.toLocaleString()}</strong> contacts
+          </span>
+          <div style="display:flex; align-items:center; gap:0.4rem;">
+            <label style="color:var(--text-muted); font-size:0.8rem; margin:0;">Per page:</label>
+            <select onchange="changeContactsPageSize(this.value)" style="padding:0.25rem 0.5rem; font-size:0.8rem; width:auto; background:#1e293b; color:#fff; border:1px solid var(--glass-border); border-radius:6px; cursor:pointer;">
+              <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
+              <option value="25" ${pageSize === 25 ? 'selected' : ''}>25</option>
+              <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+              <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
+              <option value="250" ${pageSize === 250 ? 'selected' : ''}>250</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+          <button onclick="goToContactsPage(1)" ${isFirst ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''} style="background:rgba(255,255,255,0.06); padding:0.3rem 0.6rem; font-size:0.8rem; width:auto; border-radius:6px;">⏮ First</button>
+          <button onclick="goToContactsPage(${page - 1})" ${isFirst ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''} style="background:rgba(255,255,255,0.06); padding:0.3rem 0.6rem; font-size:0.8rem; width:auto; border-radius:6px;">◀ Prev</button>
+          
+          <span style="color:#e2e8f0; font-weight:600; padding:0 0.4rem; font-size:0.82rem; background:rgba(255,255,255,0.04); border-radius:6px; height:28px; display:inline-flex; align-items:center;">
+            Page ${page} / ${totalPages}
+          </span>
+
+          <button onclick="goToContactsPage(${page + 1})" ${isLast ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''} style="background:rgba(255,255,255,0.06); padding:0.3rem 0.6rem; font-size:0.8rem; width:auto; border-radius:6px;">Next ▶</button>
+          <button onclick="goToContactsPage(${totalPages})" ${isLast ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''} style="background:rgba(255,255,255,0.06); padding:0.3rem 0.6rem; font-size:0.8rem; width:auto; border-radius:6px;">Last ⏭</button>
+        </div>
+      `;
+    }
+
+    function renderReminderRows() {
+      const list = state.reminders || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No reminders scheduled yet.</td></tr>`;
+      }
+      return list.map(r => {
+        let badgeColor = '#eab308'; // pending
+        if (r.status === 'sent') badgeColor = '#10b981';
+        if (r.status === 'failed') badgeColor = '#ef4444';
+
+        const recipientLabel = r.contact_name
+          ? `${r.contact_name} (${r.recipient_mobile})`
+          : r.recipient_mobile;
+
+        const actionHtml = r.status === 'pending'
+          ? `<button onclick="deleteReminderEntry(${r.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">Cancel</button>`
+          : `-`;
+
+        let scheduleInfo = new Date(r.scheduled_at).toLocaleString();
+        if (r.selected_days) {
+          const daysTag = r.selected_days.toUpperCase();
+          const repeatTag = r.repeat_option === 'weekly' ? '🔄 Weekly' : '📅 Selected Days';
+          scheduleInfo = `
+            <div><span style="font-size:0.75rem;background:rgba(165,180,252,0.15);color:#a5b4fc;padding:0.15rem 0.35rem;border-radius:4px;font-weight:600;">${repeatTag}: ${daysTag} @ ${r.send_time || '09:00'}</span></div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">Next: ${new Date(r.scheduled_at).toLocaleString()}</div>
+          `;
+        }
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600;">${recipientLabel}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);white-space:pre-wrap;margin-top:0.25rem;">${r.message_template}</div>
+              ${r.error_message ? `<div style="font-size:0.7rem;color:#f87171;margin-top:0.25rem;">❌ Error: ${r.error_message}</div>` : ''}
+            </td>
+            <td>${scheduleInfo}</td>
+            <td>
+              <span style="background:${badgeColor};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+                ${r.status.toUpperCase()}
+              </span>
+            </td>
+            <td>${actionHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderServiceCards() {
+      const list = state.services || [];
+      if (list.length === 0) {
+        return `<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:3rem;background:rgba(255,255,255,0.01);border:1px solid var(--glass-border);border-radius:12px;">No products or services listed. Click "Add Item" to add your first product.</div>`;
+      }
+      return list.map(s => {
+        const imageSrc = s.image_path ? `/${s.image_path}` : '';
+        const imgStyle = s.image_path
+          ? `background-image:url('${imageSrc}');background-size:cover;background-position:center;height:120px;border-radius:8px 8px 0 0;`
+          : `background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;height:120px;border-radius:8px 8px 0 0;font-size:0.8rem;color:var(--text-muted);`;
+
+        const audioPlayer = s.audio_path
+          ? `<audio controls src="/${s.audio_path}" style="width:100%;margin-top:0.5rem;"></audio>`
+          : '';
+
+        return `
+          <div class="card" style="margin:0;background:rgba(15, 23, 42, 0.4);border:1px solid var(--glass-border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;height:100%;">
+            <div>
+              <div style="${imgStyle}">
+                ${s.image_path ? '' : 'No Image'}
+              </div>
+              <div style="padding:0.75rem;">
+                <div style="font-weight:700;font-size:0.9rem;color:#cbd5e1;">${s.name}</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.3;">${s.description || ''}</div>
+                ${audioPlayer}
+              </div>
+            </div>
+            <div style="padding:0.75rem;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.15);">
+              <span style="font-weight:800;color:#60a5fa;font-size:1.1rem;">₹${s.price}</span>
+              <button onclick="deleteCatalogService(${s.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function fetchContacts() {
+      try {
+        const res = await fetch('/api/crm/contacts', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.contacts = data.contacts || [];
+          if (state.currentTab === 'contactsTab') {
+            refreshContactsTable();
+            updateContactCheckCount();
+          } else {
+            renderApp();
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching contacts:', err);
+      }
+    }
+
+    async function fetchTemplates() {
+      try {
+        const res = await fetch('/api/crm/templates', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.templates = data.templates || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching templates:', err);
+      }
+    }
+
+    async function fetchAutomationSettings() {
+      try {
+        const res = await fetch('/api/crm/automation-settings', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.automationSettings = data.settings || null;
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching automation settings:', err);
+      }
+    }
+
+    async function fetchReminders() {
+      try {
+        const res = await fetch('/api/crm/reminders', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.reminders = data.reminders || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching reminders:', err);
+      }
+    }
+
+    let reminderPollInterval = null;
+    function startRemindersStatusPolling() {
+      if (reminderPollInterval) clearInterval(reminderPollInterval);
+      reminderPollInterval = setInterval(async () => {
+        if (!state.token || document.hidden) return;
+        // Only silently refresh if there are any pending reminders
+        const hasPending = (state.reminders || []).some(r => r.status === 'pending');
+        if (hasPending) {
+          await fetchReminders();
+        }
+      }, 30000); // every 30 seconds
+    }
+
+    async function fetchCatalog() {
+      try {
+        const res = await fetch('/api/crm/catalog', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.catalog = data.catalog || null;
+          state.services = data.services || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching catalog:', err);
+      }
+    }
+
+    async function fetchBirthdayWishes() {
+      try {
+        const res = await fetch('/api/crm/birthday-wishes', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          state.birthdayWishes = await res.json();
+          // Only update the table body directly to avoid re-rendering the whole page (which resets form inputs)
+          const tbody = document.getElementById('birthdayWishesTableBody');
+          if (tbody) {
+            tbody.innerHTML = renderBirthdayWishRows();
+          } else {
+            renderApp();
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching birthday wishes:', err);
+      }
+    }
+
+    async function fetchPaymentReminders() {
+      try {
+        const res = await fetch('/api/crm/payment-reminders', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          state.paymentReminders = await res.json();
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching payment reminders:', err);
+      }
+    }
+
+    async function fetchOrderNotifications() {
+      try {
+        const res = await fetch('/api/crm/order-notifications', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          state.orderNotifications = await res.json();
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching order notifications:', err);
+      }
+    }
+
+    async function fetchFollowupAutomations() {
+      try {
+        const res = await fetch('/api/crm/followup-automations', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          state.followUpAutomations = await res.json();
+        }
+        const logRes = await fetch('/api/crm/followup-logs', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (logRes.ok) {
+          state.followUpLogs = await logRes.json();
+        }
+        renderApp();
+      } catch (err) {
+        console.error('Error fetching follow-up automations:', err);
+      }
+    }
+
+    function renderBirthdayWishRows() {
+      const list = state.birthdayWishes || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No birthday wishes configured yet.</td></tr>`;
+      }
+      return list.map(b => {
+        // Status badge — same colour logic as Scheduled Reminders
+        let badgeColor = '#eab308'; // pending  = yellow
+        if (b.status === 'sent') badgeColor = '#10b981'; // green
+        if (b.status === 'failed') badgeColor = '#ef4444'; // red
+        const statusLabel = (b.status || 'pending').toUpperCase();
+
+        // Human-readable birthday: DD/MM (YYYY)
+        const [mm, dd] = (b.birthday_date || '--').split('-');
+        const bdayDisplay = `${dd || '??'}/${mm || '??'}${b.birth_year ? ` (${b.birth_year})` : ''}`;
+
+        // Last sent timestamp
+        const lastSentDisplay = b.last_sent_at
+          ? new Date(b.last_sent_at + (b.last_sent_at.endsWith('Z') ? '' : 'Z')).toLocaleString()
+          : '-';
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600;">${b.recipient_name}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${b.recipient_phone}</div>
+              ${b.last_error ? `<div style="font-size:0.7rem;color:#f87171;margin-top:0.25rem;">❌ ${b.last_error}</div>` : ''}
+            </td>
+            <td>📅 ${bdayDisplay}</td>
+            <td>⏰ ${b.send_time || '09:00'}</td>
+            <td>
+              <span style="background:${badgeColor};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+                ${statusLabel}
+              </span>
+            </td>
+            <td style="font-size:0.8rem;color:var(--text-muted);">${lastSentDisplay}</td>
+            <td>
+              <button onclick="deleteBirthdayWishEntry(${b.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderPaymentReminderRows() {
+      const list = state.paymentReminders || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No payment reminders created yet.</td></tr>`;
+      }
+      return list.map(p => {
+        let statusBadge = '#eab308';
+        if (p.status === 'paid') statusBadge = '#10b981';
+        if (p.status === 'cancelled') statusBadge = '#ef4444';
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600;">${p.recipient_name}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${p.recipient_phone}</div>
+            </td>
+            <td style="font-weight:700;color:#60a5fa;">₹${p.amount || '0'}</td>
+            <td>📅 ${p.due_date}</td>
+            <td>
+              <span style="background:${statusBadge};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+                ${(p.status || 'pending').toUpperCase()}
+              </span>
+            </td>
+            <td style="display:flex;gap:0.3rem;">
+              ${p.status !== 'paid' ? `<button onclick="updatePaymentStatus(${p.id}, 'paid')" style="padding:0.2rem 0.4rem;font-size:0.7rem;background:#10b981;margin:0;">Mark Paid</button>` : ''}
+              <button onclick="deletePaymentReminderEntry(${p.id})" class="btn-danger" style="padding:0.2rem 0.4rem;font-size:0.7rem;margin:0;">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderOrderNotificationRows() {
+      const list = state.orderNotifications || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No order notifications sent yet.</td></tr>`;
+      }
+      return list.map(o => {
+        let deliveryBadge = o.status === 'sent' ? '#10b981' : '#eab308';
+        return `
+          <tr>
+            <td><strong style="color:#a5b4fc;">#${o.order_id}</strong></td>
+            <td>
+              <div style="font-weight:600;">${o.recipient_name}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${o.recipient_phone}</div>
+            </td>
+            <td><span style="background:rgba(99,102,241,0.2);color:#a5b4fc;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.75rem;">${(o.order_status || 'placed').toUpperCase()}</span></td>
+            <td>
+              <span style="background:${deliveryBadge};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+                ${(o.status || 'pending').toUpperCase()}
+              </span>
+            </td>
+            <td>
+              <button onclick="deleteOrderNotificationEntry(${o.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderFollowUpRows() {
+      const list = state.followUpAutomations || [];
+      if (list.length === 0) {
+        return `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No follow-up sequences defined yet.</td></tr>`;
+      }
+      return list.map(f => {
+        const sentCount = f.sent_count || 0;
+        const failedCount = f.failed_count || 0;
+        const lastSent = f.last_sent_at ? `<div style="font-size:0.7rem;color:var(--text-muted);">Last: ${f.last_sent_at}</div>` : '';
+        return `
+        <tr>
+          <td><strong style="color:#f472b6;">${f.name}</strong></td>
+          <td><span style="font-size:0.75rem;color:var(--text-muted);">${f.trigger_event}</span></td>
+          <td>⏳ ${f.delay_days} Day(s)</td>
+          <td>
+            <span style="background:rgba(16,185,129,0.15);color:#34d399;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.75rem;font-weight:600;">
+              ✅ ${sentCount} Sent
+            </span>
+            ${failedCount > 0 ? `<span style="background:rgba(244,63,94,0.15);color:#f43f5e;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.75rem;font-weight:600;margin-left:0.25rem;">❌ ${failedCount} Failed</span>` : ''}
+            ${lastSent}
+          </td>
+          <td>
+            <span style="background:${f.active ? '#10b981' : '#94a3b8'};color:#fff;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.7rem;font-weight:700;">
+              ${f.active ? 'ACTIVE' : 'PAUSED'}
+            </span>
+          </td>
+          <td>
+            <button onclick="deleteFollowUpEntry(${f.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+          </td>
+        </tr>
+      `;
+      }).join('');
+    }
+
+    function renderFollowUpLogRows() {
+      const logs = state.followUpLogs || [];
+      if (logs.length === 0) {
+        return `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">No follow-up messages sent yet.</td></tr>`;
+      }
+      return logs.map(l => `
+        <tr>
+          <td><strong>${l.contact_name || 'Contact'}</strong> <span style="font-size:0.75rem;color:var(--text-muted);">(${l.contact_mobile || ''})</span></td>
+          <td><span style="color:#f472b6;">${l.automation_name || 'Sequence'}</span></td>
+          <td><span style="font-size:0.75rem;color:var(--text-muted);">${l.sent_at || ''}</span></td>
+          <td>
+            ${l.status === 'sent' ? `
+              <span style="background:rgba(16,185,129,0.15);color:#34d399;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.75rem;font-weight:700;">
+                ✅ SENT
+              </span>
+            ` : `
+              <span style="background:rgba(244,63,94,0.15);color:#f43f5e;padding:0.15rem 0.4rem;border-radius:4px;font-size:0.75rem;font-weight:700;" title="${l.error_message || ''}">
+                ❌ FAILED
+              </span>
+            `}
+          </td>
+          <td>
+            <button onclick="deleteFollowUpLogEntry(${l.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️ Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ─── CRM Contacts handlers ───────────────────────────────────────────────
+    function showAddContactModal() {
+      document.getElementById('addContactModal').style.display = 'flex';
+    }
+    function hideAddContactModal() {
+      document.getElementById('addContactModal').style.display = 'none';
+      document.getElementById('addContactModalForm').reset();
+    }
+    async function handleAddContactModalSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('modalContactName').value.trim();
+      const mobile = document.getElementById('modalContactPhone').value.trim();
+      const shop_name = document.getElementById('modalContactShop').value.trim();
+
+      try {
+        const res = await fetch('/api/crm/contacts', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, mobile, shop_name })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Contact added successfully');
+        hideAddContactModal();
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function toggleExcludeContact(contactId, isExcluded) {
+      try {
+        const res = await fetch('/api/crm/contacts/toggle-exclude', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ contactId, isExcluded })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteContactEntry(contactId) {
+      if (!confirm('Are you sure you want to delete this contact?')) return;
+      try {
+        const res = await fetch(`/api/crm/contacts/${contactId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ─── Contact Groups JS ────────────────────────────────────────────────────
+
+    async function fetchContactGroups() {
+      try {
+        const res = await fetch('/api/crm/contact-groups', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.contactGroups = data.groups || [];
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Error fetching contact groups:', err);
+      }
+    }
+
+    function showCreateGroupModal() {
+      document.getElementById('groupModalTitle').textContent = 'Create New Group';
+      document.getElementById('groupModalId').value = '';
+      document.getElementById('groupModalName').value = '';
+      document.getElementById('groupModalDesc').value = '';
+      document.getElementById('groupModal').style.display = 'flex';
+    }
+
+    function showEditGroupModal(id, name, desc) {
+      document.getElementById('groupModalTitle').textContent = 'Edit Group';
+      document.getElementById('groupModalId').value = id;
+      document.getElementById('groupModalName').value = name;
+      document.getElementById('groupModalDesc').value = desc;
+      document.getElementById('groupModal').style.display = 'flex';
+    }
+
+    function hideGroupModal() {
+      document.getElementById('groupModal').style.display = 'none';
+    }
+
+    async function submitGroupForm(e) {
+      e.preventDefault();
+      const id = document.getElementById('groupModalId').value;
+      const name = document.getElementById('groupModalName').value.trim();
+      const description = document.getElementById('groupModalDesc').value.trim();
+
+      const isEdit = !!id;
+      const url = isEdit ? `/api/crm/contact-groups/${id}` : '/api/crm/contact-groups';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, description })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        hideGroupModal();
+        fetchContactGroups();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteGroupEntry(groupId) {
+      if (!confirm('Delete this group? Contacts will NOT be deleted, only the group.')) return;
+      try {
+        const res = await fetch(`/api/crm/contact-groups/${groupId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchContactGroups();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function openGroupMembersPanel(groupId) {
+      state.activeGroupId = groupId;
+      const group = (state.contactGroups || []).find(g => g.id === groupId);
+      document.getElementById('groupPanelTitle').textContent = group ? group.name : 'Group Members';
+      document.getElementById('groupPanelSubtitle').textContent = 'Manage who belongs to this group';
+      document.getElementById('groupMembersPanel').style.display = 'block';
+      document.getElementById('groupPanelOverlay').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+
+      // Load members and available contacts in parallel
+      await Promise.all([
+        loadGroupMembers(groupId),
+        loadAvailableContacts(groupId)
+      ]);
+    }
+
+    function closeGroupMembersPanel() {
+      state.activeGroupId = null;
+      document.getElementById('groupMembersPanel').style.display = 'none';
+      document.getElementById('groupPanelOverlay').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    async function loadGroupMembers(groupId) {
+      const container = document.getElementById('groupMembersList');
+      container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:2rem;font-size:0.85rem;">Loading...</div>';
+      try {
+        const res = await fetch(`/api/crm/contact-groups/${groupId}/members`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        const members = data.members || [];
+
+        if (members.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:2rem;font-size:0.85rem;">No members yet. Add contacts above.</div>';
+          return;
+        }
+
+        container.innerHTML = members.map(m => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0.85rem;background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:8px;margin-bottom:0.4rem;">
+            <div>
+              <div style="font-weight:600;font-size:0.88rem;">${m.name}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">${m.mobile}${m.shop_name ? ' · ' + m.shop_name : ''}</div>
+            </div>
+            <button onclick="removeMemberFromGroup(${groupId}, ${m.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;width:auto;" title="Remove from group">✕ Remove</button>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div style="color:var(--error-color);padding:1rem;font-size:0.85rem;">Error: ${err.message}</div>`;
+      }
+    }
+
+    async function loadAvailableContacts(groupId) {
+      const sel = document.getElementById('addMemberSelect');
+      sel.innerHTML = '<option disabled>Loading...</option>';
+      try {
+        const res = await fetch(`/api/crm/contact-groups/${groupId}/available-contacts`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        const contacts = data.contacts || [];
+
+        if (contacts.length === 0) {
+          sel.innerHTML = '<option disabled>All contacts are already in this group</option>';
+          return;
+        }
+        sel.innerHTML = contacts.map(c =>
+          `<option value="${c.id}">${c.name} (${c.mobile})${c.shop_name ? ' - ' + c.shop_name : ''}</option>`
+        ).join('');
+      } catch (err) {
+        sel.innerHTML = `<option disabled>Error loading contacts</option>`;
+      }
+    }
+
+    async function submitAddMembers() {
+      const groupId = state.activeGroupId;
+      if (!groupId) return;
+      const sel = document.getElementById('addMemberSelect');
+      const contactIds = Array.from(sel.selectedOptions).map(o => parseInt(o.value)).filter(Boolean);
+      if (contactIds.length === 0) {
+        alert('Please select at least one contact to add.');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/crm/contact-groups/${groupId}/members`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ contactIds })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        // Reload both lists and refresh group count
+        await Promise.all([
+          loadGroupMembers(groupId),
+          loadAvailableContacts(groupId)
+        ]);
+        fetchContactGroups();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function removeMemberFromGroup(groupId, contactId) {
+      if (!confirm('Remove this contact from the group?')) return;
+      try {
+        const res = await fetch(`/api/crm/contact-groups/${groupId}/members/${contactId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        await Promise.all([
+          loadGroupMembers(groupId),
+          loadAvailableContacts(groupId)
+        ]);
+        fetchContactGroups();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function broadcastToGroup(groupId, groupName) {
+      // Navigate to contacts tab and pre-select members of this group
+      switchTab('contactsTab');
+      // Get group members and pre-select them for broadcast
+      fetch(`/api/crm/contact-groups/${groupId}/members`, {
+        headers: { 'Authorization': `Bearer ${state.token}` }
+      }).then(r => r.json()).then(data => {
+        const memberIds = (data.members || []).map(m => m.id);
+        state.selectedContactIds = memberIds;
+        renderApp();
+        // Open broadcast modal if available
+        if (typeof openBroadcastTemplateModal === 'function') {
+          openBroadcastTemplateModal();
+        }
+      }).catch(err => console.error('Error loading group members for broadcast:', err));
+    }
+
+    function showExcelImportModal(fileName) {
+      const modal = document.getElementById('excelImportModal');
+      const loadState = document.getElementById('excelImportLoadingState');
+      const succState = document.getElementById('excelImportSuccessState');
+      const errState = document.getElementById('excelImportErrorState');
+      
+      document.getElementById('excelImportFileName').innerText = fileName ? `File: ${fileName}` : 'Processing file...';
+      loadState.style.display = 'flex';
+      succState.style.display = 'none';
+      errState.style.display = 'none';
+      modal.style.display = 'flex';
+    }
+
+    function closeExcelImportModal() {
+      document.getElementById('excelImportModal').style.display = 'none';
+    }
+
+    async function importContactsExcel(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      showExcelImportModal(file.name);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/crm/contacts/import', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to import contacts');
+
+        // Transition modal to rich success state
+        document.getElementById('excelImportLoadingState').style.display = 'none';
+        document.getElementById('excelImportSuccessState').style.display = 'flex';
+        document.getElementById('excelSuccessFileName').innerText = data.fileName || file.name;
+        document.getElementById('excelSuccessTotalRows').innerText = data.totalRows !== undefined ? data.totalRows : (data.count || 0);
+        document.getElementById('excelSuccessCount').innerText = `${data.count || 0} Contacts`;
+
+        fetchContacts();
+      } catch (err) {
+        document.getElementById('excelImportLoadingState').style.display = 'none';
+        document.getElementById('excelImportErrorState').style.display = 'flex';
+        document.getElementById('excelImportErrorMsg').innerText = err.message || 'An error occurred during Excel import.';
+      } finally {
+        e.target.value = '';
+      }
+    }
+
+    async function downloadSampleContactsExcel() {
+      try {
+        const res = await fetch('/api/crm/contacts/sample-excel', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to download sample file');
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sample_contacts.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function exportContactsExcel() {
+      try {
+        const res = await fetch('/api/crm/contacts/export-excel', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to export contacts');
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'contacts_export.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function refreshContactsTable() {
+      const tbody = document.getElementById('contactsTableBody');
+      if (tbody) {
+        tbody.innerHTML = renderContactsRows();
+      }
+      const pagin = document.getElementById('contactsPaginationControls');
+      if (pagin) {
+        pagin.innerHTML = renderContactsPaginationBar();
+      }
+      updateSelectAllContactsCheckbox();
+    }
+
+    function goToContactsPage(pageNum) {
+      state.contactsPage = parseInt(pageNum) || 1;
+      refreshContactsTable();
+    }
+
+    function changeContactsPageSize(newSize) {
+      state.contactsPageSize = parseInt(newSize) || 25;
+      state.contactsPage = 1;
+      refreshContactsTable();
+    }
+
+    function filterContactsList(query) {
+      state.contactSearchQuery = query || '';
+      state.contactsPage = 1;
+      refreshContactsTable();
+    }
+
+    function toggleSelectAllContacts(isChecked) {
+      const paginated = getPaginatedContacts();
+      const pageContactIds = paginated.items.map(c => c.id);
+      
+      if (isChecked) {
+        const currentSet = new Set(state.selectedContactIds || []);
+        pageContactIds.forEach(id => currentSet.add(id));
+        state.selectedContactIds = Array.from(currentSet);
+      } else {
+        const pageSet = new Set(pageContactIds);
+        state.selectedContactIds = (state.selectedContactIds || []).filter(id => !pageSet.has(id));
+      }
+      
+      updateContactCheckCount();
+      refreshContactsTable();
+    }
+
+    function toggleContactCheck(contactId, isChecked) {
+      if (isChecked) {
+        if (!state.selectedContactIds.includes(contactId)) {
+          state.selectedContactIds.push(contactId);
+        }
+      } else {
+        state.selectedContactIds = (state.selectedContactIds || []).filter(id => id !== contactId);
+      }
+      updateContactCheckCount();
+      updateSelectAllContactsCheckbox();
+    }
+
+    function updateContactCheckCount() {
+      const countEl = document.getElementById('contactCheckCount');
+      if (countEl) {
+        countEl.innerText = (state.selectedContactIds || []).length;
+      }
+    }
+
+    function updateSelectAllContactsCheckbox() {
+      const selectAllCb = document.getElementById('selectAllContactsCheck');
+      if (!selectAllCb) return;
+      const paginated = getPaginatedContacts();
+      if (paginated.items.length === 0) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+        return;
+      }
+      const pageIds = paginated.items.map(c => c.id);
+      const selectedOnPage = pageIds.filter(id => state.selectedContactIds.includes(id));
+      
+      if (selectedOnPage.length === pageIds.length) {
+        selectAllCb.checked = true;
+        selectAllCb.indeterminate = false;
+      } else if (selectedOnPage.length > 0) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = true;
+      } else {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+      }
+    }
+
+    // ─── CRM Reminders handlers ──────────────────────────────────────────────
+    function handleReminderContactSelect(val) {
+      if (!val) return;
+      const select = document.getElementById('reminderContactSelect');
+      const opt = select.options[select.selectedIndex];
+      document.getElementById('reminderPhone').value = opt.getAttribute('data-phone') || '';
+      document.getElementById('reminderName').value = opt.getAttribute('data-name') || '';
+      document.getElementById('reminderShop').value = opt.getAttribute('data-shop') || '';
+    }
+
+    function handleReminderScheduleTypeChange(val) {
+      const daysGrp = document.getElementById('reminderDaysGroup');
+      const dtGrp = document.getElementById('reminderDatetimeGroup');
+      const selDaysGrp = document.getElementById('reminderSelectedDaysGroup');
+
+      if (val === 'days') {
+        daysGrp.style.display = 'block';
+        dtGrp.style.display = 'none';
+        selDaysGrp.style.display = 'none';
+      } else if (val === 'datetime') {
+        daysGrp.style.display = 'none';
+        dtGrp.style.display = 'flex';
+        selDaysGrp.style.display = 'none';
+      } else if (val === 'selected_days') {
+        daysGrp.style.display = 'none';
+        dtGrp.style.display = 'none';
+        selDaysGrp.style.display = 'flex';
+      }
+    }
+
+    function toggleAllReminderDays(selectBool) {
+      const checkboxes = document.querySelectorAll('.reminder-day-cb');
+      checkboxes.forEach(cb => cb.checked = selectBool);
+    }
+
+    async function saveReminder(e) {
+      e.preventDefault();
+      const contactSelect = document.getElementById('reminderContactSelect');
+      const contact_id = contactSelect.value || null;
+      const recipient_mobile = document.getElementById('reminderPhone').value.trim();
+      const recipient_name = document.getElementById('reminderName').value.trim();
+      const shop_name = document.getElementById('reminderShop').value.trim();
+      const message_template = document.getElementById('reminderTemplate').value;
+
+      const schedType = document.getElementById('reminderScheduleType').value;
+      const send_after_days = document.getElementById('reminderDays').value;
+      const scheduled_at = document.getElementById('reminderDatetime').value;
+
+      const body = {
+        contact_id,
+        recipient_mobile,
+        recipient_name,
+        shop_name,
+        message_template
+      };
+
+      if (schedType === 'days') {
+        body.send_after_days = send_after_days;
+      } else if (schedType === 'selected_days') {
+        const checkedCbs = Array.from(document.querySelectorAll('.reminder-day-cb:checked')).map(cb => cb.value);
+        if (checkedCbs.length === 0) {
+          alert('Please select at least one day of the week.');
+          return;
+        }
+        body.selected_days = checkedCbs.join(',');
+        body.send_time = document.getElementById('reminderSendTime').value || '09:00';
+        body.repeat_option = document.getElementById('reminderRepeatOption').value || 'once';
+      } else {
+        if (!scheduled_at) {
+          alert('Please choose custom date and time');
+          return;
+        }
+        body.scheduled_at = (() => {
+          const localVal = scheduled_at;
+          const localDate = new Date(localVal);
+          return localDate.toISOString();
+        })();
+      }
+
+      try {
+        const res = await fetch('/api/crm/reminders', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Reminder scheduled successfully');
+        document.getElementById('reminderForm').reset();
+        handleReminderScheduleTypeChange('days');
+        fetchReminders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteReminderEntry(remId) {
+      if (!confirm('Are you sure you want to cancel this reminder?')) return;
+      try {
+        const res = await fetch(`/api/crm/reminders/${remId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchReminders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ─── CRM Digital Catalog handlers ────────────────────────────────────────
+    async function saveCatalogSettings(e) {
+      e.preventDefault();
+      const brand_name = document.getElementById('catalogBrandName').value.trim();
+      const description = document.getElementById('catalogDescription').value;
+      const logoFile = document.getElementById('catalogLogo').files[0];
+      const audioFile = document.getElementById('catalogAudio').files[0];
+
+      const formData = new FormData();
+      formData.append('brand_name', brand_name);
+      formData.append('description', description);
+      if (logoFile) formData.append('logo', logoFile);
+      if (audioFile) formData.append('catalog_audio', audioFile);
+
+      try {
+        const res = await fetch('/api/crm/catalog', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Catalog updated successfully');
+        fetchCatalog();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function showAddServiceModal() {
+      document.getElementById('addServiceModal').style.display = 'flex';
+    }
+    function hideAddServiceModal() {
+      document.getElementById('addServiceModal').style.display = 'none';
+      document.getElementById('addServiceModalForm').reset();
+    }
+    async function handleAddServiceModalSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('modalServiceName').value.trim();
+      const price = document.getElementById('modalServicePrice').value.trim();
+      const description = document.getElementById('modalServiceDescription').value.trim();
+      const imageFile = document.getElementById('modalServiceImage').files[0];
+      const audioFile = document.getElementById('modalServiceAudio').files[0];
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('price', price);
+      formData.append('description', description);
+      if (imageFile) formData.append('image', imageFile);
+      if (audioFile) formData.append('audio', audioFile);
+
+      try {
+        const res = await fetch('/api/crm/catalog/services', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Service added successfully');
+        hideAddServiceModal();
+        fetchCatalog();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteCatalogService(serviceId) {
+      if (!confirm('Are you sure you want to delete this service?')) return;
+      try {
+        const res = await fetch(`/api/crm/catalog/services/${serviceId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchCatalog();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ─── CRM Message Templates Handlers ─────────────────────────────────────
+    function renderTemplateCards() {
+      const list = state.templates || [];
+      if (list.length === 0) {
+        return `<div style="text-align:center;color:var(--text-muted);padding:2.5rem;background:rgba(255,255,255,0.01);border:1px solid var(--glass-border);border-radius:12px;">No message templates created yet. Fill out the form on the left to save your first template.</div>`;
+      }
+      return list.map(t => {
+        // Highlight placeholders for clear visual appeal
+        const formattedContent = t.content
+          .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/(\{name\}|\[name\])/gi, '<span style="color:#60a5fa;font-weight:700;">$1</span>')
+          .replace(/(\{shopname\}|\[shopname\]|\{shop\}|\[shop\])/gi, '<span style="color:#34d399;font-weight:700;">$1</span>')
+          .replace(/(\{mobile\}|\[mobile\])/gi, '<span style="color:#f59e0b;font-weight:700;">$1</span>')
+          .replace(/(\{email\}|\[email\])/gi, '<span style="color:#ec4899;font-weight:700;">$1</span>');
+
+        return `
+          <div class="card" style="margin:0;background:rgba(15, 23, 42, 0.5);border:1px solid var(--glass-border);padding:1.25rem;border-radius:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:0.5rem;">
+              <div>
+                <span style="background:rgba(99,102,241,0.2);color:#a5b4fc;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:700;text-transform:uppercase;margin-right:0.5rem;">${t.category || 'General'}</span>
+                <strong style="font-size:1rem;color:#f8fafc;">${t.title}</strong>
+              </div>
+              <div style="display:flex;gap:0.3rem;">
+                <button onclick="editTemplate(${t.id})" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;background:rgba(255,255,255,0.1);color:#fff;">✏️ Edit</button>
+                <button onclick="deleteTemplateEntry(${t.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;">🗑️</button>
+              </div>
+            </div>
+            
+            <div style="font-size:0.85rem;color:#cbd5e1;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05);padding:0.75rem;border-radius:8px;white-space:pre-wrap;line-height:1.5;margin-bottom:0.75rem;">${formattedContent}</div>
+            
+            <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+              <button onclick="useTemplateInStudio(${t.id})" style="padding:0.3rem 0.75rem;font-size:0.75rem;margin:0;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;width:auto;">💬 Use in Studio</button>
+              <button onclick="openBroadcastTemplateModal(null, ${t.id})" style="padding:0.3rem 0.75rem;font-size:0.75rem;margin:0;background:linear-gradient(135deg, #6366f1, #8b5cf6);color:#fff;width:auto;">📢 Send to Contacts</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function onSingleContactSelect(mobileVal) {
+      if (!mobileVal) return;
+      const input = document.getElementById('msgTo');
+      if (input) input.value = mobileVal;
+    }
+
+    function insertPlaceholder(str, targetId) {
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      const start = el.selectionStart || el.value.length;
+      const end = el.selectionEnd || el.value.length;
+      const text = el.value;
+      el.value = text.substring(0, start) + str + text.substring(end);
+      el.focus();
+      el.selectionStart = el.selectionEnd = start + str.length;
+    }
+
+    function applyTemplateToField(templateId, targetId) {
+      if (!templateId) return;
+      const t = (state.templates || []).find(x => x.id === parseInt(templateId));
+      if (!t) return;
+      const el = document.getElementById(targetId);
+      if (el) el.value = t.content;
+    }
+
+    function useTemplateInStudio(templateId) {
+      const t = (state.templates || []).find(x => x.id === parseInt(templateId));
+      if (!t) return;
+      switchTab('whatsappTab');
+      const el = document.getElementById('msgBody');
+      if (el) el.value = t.content;
+    }
+
+    async function saveTemplate(e) {
+      e.preventDefault();
+      const title = document.getElementById('templateTitle').value.trim();
+      const category = document.getElementById('templateCategory').value;
+      const content = document.getElementById('templateContent').value.trim();
+
+      const body = { title, category, content };
+      const isEdit = !!state.editingTemplateId;
+      const url = isEdit ? `/api/crm/templates/${state.editingTemplateId}` : '/api/crm/templates';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Template saved successfully');
+        resetTemplateForm();
+        fetchTemplates();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function editTemplate(id) {
+      const t = (state.templates || []).find(x => x.id === parseInt(id));
+      if (!t) return;
+      state.editingTemplateId = t.id;
+      document.getElementById('templateTitle').value = t.title;
+      document.getElementById('templateCategory').value = t.category || 'General';
+      document.getElementById('templateContent').value = t.content;
+      document.getElementById('templateFormHeading').innerText = 'Edit Template';
+      document.getElementById('saveTemplateBtn').innerText = 'Update Template';
+      document.getElementById('cancelEditTemplateBtn').style.display = 'inline-block';
+    }
+
+    function resetTemplateForm() {
+      state.editingTemplateId = null;
+      document.getElementById('templateForm').reset();
+      document.getElementById('templateFormHeading').innerText = 'Create New Template';
+      document.getElementById('saveTemplateBtn').innerText = 'Save Template';
+      document.getElementById('cancelEditTemplateBtn').style.display = 'none';
+    }
+
+    async function deleteTemplateEntry(id) {
+      if (!confirm('Are you sure you want to delete this template?')) return;
+      try {
+        const res = await fetch(`/api/crm/templates/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        if (state.editingTemplateId === id) resetTemplateForm();
+        fetchTemplates();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // ─── Contacts selection & broadcast handlers ─────────────────────────────
+    function toggleContactCheck(contactId, checked) {
+      const id = parseInt(contactId);
+      if (checked) {
+        if (!state.selectedContactIds.includes(id)) state.selectedContactIds.push(id);
+      } else {
+        state.selectedContactIds = state.selectedContactIds.filter(x => x !== id);
+      }
+      updateContactCheckUI();
+    }
+
+    function toggleSelectAllContacts(checked) {
+      const visibleRows = document.querySelectorAll('#contactsTableBody tr');
+      const ids = [];
+      visibleRows.forEach(row => {
+        const check = row.querySelector('input[type="checkbox"]');
+        if (check && check.value) {
+          check.checked = checked;
+          ids.push(parseInt(check.value));
+        }
+      });
+
+      if (checked) {
+        const set = new Set([...state.selectedContactIds, ...ids]);
+        state.selectedContactIds = Array.from(set);
+      } else {
+        const removeSet = new Set(ids);
+        state.selectedContactIds = state.selectedContactIds.filter(x => !removeSet.has(x));
+      }
+      updateContactCheckUI();
+    }
+
+    function updateContactCheckUI() {
+      const el = document.getElementById('contactCheckCount');
+      if (el) el.innerText = state.selectedContactIds.length;
+    }
+
+    function openBroadcastTemplateModal(singleContactId = null, preselectTemplateId = null) {
+      const modal = document.getElementById('broadcastTemplateModal');
+      if (!modal) return;
+
+      if (singleContactId) {
+        state.selectedContactIds = [parseInt(singleContactId)];
+        updateContactCheckUI();
+      }
+
+      // Populate template dropdown
+      const select = document.getElementById('broadcastTemplateSelect');
+      select.innerHTML = '<option value="">-- Choose Saved Template (Optional) --</option>' +
+        (state.templates || []).map(t => `<option value="${t.id}" ${preselectTemplateId === t.id ? 'selected' : ''}>${t.title} (${t.category})</option>`).join('');
+
+      if (preselectTemplateId) {
+        const t = (state.templates || []).find(x => x.id === parseInt(preselectTemplateId));
+        if (t) document.getElementById('broadcastMsgContent').value = t.content;
+      } else {
+        document.getElementById('broadcastMsgContent').value = '';
+      }
+
+      // Recipient count label
+      const countLabel = document.getElementById('broadcastRecipientCountLabel');
+      const activeCount = (state.contacts || []).filter(c => c.is_excluded !== 1).length;
+      if (state.selectedContactIds.length > 0) {
+        countLabel.innerText = `${state.selectedContactIds.length} Selected Contact(s)`;
+      } else {
+        countLabel.innerText = `All Active Contacts (${activeCount})`;
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function hideBroadcastTemplateModal() {
+      document.getElementById('broadcastTemplateModal').style.display = 'none';
+    }
+
+    function handleBroadcastTemplateSelect(templateId) {
+      if (!templateId) return;
+      const t = (state.templates || []).find(x => x.id === parseInt(templateId));
+      if (t) document.getElementById('broadcastMsgContent').value = t.content;
+    }
+
+    async function sendTemplateBroadcast(e) {
+      e.preventDefault();
+      const content = document.getElementById('broadcastMsgContent').value.trim();
+      const delayMs = parseInt(document.getElementById('broadcastDelay').value || 1500);
+
+      if (!content) {
+        alert('Please enter or select message content');
+        return;
+      }
+
+      const sendBtn = document.getElementById('submitBroadcastBtn');
+      sendBtn.disabled = true;
+      sendBtn.innerText = 'Broadcasting Messages...';
+
+      try {
+        const body = {
+          contactIds: state.selectedContactIds.length > 0 ? state.selectedContactIds : null,
+          content,
+          delayMs
+        };
+
+        const res = await fetch('/api/crm/templates/send-bulk', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(`Broadcast Completed!\n\nTotal Sent: ${data.successCount}/${data.totalCount}\nFailed: ${data.failCount}`);
+        hideBroadcastTemplateModal();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerText = '🚀 Launch Personalized Broadcast';
+      }
+    }
+
+    function toggleAwayScheduleMode(val) {
+      const inputs = document.getElementById('awayTimeInputs');
+      if (inputs) inputs.style.display = val === 'schedule' ? 'flex' : 'none';
+    }
+
+    async function saveWelcomeSettings(e) {
+      e.preventDefault();
+      const welcome_active = document.getElementById('welcomeActiveCheck').checked ? '1' : '0';
+      const welcome_text = document.getElementById('welcomeText').value.trim();
+      const mediaFile = document.getElementById('welcomeMediaFile').files[0];
+
+      const formData = new FormData();
+      formData.append('welcome_active', welcome_active);
+      formData.append('welcome_text', welcome_text);
+      if (mediaFile) formData.append('welcome_media', mediaFile);
+
+      try {
+        const res = await fetch('/api/crm/automation-settings', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert('Welcome Message settings saved successfully');
+        fetchAutomationSettings();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function saveAwaySettings(e) {
+      e.preventDefault();
+      const away_active = document.getElementById('awayActiveCheck').checked ? '1' : '0';
+      const away_text = document.getElementById('awayText').value.trim();
+      const away_schedule_type = document.getElementById('awayScheduleType').value;
+      const away_start_time = document.getElementById('awayStartTime').value;
+      const away_end_time = document.getElementById('awayEndTime').value;
+
+      const formData = new FormData();
+      formData.append('away_active', away_active);
+      formData.append('away_text', away_text);
+      formData.append('away_schedule_type', away_schedule_type);
+      formData.append('away_start_time', away_start_time);
+      formData.append('away_end_time', away_end_time);
+
+      try {
+        const res = await fetch('/api/crm/automation-settings', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert('Away Message settings saved successfully');
+        fetchAutomationSettings();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function saveDailyLimit(e) {
+      e.preventDefault();
+      const daily_campaign_limit = parseInt(document.getElementById('dailyCampaignLimit').value) || 200;
+      if (daily_campaign_limit < 10) { alert('Minimum daily limit is 10 messages.'); return; }
+
+      const formData = new FormData();
+      formData.append('daily_campaign_limit', daily_campaign_limit);
+
+      try {
+        const res = await fetch('/api/crm/automation-settings', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(`✅ Daily limit set to ${daily_campaign_limit} messages/day. Campaigns will auto-pause when this limit is reached.`);
+        fetchAutomationSettings();
+        render();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function clearConsole(consoleId) {
+      const el = document.getElementById(consoleId);
+      if (el) el.innerHTML = '<div class="console-line system">[System] Console logs cleared.</div>';
+    }
+
+    // Bootstrap
+    renderApp();
+    // ─── Campaigns Functions ──────────────────────────────────────────
+
+    let campaignsPollInterval = null;
+    function startCampaignsLivePolling() {
+      if (campaignsPollInterval) clearInterval(campaignsPollInterval);
+      campaignsPollInterval = setInterval(() => {
+        if (state.token && state.currentTab === 'campaignsTab') {
+          const hasActive = (state.campaigns || []).some(c => c.status === 'running' || c.status === 'pending');
+          if (hasActive) {
+            fetchCampaigns();
+          }
+        }
+      }, 6000);
+    }
+    startCampaignsLivePolling();
+
+    async function fetchCampaigns() {
+      try {
+        const res = await fetch('/api/crm/campaigns', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          state.campaigns = data.campaigns || [];
+          if (state.currentTab === 'campaignsTab') {
+            document.getElementById('campaignsListContainer').innerHTML = renderCampaignsList();
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch campaigns', err);
+      }
+    }
+
+    function renderCampaignsList() {
+      if (state.campaigns.length === 0) {
+        return `<div style="text-align:center;color:var(--text-muted);padding:2rem;">No campaigns found. Create your first broadcast campaign!</div>`;
+      }
+      return state.campaigns.map(c => {
+        let statusBadge = '';
+        let actionBtn = '';
+
+        if (c.status === 'pending') {
+          statusBadge = `<span style="background:rgba(245,158,11,0.2);color:#fbbf24;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">PENDING</span>`;
+          actionBtn = `
+            <button onclick="updateCampaignStatus(${c.id}, 'paused')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏸ Pause</button>
+            <button onclick="updateCampaignStatus(${c.id}, 'stopped')" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#f87171;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏹ Stop</button>
+          `;
+        } else if (c.status === 'running') {
+          statusBadge = `<span style="background:rgba(99,102,241,0.2);color:#818cf8;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">RUNNING</span>`;
+          actionBtn = `
+            <button onclick="updateCampaignStatus(${c.id}, 'paused')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏸ Pause</button>
+            <button onclick="updateCampaignStatus(${c.id}, 'stopped')" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#f87171;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏹ Stop</button>
+          `;
+        } else if (c.status === 'paused') {
+          statusBadge = `<span style="background:rgba(245,158,11,0.2);color:#fbbf24;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">PAUSED</span>`;
+          actionBtn = `
+            <button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">▶ Resume</button>
+            <button onclick="updateCampaignStatus(${c.id}, 'stopped')" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#f87171;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏹ Stop</button>
+          `;
+        } else if (c.status === 'daily_limit_reached') {
+          statusBadge = `<span style="background:rgba(251,146,60,0.2);color:#fb923c;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;" title="Daily safety cap reached. Auto-resumes tomorrow.">⏸ DAILY LIMIT</span>`;
+          actionBtn = `
+            <button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">▶ Resume</button>
+            <button onclick="updateCampaignStatus(${c.id}, 'stopped')" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#f87171;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;">⏹ Stop</button>
+          `;
+        } else if (c.status === 'stopped') {
+          statusBadge = `<span style="background:rgba(239,68,68,0.2);color:#f87171;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">STOPPED</span>`;
+          actionBtn = `<button onclick="updateCampaignStatus(${c.id}, 'running')" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#34d399;padding:0.25rem 0.6rem;font-size:0.75rem;width:auto;" title="Restart remaining recipients">▶ Restart</button>`;
+        } else if (c.status === 'completed') {
+          statusBadge = `<span style="background:rgba(16,185,129,0.2);color:#34d399;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">COMPLETED</span>`;
+        } else {
+          statusBadge = `<span style="background:rgba(239,68,68,0.2);color:#f87171;padding:0.25rem 0.5rem;border-radius:12px;font-size:0.75rem;font-weight:700;">${c.status.toUpperCase()}</span>`;
+        }
+
+
+        const scheduledDate = c.scheduled_at ? new Date(c.scheduled_at).toLocaleString() : 'Immediate';
+        const totalProcessed = c.successful_deliveries + c.failed_deliveries;
+        const progressPercent = c.total_contacts > 0 ? Math.round((totalProcessed / c.total_contacts) * 100) : 0;
+
+        return `
+      <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border-color);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div style="font-size:1.1rem;font-weight:600;display:flex;align-items:center;gap:0.5rem;">${c.name} ${statusBadge}</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Scheduled: ${scheduledDate}</div>
+          </div>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            ${actionBtn}
+            <button onclick="openCampaignRecipientsModal(${c.id})" style="background:rgba(255,255,255,0.1);padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">View Status</button>
+            <button onclick="deleteCampaignItem(${c.id})" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;cursor:pointer;" title="Delete Campaign">🗑️ Delete</button>
+          </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div style="background:rgba(255,255,255,0.05);height:8px;border-radius:4px;overflow:hidden;">
+          <div style="background:var(--accent-color);height:100%;width:${progressPercent}%;transition:width 0.3s ease;"></div>
+        </div>
+        
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;">
+          <div style="color:var(--text-muted);">Total: <strong style="color:#fff;">${c.total_contacts}</strong></div>
+          <div style="color:#34d399;">Sent: <strong>${c.successful_deliveries}</strong></div>
+          <div style="color:#f87171;">Failed: <strong>${c.failed_deliveries}</strong></div>
+        </div>
+      </div>
+    `;
+      }).join('');
+    }
+
+    function openCreateCampaignModal() {
+      document.getElementById('createCampaignModal').style.display = 'flex';
+      renderCampaignContactsSelector();
+
+      // Populate templates dropdown in campaign modal
+      const select = document.getElementById('campaignTemplateSelect');
+      if (select) {
+        select.innerHTML = '<option value="">-- Or Select a Saved Template --</option>' +
+          (state.templates || []).map(t => `<option value="${t.id}">${t.title || t.name || 'Untitled Template'}${t.category ? ` (${t.category})` : ''}</option>`).join('');
+      }
+    }
+
+    function hideCreateCampaignModal() {
+      document.getElementById('createCampaignModal').style.display = 'none';
+      document.getElementById('createCampaignForm').reset();
+    }
+
+    function handleCampaignTemplateSelect(templateId) {
+      if (!templateId) return;
+      const tmpl = (state.templates || []).find(t => t.id == templateId);
+      if (tmpl) {
+        document.getElementById('campaignMsgContent').value = tmpl.content || tmpl.message_text || '';
+      }
+    }
+
+    function updateCampaignSelectedCount() {
+      const allCbs = document.querySelectorAll('input[name="campaignContact"]');
+      const checkedCbs = document.querySelectorAll('input[name="campaignContact"]:checked');
+      
+      const countEl = document.getElementById('campaignSelectedCount');
+      const totalEl = document.getElementById('campaignTotalCount');
+      const selectAllCb = document.getElementById('campaignSelectAllCheckbox');
+      
+      if (countEl) countEl.innerText = checkedCbs.length;
+      if (totalEl) totalEl.innerText = allCbs.length;
+      
+      if (selectAllCb) {
+        if (allCbs.length === 0) {
+          selectAllCb.checked = false;
+          selectAllCb.indeterminate = false;
+        } else if (checkedCbs.length === allCbs.length) {
+          selectAllCb.checked = true;
+          selectAllCb.indeterminate = false;
+        } else if (checkedCbs.length > 0) {
+          selectAllCb.checked = false;
+          selectAllCb.indeterminate = true;
+        } else {
+          selectAllCb.checked = false;
+          selectAllCb.indeterminate = false;
+        }
+      }
+    }
+
+    function renderCampaignContactsSelector() {
+      const container = document.getElementById('campaignContactsGrid');
+      const searchInput = document.getElementById('campaignContactSearchInput');
+      if (searchInput) searchInput.value = '';
+
+      if (!state.contacts || state.contacts.length === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;">No contacts available. Please add or import contacts first.</div>`;
+        updateCampaignSelectedCount();
+        return;
+      }
+
+      container.innerHTML = state.contacts.map(c => `
+        <label class="campaign-contact-item" data-search="${(c.name || '').toLowerCase()} ${(c.mobile || '').toLowerCase()} ${(c.shop_name || '').toLowerCase()}" style="display:flex;align-items:center;gap:0.5rem;background:rgba(255,255,255,0.03);padding:0.5rem;border-radius:6px;cursor:pointer;">
+          <input type="checkbox" name="campaignContact" value="${c.id}" checked style="width:auto;" onchange="updateCampaignSelectedCount()">
+          <div style="font-size:0.85rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;">
+            <div style="color:#fff;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name || 'Unnamed'}</div>
+            <div style="color:var(--text-muted);font-size:0.75rem;font-family:monospace;">${c.mobile}</div>
+          </div>
+        </label>
+      `).join('');
+
+      updateCampaignSelectedCount();
+    }
+
+    function toggleCampaignContactsSelectAll(checkbox) {
+      const isChecked = checkbox.checked;
+      const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
+      checkboxes.forEach(cb => {
+        const item = cb.closest('.campaign-contact-item');
+        if (!item || item.style.display !== 'none') {
+          cb.checked = isChecked;
+        }
+      });
+      updateCampaignSelectedCount();
+    }
+
+    function clearCampaignContactsSelection() {
+      const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
+      checkboxes.forEach(cb => cb.checked = false);
+      updateCampaignSelectedCount();
+    }
+
+    function filterCampaignContactsSelector(query) {
+      const q = (query || '').trim().toLowerCase();
+      const items = document.querySelectorAll('.campaign-contact-item');
+      items.forEach(item => {
+        const text = item.getAttribute('data-search') || '';
+        if (!q || text.includes(q)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    async function handleCreateCampaignSubmit(e) {
+      e.preventDefault();
+      const checkboxes = document.querySelectorAll('input[name="campaignContact"]:checked');
+      if (checkboxes.length === 0) {
+        return alert('Please select at least one contact for the campaign.');
+      }
+
+      const selectedContacts = Array.from(checkboxes).map(cb => {
+        const contact = state.contacts.find(c => c.id == cb.value);
+        return contact;
+      }).filter(c => c);
+
+      const name = document.getElementById('campaignName').value;
+      const message_text = document.getElementById('campaignMsgContent').value;
+      let scheduled_at = document.getElementById('campaignScheduledAt').value;
+
+      if (scheduled_at) {
+        // Format to local ISO string without Z to be consistent or just rely on datetime-local
+        scheduled_at = new Date(scheduled_at).toISOString().slice(0, 19).replace('T', ' ');
+      }
+
+      const mediaFile = document.getElementById('campaignMedia').files[0];
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('message_text', message_text);
+      if (scheduled_at) formData.append('scheduled_at', scheduled_at);
+      formData.append('contactsStr', JSON.stringify(selectedContacts));
+      if (mediaFile) formData.append('media', mediaFile);
+
+      const btn = document.getElementById('submitCampaignBtn');
+      btn.innerText = 'Creating...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/crm/campaigns', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('Campaign created successfully!');
+          hideCreateCampaignModal();
+          fetchCampaigns();
+        } else {
+          alert(data.error || 'Failed to create campaign');
+        }
+      } catch (err) {
+        alert('An error occurred');
+      } finally {
+        btn.innerText = 'Launch Campaign';
+        btn.disabled = false;
+      }
+    }
+
+    async function updateCampaignStatus(campaignId, status) {
+      if (!confirm(`Are you sure you want to change campaign status to ${status}?`)) return;
+      try {
+        const res = await fetch(`/api/crm/campaigns/${campaignId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status })
+        });
+        if (res.ok) {
+          fetchCampaigns();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Failed to update status');
+        }
+      } catch (err) {
+        alert('An error occurred');
+      }
+    }
+
+    async function deleteCampaignItem(campaignId) {
+      if (!confirm('Are you sure you want to delete this campaign? All recipient logs and campaign history will be permanently deleted.')) return;
+      try {
+        const res = await fetch(`/api/crm/campaigns/${campaignId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          fetchCampaigns();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Failed to delete campaign');
+        }
+      } catch (err) {
+        alert('An error occurred while deleting the campaign');
+      }
+    }
+
+    async function openCampaignRecipientsModal(campaignId) {
+      document.getElementById('campaignRecipientsModal').style.display = 'flex';
+      const container = document.getElementById('campaignRecipientsList');
+      container.innerHTML = '<div style="text-align:center;padding:1rem;">Loading...</div>';
+
+      try {
+        const res = await fetch(`/api/crm/campaigns/${campaignId}/recipients`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.recipients.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-muted);text-align:center;">No recipients found.</div>';
+            return;
+          }
+
+          container.innerHTML = data.recipients.map(r => {
+            let badge = '';
+            if (r.status === 'pending') badge = `<span style="color:#fbbf24;font-size:0.8rem;">Pending</span>`;
+            else if (r.status === 'sent') badge = `<span style="color:#34d399;font-size:0.8rem;">Sent</span>`;
+            else if (r.status === 'failed') badge = `<span style="color:#f87171;font-size:0.8rem;">Failed</span>`;
+
+            const errorHtml = r.error_message ? `<div style="color:#f87171;font-size:0.75rem;margin-top:0.25rem;">${r.error_message}</div>` : '';
+            const sentHtml = r.sent_at ? `<div style="color:var(--text-muted);font-size:0.7rem;margin-top:0.25rem;">${new Date(r.sent_at).toLocaleString()}</div>` : '';
+
+            return `
+          <div style="background:rgba(255,255,255,0.03);padding:0.75rem;border-radius:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-weight:600;font-size:0.9rem;">${r.name || 'Unknown'}</div>
+                <div style="color:var(--text-muted);font-size:0.8rem;">${r.mobile}</div>
+              </div>
+              <div>${badge}</div>
+            </div>
+            ${errorHtml}
+            ${sentHtml}
+          </div>
+        `;
+          }).join('');
+        }
+      } catch (err) {
+        container.innerHTML = '<div style="color:#f87171;text-align:center;">Failed to load.</div>';
+      }
+    }
+
+    function hideCampaignRecipientsModal() {
+      document.getElementById('campaignRecipientsModal').style.display = 'none';
+    }
+
+    // Poll for updates if viewing campaigns tab (only if document is active)
+    setInterval(() => {
+      if (document.hidden) return;
+      if ((state.currentTab === 'campaignsTab' || state.currentTab === 'campaignAnalyticsTab' || state.currentTab === 'campaignSchedulerTab' || state.currentTab === 'reportsTab') && state.user && state.user.role !== 'admin') {
+        const hasRunning = (state.campaigns || []).some(c => c.status === 'running' || c.status === 'pending');
+        // If campaigns are actively running, poll every 15s; otherwise skip redundant polls
+        if (hasRunning || state.currentTab === 'campaignsTab') {
+          fetchCampaigns();
+        }
+      }
+    }, 15000);
+
+    // Pause / Resume UI heartbeats when tab is hidden/visible to prevent 24/7 DB queries
+    function handleTabResume() {
+      if (!document.hidden && state.token) {
+        // Tab just became active: do an immediate refresh of relevant status
+        if (typeof checkWhatsappStatus === 'function') checkWhatsappStatus();
+        if (state.currentTab === 'campaignsTab' && typeof fetchCampaigns === 'function') fetchCampaigns();
+        if (state.currentTab === 'remindersTab' && typeof fetchReminders === 'function') fetchReminders();
+      }
+    }
+    document.addEventListener('visibilitychange', handleTabResume);
+    window.addEventListener('focus', handleTabResume);
+
+    // ─── New Sidebar Tab Helper Functions ────────────────────────────────────────
+
+    function renderCampaignAnalytics() {
+      if (!state.campaigns || state.campaigns.length === 0) {
+        return `<div style="text-align:center;color:var(--text-muted);padding:2rem;">No campaign data yet. Create your first campaign to see analytics here.</div>`;
+      }
+
+      const totalCampaigns = state.campaigns.length;
+      const totalSent = state.campaigns.reduce((s, c) => s + (c.successful_deliveries || 0), 0);
+      const totalFailed = state.campaigns.reduce((s, c) => s + (c.failed_deliveries || 0), 0);
+      const totalContacts = state.campaigns.reduce((s, c) => s + (c.total_contacts || 0), 0);
+      const successRate = totalContacts > 0 ? Math.round((totalSent / totalContacts) * 100) : 0;
+
+      return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;">
+      <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#818cf8;">${totalCampaigns}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📢 Total Campaigns</div>
+      </div>
+      <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#34d399;">${totalSent}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">✅ Total Delivered</div>
+      </div>
+      <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#f87171;">${totalFailed}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">❌ Total Failed</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:1.25rem;text-align:center;">
+        <div style="font-size:2rem;font-weight:800;color:#fbbf24;">${successRate}%</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">📈 Success Rate</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--glass-border);border-radius:12px;overflow:hidden;">
+      <div style="padding:1rem;font-size:0.9rem;font-weight:600;border-bottom:1px solid var(--glass-border);">All Campaign Performance</div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+          <thead>
+            <tr style="background:rgba(255,255,255,0.03);">
+              <th style="padding:0.75rem 1rem;text-align:left;color:var(--text-muted);font-weight:600;">Campaign</th>
+              <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;">Status</th>
+              <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;">Total</th>
+              <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;">✅ Sent</th>
+              <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;">❌ Failed</th>
+              <th style="padding:0.75rem 1rem;text-align:center;color:var(--text-muted);font-weight:600;">Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${state.campaigns.map(c => {
+        const rate = c.total_contacts > 0 ? Math.round((c.successful_deliveries / c.total_contacts) * 100) : 0;
+        const statusColors = { pending: '#fbbf24', running: '#818cf8', paused: '#fbbf24', completed: '#34d399', cancelled: '#f87171' };
+        return `<tr style="border-top:1px solid var(--glass-border);">
+                <td style="padding:0.75rem 1rem;font-weight:500;">${c.name}</td>
+                <td style="padding:0.75rem 1rem;text-align:center;"><span style="color:${statusColors[c.status] || '#94a3b8'};font-size:0.75rem;font-weight:700;">${c.status.toUpperCase()}</span></td>
+                <td style="padding:0.75rem 1rem;text-align:center;">${c.total_contacts}</td>
+                <td style="padding:0.75rem 1rem;text-align:center;color:#34d399;">${c.successful_deliveries}</td>
+                <td style="padding:0.75rem 1rem;text-align:center;color:#f87171;">${c.failed_deliveries}</td>
+                <td style="padding:0.75rem 1rem;text-align:center;color:#fbbf24;font-weight:700;">${rate}%</td>
+              </tr>`;
+      }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+    }
+
+    function renderScheduledCampaigns() {
+      if (!state.campaigns || state.campaigns.length === 0) {
+        return `<div style="text-align:center;color:var(--text-muted);padding:2rem;">No campaigns scheduled. Click "+ Schedule New Campaign" to create one.</div>`;
+      }
+      // Show pending and running campaigns (the ones relevant for scheduling)
+      const active = state.campaigns.filter(c => c.status === 'pending' || c.status === 'running' || c.status === 'paused');
+      if (active.length === 0) {
+        return `<div style="text-align:center;color:var(--text-muted);padding:2rem;">No pending or running campaigns. All campaigns completed!</div>`;
+      }
+      return active.map(c => {
+        const scheduledDate = c.scheduled_at ? new Date(c.scheduled_at).toLocaleString() : 'Immediate / Now';
+        const statusColors = { pending: 'rgba(245,158,11,0.15)', running: 'rgba(99,102,241,0.15)', paused: 'rgba(245,158,11,0.1)' };
+        const textColors = { pending: '#fbbf24', running: '#818cf8', paused: '#fbbf24' };
+        return `
+      <div style="background:${statusColors[c.status] || 'rgba(255,255,255,0.02)'};border:1px solid var(--glass-border);border-radius:12px;padding:1.25rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+        <div>
+          <div style="font-weight:600;font-size:1rem;">${c.name}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">🗓️ ${scheduledDate} &nbsp;|&nbsp; <span style="color:${textColors[c.status]};font-weight:700;">${c.status.toUpperCase()}</span></div>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">👥 ${c.total_contacts} contacts &nbsp;|&nbsp; ✅ ${c.successful_deliveries} sent &nbsp;|&nbsp; ❌ ${c.failed_deliveries} failed</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          ${c.status === 'paused' ? `<button onclick="updateCampaignStatus(${c.id},'running')" style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:0.35rem 0.85rem;font-size:0.8rem;width:auto;">▶ Resume</button>` : ''}
+          ${c.status === 'running' || c.status === 'pending' ? `<button onclick="updateCampaignStatus(${c.id},'paused')" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fbbf24;padding:0.35rem 0.85rem;font-size:0.8rem;width:auto;">⏸ Pause</button>` : ''}
+          <button onclick="openCampaignRecipientsModal(${c.id})" style="background:rgba(255,255,255,0.08);padding:0.35rem 0.85rem;font-size:0.8rem;width:auto;">📊 Status</button>
+        </div>
+      </div>
+    `;
+      }).join('');
+    }
+
+    function renderReportsTable() {
+      if (!state.campaigns || state.campaigns.length === 0) {
+        return `<div style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:1rem;">No data yet.</div>`;
+      }
+      return `
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead>
+          <tr style="background:rgba(255,255,255,0.03);">
+            <th style="padding:0.6rem 0.75rem;text-align:left;color:var(--text-muted);">Campaign</th>
+            <th style="padding:0.6rem 0.75rem;text-align:center;color:var(--text-muted);">Sent</th>
+            <th style="padding:0.6rem 0.75rem;text-align:center;color:var(--text-muted);">Failed</th>
+            <th style="padding:0.6rem 0.75rem;text-align:center;color:var(--text-muted);">Rate</th>
+            <th style="padding:0.6rem 0.75rem;text-align:left;color:var(--text-muted);">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.campaigns.slice(0, 10).map(c => {
+        const rate = c.total_contacts > 0 ? Math.round((c.successful_deliveries / c.total_contacts) * 100) : 0;
+        return `<tr style="border-top:1px solid var(--glass-border);">
+              <td style="padding:0.6rem 0.75rem;font-weight:500;">${c.name}</td>
+              <td style="padding:0.6rem 0.75rem;text-align:center;color:#34d399;">${c.successful_deliveries}</td>
+              <td style="padding:0.6rem 0.75rem;text-align:center;color:#f87171;">${c.failed_deliveries}</td>
+              <td style="padding:0.6rem 0.75rem;text-align:center;font-weight:700;color:${rate >= 80 ? '#34d399' : rate >= 50 ? '#fbbf24' : '#f87171'}">${rate}%</td>
+              <td style="padding:0.6rem 0.75rem;color:var(--text-muted);font-size:0.75rem;">${new Date(c.created_at).toLocaleDateString()}</td>
+            </tr>`;
+      }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+    }
+
+    function exportContactsExcel() {
+      if (!state.contacts || state.contacts.length === 0) {
+        return alert('No contacts to export.');
+      }
+      // Build CSV
+      const headers = ['Name', 'Mobile', 'Shop Name', 'Email', 'Notes', 'Excluded'];
+      const rows = state.contacts.map(c => [
+        c.name || '', c.mobile || '', c.shop_name || '', c.email || '', c.notes || '', c.is_excluded ? 'Yes' : 'No'
+      ]);
+      const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contacts_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // ─── Automation Handlers (Birthday, Payment Reminder, Order Notify, Followup) ───
+
+    function handleBirthdayContactSelect(contactId) {
+      const c = (state.contacts || []).find(x => String(x.id) === String(contactId));
+      if (c) {
+        document.getElementById('birthdayPhone').value = c.mobile || '';
+        document.getElementById('birthdayName').value = c.name || '';
+        if (c.birthday) document.getElementById('birthdayDate').value = c.birthday;
+      }
+    }
+
+    async function saveBirthdayWish(e) {
+      e.preventDefault();
+      try {
+        const formData = new FormData();
+        const contact_id = document.getElementById('birthdayContactSelect').value;
+        if (contact_id) formData.append('contact_id', contact_id);
+        formData.append('recipient_phone', document.getElementById('birthdayPhone').value);
+        formData.append('recipient_name', document.getElementById('birthdayName').value);
+
+        let rawDate = document.getElementById('birthdayDate').value; // YYYY-MM-DD from <input type="date">
+        if (!rawDate) throw new Error('Please select a birthday date.');
+        const dateParts = rawDate.split('-');
+        if (dateParts.length !== 3) throw new Error('Invalid date format. Please pick a date using the date picker.');
+        const birthYear = dateParts[0]; // YYYY
+        const mmdd = `${dateParts[1]}-${dateParts[2]}`;  // MM-DD stored in DB for yearly recurrence
+        if (!mmdd || mmdd.length !== 5) throw new Error('Could not parse birthday date. Please try again.');
+        formData.append('birthday_date', mmdd);  // sends MM-DD to server
+        if (birthYear && birthYear !== '0000') formData.append('birth_year', birthYear);
+
+        formData.append('send_time', document.getElementById('birthdaySendTime').value || '09:00');
+        formData.append('message_text', document.getElementById('birthdayMessage').value);
+
+        const mediaInput = document.getElementById('birthdayMedia');
+        if (mediaInput && mediaInput.files.length > 0) {
+          formData.append('media', mediaInput.files[0]);
+        }
+
+        const res = await fetch('/api/crm/birthday-wishes', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Birthday wish saved successfully!');
+        document.getElementById('birthdayForm').reset();
+        fetchBirthdayWishes();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteBirthdayWishEntry(id) {
+      if (!confirm('Are you sure you want to delete this birthday wish entry?')) return;
+      try {
+        const res = await fetch(`/api/crm/birthday-wishes/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchBirthdayWishes();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function handlePayContactSelect(contactId) {
+      const c = (state.contacts || []).find(x => String(x.id) === String(contactId));
+      if (c) {
+        document.getElementById('payPhone').value = c.mobile || '';
+        document.getElementById('payName').value = c.name || '';
+      }
+    }
+
+    async function savePaymentReminder(e) {
+      e.preventDefault();
+      try {
+        const formData = new FormData();
+        const contact_id = document.getElementById('payContactSelect').value;
+        if (contact_id) formData.append('contact_id', contact_id);
+        formData.append('recipient_phone', document.getElementById('payPhone').value);
+        formData.append('recipient_name', document.getElementById('payName').value);
+        formData.append('amount', document.getElementById('payAmount').value);
+        formData.append('due_date', document.getElementById('payDueDate').value);
+        formData.append('remind_days_before', document.getElementById('payRemindOffset').value);
+        formData.append('message_text', document.getElementById('payMessage').value);
+
+        const mediaInput = document.getElementById('payMedia');
+        if (mediaInput && mediaInput.files.length > 0) {
+          formData.append('media', mediaInput.files[0]);
+        }
+
+        const res = await fetch('/api/crm/payment-reminders', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Payment reminder scheduled!');
+        document.getElementById('paymentReminderForm').reset();
+        fetchPaymentReminders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function updatePaymentStatus(id, status) {
+      try {
+        const res = await fetch(`/api/crm/payment-reminders/${id}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify({ status })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchPaymentReminders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deletePaymentReminderEntry(id) {
+      if (!confirm('Are you sure you want to delete this payment reminder?')) return;
+      try {
+        const res = await fetch(`/api/crm/payment-reminders/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchPaymentReminders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function handleOrderContactSelect(contactId) {
+      const c = (state.contacts || []).find(x => String(x.id) === String(contactId));
+      if (c) {
+        document.getElementById('orderPhone').value = c.mobile || '';
+        document.getElementById('orderCustomerName').value = c.name || '';
+      }
+    }
+
+    function updateOrderNotificationTemplate(status) {
+      const name = document.getElementById('orderCustomerName').value || '{Name}';
+      const orderId = document.getElementById('orderIdNum').value || '{OrderId}';
+      const product = document.getElementById('orderProductName').value || '{Product}';
+      const amount = document.getElementById('orderAmount').value || '{Amount}';
+
+      const templates = {
+        placed: `Hello ${name}, your order #${orderId} for ${product} (₹${amount}) has been placed successfully! Thank you for shopping with us.`,
+        confirmed: `Hi ${name}, great news! Your order #${orderId} has been confirmed and is being packed.`,
+        shipped: `Hello ${name}, your order #${orderId} has been shipped and is on its way to you! 🚚`,
+        out_for_delivery: `Hi ${name}, your order #${orderId} is out for delivery today. Please be ready to receive it! 📦`,
+        delivered: `🎉 Hello ${name}, your order #${orderId} has been delivered! We hope you love your purchase.`,
+        cancelled: `Hi ${name}, your order #${orderId} has been cancelled. If you have any questions, please contact our support.`
+      };
+
+      if (templates[status]) {
+        document.getElementById('orderMessageText').value = templates[status];
+      }
+    }
+
+    async function saveOrderNotification(e) {
+      e.preventDefault();
+      try {
+        const formData = new FormData();
+        const contactSelect = document.getElementById('orderContactSelect');
+        if (contactSelect && contactSelect.value) {
+          formData.append('contact_id', contactSelect.value);
+        }
+        formData.append('recipient_phone', document.getElementById('orderPhone').value);
+        formData.append('recipient_name', document.getElementById('orderCustomerName').value);
+        formData.append('order_id', document.getElementById('orderIdNum').value);
+        formData.append('order_status', document.getElementById('orderStatusSelect').value);
+        formData.append('product_name', document.getElementById('orderProductName').value);
+        formData.append('amount', document.getElementById('orderAmount').value);
+        formData.append('message_text', document.getElementById('orderMessageText').value);
+        formData.append('send_immediately', document.getElementById('orderSendTiming').value === 'immediate');
+
+        const res = await fetch('/api/crm/order-notifications', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Order notification triggered!');
+        document.getElementById('orderNotifyForm').reset();
+        fetchOrderNotifications();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteOrderNotificationEntry(id) {
+      if (!confirm('Delete this order notification log?')) return;
+      try {
+        const res = await fetch(`/api/crm/order-notifications/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchOrderNotifications();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function updateFollowUpTemplate(trigger) {
+      const name = document.getElementById('followUpName');
+      const msg = document.getElementById('followUpMessage');
+
+      const templates = {
+        no_response: {
+          name: '3-Day Lead Check-in',
+          text: `Hi {Name}, just checking in to see if you had any questions regarding your inquiry! Let us know how we can assist you.`
+        },
+        after_purchase: {
+          name: 'Post-Purchase Thank You & Feedback',
+          text: `Hello {Name}, thank you for your recent purchase! We hope everything is working great. Feel free to reach out if you need any support.`
+        },
+        after_reminder: {
+          name: 'Payment Reminder Follow-up',
+          text: `Hi {Name}, following up on our previous payment reminder. Please let us know if you need any assistance with completing your payment. Thank you!`
+        }
+      };
+
+      if (templates[trigger]) {
+        if (name) name.value = templates[trigger].name;
+        if (msg) msg.value = templates[trigger].text;
+      }
+    }
+
+    async function saveFollowUpAutomation(e) {
+      e.preventDefault();
+      try {
+        const formData = new FormData();
+        formData.append('name', document.getElementById('followUpName').value);
+        formData.append('trigger_event', document.getElementById('followUpTrigger').value);
+        formData.append('delay_days', document.getElementById('followUpDelay').value);
+        formData.append('message_text', document.getElementById('followUpMessage').value);
+
+        const res = await fetch('/api/crm/followup-automations', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(data.message || 'Follow-up automation rule created!');
+        document.getElementById('followUpForm').reset();
+        fetchFollowupAutomations();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteFollowUpEntry(id) {
+      if (!confirm('Are you sure you want to delete this follow-up automation rule?')) return;
+      try {
+        const res = await fetch(`/api/crm/followup-automations/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchFollowupAutomations();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteFollowUpLogEntry(id) {
+      if (!confirm('Delete this follow-up log entry?')) return;
+      try {
+        const res = await fetch(`/api/crm/followup-logs/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        fetchFollowupAutomations();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+  

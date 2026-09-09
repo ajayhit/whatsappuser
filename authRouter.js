@@ -9,6 +9,7 @@ import {
   getPlanDetails, subscribeToPlan, getDb
 } from './db.js';
 import { generateToken, authMiddleware } from './middleware/authMiddleware.js';
+import { authLimiter, uploadLimiter } from './middleware/rateLimiters.js';
 import { getSessionStatus, sendMessageToJid, initSession, waitForSessionState, hasSessionFiles } from './sessionManager.js';
 import multer from 'multer';
 import path from 'path';
@@ -173,7 +174,7 @@ router.get('/public-plans', async (req, res) => {
  * POST /auth/register
  * Create a new user account
  */
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   const { name, email, phone, countryCode, localPhone, password, captchaId, captchaAnswer } = req.body;
   if (!name || !email || !password || (!phone && !localPhone)) {
     return res.status(400).json({ error: 'Name, email, phone number, and password are required' });
@@ -225,7 +226,7 @@ router.post('/register', async (req, res) => {
  * POST /auth/login
  * Login and get JWT token
  */
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
@@ -629,7 +630,7 @@ router.post('/change-password', authMiddleware, async (req, res) => {
  * Generates a temporary password, sets it for the user, and sends it to their mobile via Admin WhatsApp.
  * No OTP step — password is delivered directly.
  */
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authLimiter, async (req, res) => {
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ error: 'Email or mobile number is required' });

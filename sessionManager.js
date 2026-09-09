@@ -8,6 +8,7 @@ import {
   isContactExcluded,
   getContactByMobile,
   getUserById,
+  getActivePlan,
   getAutomationSettings,
   saveSessionFile,
   saveSessionFilesBatch,
@@ -669,9 +670,13 @@ export function parseSpintax(text) {
  */
 export async function sendTypingPresence(userId, to, durationMs = 2000) {
   try {
-    const sock = sessions.get(userId);
-    const status = sessionStatus.get(userId);
-    if (!sock || status !== 'CONNECTED') return;
+    let sock = sessions.get(userId);
+    let status = sessionStatus.get(userId);
+    if (!sock || status !== 'CONNECTED') {
+      sock = await ensureConnectedSession(userId, 5000);
+      status = sessionStatus.get(userId);
+      if (!sock || status !== 'CONNECTED') return;
+    }
 
     const jid = normalizeTargetJid(to);
     await sock.sendPresenceUpdate('composing', jid).catch(() => {});
@@ -690,8 +695,13 @@ export async function sendTypingPresence(userId, to, durationMs = 2000) {
  * @param {string} message 
  */
 export async function sendMessageToJid(userId, to, message) {
-  const sock = sessions.get(userId);
-  const status = sessionStatus.get(userId);
+  let sock = sessions.get(userId);
+  let status = sessionStatus.get(userId);
+
+  if (!sock || status !== 'CONNECTED') {
+    sock = await ensureConnectedSession(userId);
+    status = sessionStatus.get(userId);
+  }
 
   if (!sock || status !== 'CONNECTED') {
     throw new Error('WhatsApp session is not connected or initialized.');
@@ -733,8 +743,13 @@ function getMimeType(urlOrPath, mediaType) {
  * Supports external HTTP URLs or base64 Data URLs.
  */
 export async function sendMediaToJid(userId, to, mediaUrl, mediaType, caption, fileName, mimetype) {
-  const sock = sessions.get(userId);
-  const status = sessionStatus.get(userId);
+  let sock = sessions.get(userId);
+  let status = sessionStatus.get(userId);
+
+  if (!sock || status !== 'CONNECTED') {
+    sock = await ensureConnectedSession(userId);
+    status = sessionStatus.get(userId);
+  }
 
   if (!sock || status !== 'CONNECTED') {
     throw new Error('WhatsApp session is not connected or initialized.');
@@ -920,18 +935,29 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
   //   b) Send a polite unsubscribe confirmation
   //   c) Return early — skip all other auto-responses
   // This prevents frustrated users from clicking WhatsApp's "Report Spam" button.
-  const incomingText = (
+  const rawText = (
     msg.message?.conversation ||
     msg.message?.extendedTextMessage?.text ||
     msg.message?.imageMessage?.caption ||
     ''
-  ).trim().toUpperCase();
+  ).trim();
 
-  const OPT_OUT_KEYWORDS = ['STOP', 'UNSUBSCRIBE', 'CANCEL', 'OPTOUT', 'OPT OUT', 'REMOVE', 'NO MORE', 'HATAO', 'BAND KRO', 'BAND KARO'];
+  // Normalize: uppercase and strip leading/trailing punctuation (e.g. "STOP!", "DND.", ".unsub")
+  const incomingText = rawText.toUpperCase().replace(/^[^A-Z0-9]+|[^A-Z0-9]+$/g, '').trim();
+
+  const OPT_OUT_KEYWORDS = [
+    'STOP', 'UNSUBSCRIBE', 'UNSUB', 'CANCEL', 'OPTOUT', 'OPT OUT',
+    'REMOVE', 'NO MORE', 'DND', 'DO NOT SEND', 'STOP PROMO',
+    'ROKO', 'BAND KRO', 'BAND KARO', 'MAT BHEJO', 'HATAO'
+  ];
+
   if (OPT_OUT_KEYWORDS.some(kw => incomingText === kw || incomingText.startsWith(kw))) {
     try {
       console.log(`[Opt-Out] Contact ${fromPhone} sent opt-out keyword "${incomingText}" to user ${userId}. Excluding from all campaigns.`);
       await excludeContactByMobile(userId, fromPhone);
+      try {
+        await execute('UPDATE contacts SET is_excluded = 1 WHERE user_id = ? AND mobile = ?', [userId, fromPhone]);
+      } catch (dbErr) {}
       // Send polite confirmation so they know it worked (stops them hitting 'Report Spam')
       await sendMessageToJid(userId, fromJid,
         `✅ You have been successfully unsubscribed and will not receive any more messages from us.\n\nIf this was a mistake, please reply *JOIN* to re-subscribe.`
@@ -1036,12 +1062,42 @@ export async function restoreAllSessions() {
 
     if (allUserIds.length === 0) return;
 
-    console.log(`[Auto-Restore] Found ${allUserIds.length} session(s) to restore (${dbUserIds.length} in DB, ${diskUserIds.length} on disk). Starting throttled restore queue...`);
+    // Filter out users who have no active subscription or are dormant (unless admin)
+    const activeUserIds = [];
+    for (const uid of allUserIds) {
+      try {
+        if (uid === 'admin') {
+          activeUserIds.push(uid);
+          continue;
+        }
+        const user = await getUserById(uid);
+        if (user?.role === 'admin') {
+          activeUserIds.push(uid);
+          continue;
+        }
+        const plan = await getActivePlan(uid);
+        if (plan) {
+          activeUserIds.push(uid);
+        } else {
+          console.log(`[Auto-Restore] Skipping dormant/expired user #${uid} (no active plan). Will auto-wake on demand.`);
+        }
+      } catch (err) {
+        // In case of error checking plan, keep user in restore list to be safe
+        activeUserIds.push(uid);
+      }
+    }
+
+    if (activeUserIds.length === 0) {
+      console.log(`[Auto-Restore] No active subscriber sessions to restore at startup (${allUserIds.length} dormant).`);
+      return;
+    }
+
+    console.log(`[Auto-Restore] Restoring ${activeUserIds.length} active session(s) (${allUserIds.length - activeUserIds.length} dormant skipped). Starting throttled restore queue...`);
     
     // Restore in small batches of 3 with 1.5s delay to keep RAM and network usage smooth
     const BATCH_SIZE = 3;
-    for (let i = 0; i < allUserIds.length; i += BATCH_SIZE) {
-      const batch = allUserIds.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < activeUserIds.length; i += BATCH_SIZE) {
+      const batch = activeUserIds.slice(i, i + BATCH_SIZE);
       await Promise.all(batch.map(async (userId) => {
         try {
           console.log(`[Auto-Restore] Restoring background session for userId: ${userId}`);
@@ -1050,11 +1106,11 @@ export async function restoreAllSessions() {
           console.error(`[Auto-Restore Failed] userId: ${userId}, error:`, err.message);
         }
       }));
-      if (i + BATCH_SIZE < allUserIds.length) {
+      if (i + BATCH_SIZE < activeUserIds.length) {
         await new Promise(r => setTimeout(r, 1500));
       }
     }
-    console.log(`[Auto-Restore] Completed background session restoration for all ${allUserIds.length} sessions.`);
+    console.log(`[Auto-Restore] Completed background session restoration for all ${activeUserIds.length} active sessions.`);
   } catch (err) {
     console.error('[Auto-Restore] Error reading sessions directory:', err);
   }
@@ -1106,5 +1162,36 @@ export async function waitForSessionState(userId, targetStates, timeoutMs = 8000
       timer = setTimeout(() => resolve(getSessionStatus(userId)), timeoutMs);
     }
   });
+}
+
+/**
+ * Ensures a session is active and connected before performing an action.
+ * If socket was not restored at startup (e.g. dormant user or server restart),
+ * auto-wakes the session using saved credentials on disk/DB.
+ * @param {string|number} userId
+ * @param {number} timeoutMs
+ * @returns {Promise<object|null>}
+ */
+export async function ensureConnectedSession(userId, timeoutMs = 12000) {
+  const uid = String(userId);
+  let sock = sessions.get(uid);
+  let status = sessionStatus.get(uid);
+
+  if (sock && status === 'CONNECTED') {
+    return sock;
+  }
+
+  // Check if session has stored credentials on disk or in DB
+  const hasFiles = hasSessionFiles(uid) || ((await getSessionFiles(uid))?.length > 0);
+  if (hasFiles) {
+    console.log(`[Auto-Wake] Waking up background session for user ${uid}...`);
+    initSession(uid).catch(err => console.error(`[Auto-Wake Async] user ${uid}:`, err.message));
+    const sessionInfo = await waitForSessionState(uid, ['CONNECTED'], timeoutMs);
+    if (sessionInfo?.status === 'CONNECTED') {
+      return sessions.get(uid);
+    }
+  }
+
+  return null;
 }
 

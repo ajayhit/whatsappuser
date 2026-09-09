@@ -31,17 +31,39 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+const ALLOWED_CRM_EXTENSIONS = new Set([
+  // Images
+  '.jpg', '.jpeg', '.png', '.webp', '.gif',
+  // Audio
+  '.mp3', '.ogg', '.wav', '.m4a', '.aac',
+  // Video
+  '.mp4', '.webm', '.mov', '.3gp',
+  // Documents
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'
+]);
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '');
     cb(null, `crm_${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`);
   }
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB max
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!ALLOWED_CRM_EXTENSIONS.has(ext)) {
+      return cb(new Error(`File type '${ext}' is not permitted. Only safe images, audio, video, and documents are allowed.`));
+    }
+    const mime = (file.mimetype || '').toLowerCase();
+    if (mime.includes('html') || mime.includes('javascript') || mime.includes('svg+xml') || mime.includes('x-sh')) {
+      return cb(new Error('Executable or script files are strictly prohibited.'));
+    }
+    cb(null, true);
+  }
 });
 
 // Helper: normalize phone number

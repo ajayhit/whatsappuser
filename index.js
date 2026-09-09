@@ -1,4 +1,5 @@
 import express from 'express';
+import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
 import dotenv from 'dotenv';
@@ -20,7 +21,8 @@ import {
   getDueBirthdayWishes, markBirthdayWishSent, markBirthdayWishFailed,
   updatePaymentReminderStatus,
   getAllUsers, getPlansByUser, canSendExpiryNotification, logExpiryNotification,
-  getCampaignDailySentCount, getDailyMessageLimit, excludeContactByMobile
+  getCampaignDailySentCount, getDailyMessageLimit, excludeContactByMobile,
+  isPg
 } from './db.js';
 
 dotenv.config();
@@ -33,6 +35,13 @@ const PORT = process.env.PORT || 3000;
 // Initialize database
 initDb().catch(err => { console.error('[DB Init Error]', err); process.exit(1); });
 
+// HTTP security headers (tailored to allow SPA inline scripts and Razorpay checkout)
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
 // Enable Gzip/Deflate compression for all responses (HTML, JSON, JS, CSS) to drastically reduce bandwidth
 app.use(compression({
   threshold: 1024, // Compress responses larger than 1KB
@@ -44,17 +53,40 @@ app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
-// Serve static control panel assets from the 'public' folder with caching
+// Serve static control panel assets from the 'public' folder.
+// app.css and app.js use ?v=5.0 cache-busting query strings in index.html,
+// so they get long-lived immutable caching. index.html itself gets no cache
+// (must-revalidate) so browsers always fetch the latest version references.
 app.use(express.static('public', {
-  maxAge: '1d', // 1 day browser cache for static files
-  etag: true
+  etag: true,
+  setHeaders: (res, filePath) => {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.html') {
+      // Never cache HTML — users must always get the freshest version
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    } else if (ext === '.css' || ext === '.js') {
+      // CSS/JS are versioned with ?v= query strings → safe to cache 1 year
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      // Other assets (images, icons, xlsx) — 1 day cache
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+  }
 }));
 
-// Serve uploaded payment screenshots and catalog media with 7-day cache
+// Serve uploaded payment screenshots and catalog media with safe headers
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   maxAge: '7d',
   etag: true,
-  immutable: true
+  immutable: true,
+  setHeaders: (res, filePath) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    const ext = path.extname(filePath).toLowerCase();
+    const inlineExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp3', '.ogg', '.wav', '.mp4', '.webm', '.pdf'];
+    if (!inlineExts.includes(ext)) {
+      res.setHeader('Content-Disposition', 'attachment');
+    }
+  }
 }));
 
 // Health check endpoint (lightweight for uptime monitors and pingers)
@@ -450,7 +482,7 @@ async function processPendingReminders() {
         if (rem.repeat_option === 'weekly' && rem.selected_days) {
           const nextScheduledAt = calculateNextScheduleDate(rem.selected_days, rem.send_time || '09:00');
           await execute(
-            "UPDATE reminders SET scheduled_at = $1, sent_at = NOW(), status = 'pending', error_message = NULL WHERE id = $2",
+            "UPDATE reminders SET scheduled_at = ?, sent_at = datetime('now'), status = 'pending', error_message = NULL WHERE id = ?",
             [nextScheduledAt, rem.id]
           );
           console.log(`[Reminders Poller] Sent recurring reminder #${rem.id} to ${rem.recipient_mobile}. Rescheduled for ${nextScheduledAt}`);
@@ -471,7 +503,20 @@ async function processPendingReminders() {
 // ─── Adaptive Event-Driven Campaigns Poller (With Anti-Ban Protection) ─────────
 let isProcessingCampaigns = false;
 
-// Helper to sleep while periodically checking campaign cancellation
+/**
+ * Checks if current local time (IST) falls into overnight quiet hours (10:00 PM - 8:00 AM).
+ * Pausing bulk marketing sends during this window dramatically reduces user spam reports and account bans.
+ */
+export function isQuietHours(startHour = 22, endHour = 8) {
+  const istDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const hour = istDate.getHours();
+  if (startHour > endHour) {
+    return hour >= startHour || hour < endHour;
+  }
+  return hour >= startHour && hour < endHour;
+}
+
+// Helper to sleep while periodically checking campaign cancellation or quiet hours
 async function interruptibleSleep(ms, campaignId) {
   const stepMs = 1000;
   let elapsed = 0;
@@ -479,6 +524,11 @@ async function interruptibleSleep(ms, campaignId) {
     const sleepChunk = Math.min(stepMs, ms - elapsed);
     await new Promise(r => setTimeout(r, sleepChunk));
     elapsed += sleepChunk;
+
+    if (isQuietHours(22, 8)) {
+      console.log('[Anti-Ban Quiet Hours] Entered quiet hours window (10:00 PM - 8:00 AM IST). Pausing campaign broadcast.');
+      return false;
+    }
 
     if (campaignId) {
       const camp = await getCampaignById(campaignId);
@@ -494,7 +544,16 @@ export async function triggerCampaignsPoller() {
   if (isProcessingCampaigns) return;
   isProcessingCampaigns = true;
   try {
+    if (isQuietHours(22, 8)) {
+      console.log('[Anti-Ban Quiet Hours] Current time is in quiet hours window (10:00 PM - 8:00 AM IST). Bulk campaigns safely paused until morning.');
+      return;
+    }
+
     while (true) {
+      if (isQuietHours(22, 8)) {
+        console.log('[Anti-Ban Quiet Hours] Entered quiet hours window. Pausing remaining broadcast sends until 8:00 AM IST.');
+        break;
+      }
       const campaigns = await getPendingCampaigns();
       if (!campaigns || campaigns.length === 0) break;
 
@@ -752,7 +811,7 @@ async function processFollowUps() {
 
               // Log this send so we don't re-send immediately
               await execute(
-                "INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, sent_at) VALUES ($1, $2, $3, 'sent', NOW())",
+                "INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, sent_at) VALUES (?, ?, ?, 'sent', datetime('now'))",
                 [parseInt(userId), rule.id, contact.id]
               );
 
@@ -763,7 +822,7 @@ async function processFollowUps() {
               console.error(`[FollowUp Poller] Failed for contact ${contact.mobile}: ${contactErr.message}`);
               try {
                 await execute(
-                  "INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, error_message, sent_at) VALUES ($1, $2, $3, 'failed', $4, NOW())",
+                  "INSERT INTO followup_sent_log (user_id, automation_id, contact_id, status, error_message, sent_at) VALUES (?, ?, ?, 'failed', ?, datetime('now'))",
                   [parseInt(userId), rule.id, contact.id, contactErr.message || 'Send error']
                 );
               } catch (logErr) {}
@@ -841,13 +900,21 @@ async function processPaymentReminders() {
     const istDateStr = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
 
     // Find active pending reminders due today (factoring in remind_days_before offset)
-    const dueReminders = await queryAll(
-      `SELECT * FROM payment_reminders
-       WHERE active = 1 AND status = 'pending'
-         AND (due_date::date - (remind_days_before::text || ' days')::interval)::date <= $1::date
-         AND due_date::date >= $1::date`,
-      [istDateStr]
-    );
+    const dueReminders = isPg()
+      ? await queryAll(
+          `SELECT * FROM payment_reminders
+           WHERE active = 1 AND status = 'pending'
+             AND (due_date::date - (remind_days_before::text || ' days')::interval)::date <= $1::date
+             AND due_date::date >= $1::date`,
+          [istDateStr]
+        )
+      : await queryAll(
+          `SELECT * FROM payment_reminders
+           WHERE active = 1 AND status = 'pending'
+             AND date(due_date, '-' || remind_days_before || ' days') <= ?
+             AND date(due_date) >= ?`,
+          [istDateStr, istDateStr]
+        );
 
     if (!dueReminders || dueReminders.length === 0) return;
 
@@ -998,9 +1065,11 @@ export async function runUnifiedBackgroundJobs() {
   if (isRunningUnifiedJobs) return;
   isRunningUnifiedJobs = true;
   try {
-    // Run all tasks in a single fast synchronized burst
+    // 1. Kick off campaign poller independently in background so long broadcasts never block punctual jobs
+    triggerCampaignsPoller().catch(e => console.error('[Decoupled Campaign Poller Error]', e));
+
+    // 2. Run fast, time-sensitive punctual tasks in synchronized burst
     await processPendingReminders();
-    await triggerCampaignsPoller();
     await processBirthdayWishes();
     await processFollowUps();
     await processPaymentReminders();

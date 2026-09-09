@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node --max-old-space-size=200 --optimize-for-size --expose-gc index.js",
+    "start": "node --max-old-space-size=512 --optimize-for-size --expose-gc index.js",
     "migrate:pg": "node scripts/migrate-to-postgres.js"
   },
   "dependencies": {
@@ -20,6 +20,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
     "pg": "^8.23.0",
