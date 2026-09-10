@@ -392,6 +392,22 @@ export async function initSession(userId) {
     }
   });
 
+  sock.ev.on('messages.update', (updates) => {
+    for (const update of updates) {
+      if (update.update?.status) {
+        const statusMap = {
+          0: 'ERROR',
+          1: 'PENDING',
+          2: 'SERVER_ACK (Single Tick - Reached Server)',
+          3: 'DELIVERY_ACK (Delivered - Double Tick)',
+          4: 'READ (Seen - Blue Tick)',
+          5: 'PLAYED'
+        };
+        const statusLabel = statusMap[update.update.status] || `STATUS_${update.update.status}`;
+        console.log(`[Message Status] user=${userId} | jid=${update.key?.remoteJid} | msgId=${update.key?.id} | status=${statusLabel}`);
+      }
+    }
+  });
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
@@ -711,7 +727,24 @@ export async function sendMessageToJid(userId, to, message) {
     throw new Error('WhatsApp session is not connected or initialized.');
   }
 
-  const jid = normalizeTargetJid(to);
+  let jid = normalizeTargetJid(to);
+
+  // Verify recipient exists on WhatsApp before sending
+  if (jid.endsWith('@s.whatsapp.net')) {
+    try {
+      const [waCheck] = await sock.onWhatsApp(jid);
+      if (waCheck && !waCheck.exists) {
+        console.warn(`[SendMessage] ❌ Target ${jid} is NOT registered on WhatsApp!`);
+        throw new Error(`Recipient number (${to}) is not registered on WhatsApp.`);
+      }
+      if (waCheck?.jid) {
+        jid = waCheck.jid;
+      }
+    } catch (checkErr) {
+      if (checkErr.message.includes('not registered on WhatsApp')) throw checkErr;
+    }
+  }
+
   console.log(`[SendMessage] user=${userId} → jid=${jid} | msgLen=${message?.length || 0}`);
   const result = await sock.sendMessage(jid, { text: message });
   if (result?.key?.id) {
@@ -764,7 +797,24 @@ export async function sendMediaToJid(userId, to, mediaUrl, mediaType, caption, f
     throw new Error('WhatsApp session is not connected or initialized.');
   }
 
-  const jid = normalizeTargetJid(to);
+  let jid = normalizeTargetJid(to);
+
+  // Verify recipient exists on WhatsApp before sending
+  if (jid.endsWith('@s.whatsapp.net')) {
+    try {
+      const [waCheck] = await sock.onWhatsApp(jid);
+      if (waCheck && !waCheck.exists) {
+        console.warn(`[SendMedia] ❌ Target ${jid} is NOT registered on WhatsApp!`);
+        throw new Error(`Recipient number (${to}) is not registered on WhatsApp.`);
+      }
+      if (waCheck?.jid) {
+        jid = waCheck.jid;
+      }
+    } catch (checkErr) {
+      if (checkErr.message.includes('not registered on WhatsApp')) throw checkErr;
+    }
+  }
+
   const resolvedMimeType = mimetype || getMimeType(mediaUrl, mediaType);
   
   // Resolve media content (base64 data URL, local file path, or external HTTP URL)
