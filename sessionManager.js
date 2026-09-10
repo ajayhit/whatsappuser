@@ -349,7 +349,7 @@ export async function initSession(userId) {
     printQRInTerminal: false,
     browser: Browsers.ubuntu('Chrome'), // Standard tested browser profile compatible with mobile pairing code & QR
     syncFullHistory: false, // CRITICAL: Disable full chat history sync to drastically reduce RAM usage
-    markOnlineOnConnect: false, // Save CPU and keepalive bandwidth
+    markOnlineOnConnect: true, // MUST be true so WhatsApp servers route decryption retry requests to this client
     generateHighQualityLinkPreview: false,
     fireInitQueries: true, // Allow proper initialization of privacy and account settings
     emitOwnEvents: false, // Reduces event loop object allocations
@@ -363,7 +363,12 @@ export async function initSession(userId) {
     },
     getMessage: async (key) => {
       const fullKey = `${key.remoteJid}:${key.id}`;
-      return recentMessagesCache.get(fullKey) || recentMessagesCache.get(key.id) || undefined;
+      const msg = recentMessagesCache.get(fullKey) || recentMessagesCache.get(key.id);
+      if (msg) {
+        console.log(`[Retry Handler] ✅ Served message ${key.id} for retry to ${key.remoteJid}`);
+        return msg;
+      }
+      return undefined;
     },
     connectTimeoutMs: 60000,
     keepAliveIntervalMs: 25000, // 25s ping prevents WebSocket drops during message send delays
