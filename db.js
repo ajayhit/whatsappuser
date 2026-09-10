@@ -1232,18 +1232,39 @@ export async function getActivePlan(userId) {
   const cached = getCached(cacheKey, 10000);
   if (cached !== undefined) return cached;
 
-  const plan = await queryOne(`
+  // Primary: find a plan explicitly marked active
+  let plan = await queryOne(`
     SELECT * FROM plans WHERE user_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1
   `, [userId]);
 
   // If expired by date, don't return active
   if (plan && new Date(plan.expires_at) <= new Date()) {
-    setCached(cacheKey, null);
-    return null;
+    plan = null;
+  }
+
+  // Fallback: the status column may have been incorrectly set to 'expired'
+  // while the expiry date is still in the future. Trust the date over the status column.
+  if (!plan) {
+    const fallback = await queryOne(`
+      SELECT * FROM plans WHERE user_id = ?
+        AND (status = 'active' OR status = 'expired')
+        AND expires_at > ?
+      ORDER BY expires_at DESC LIMIT 1
+    `, [userId, new Date().toISOString()]);
+
+    if (fallback) {
+      // Auto-heal: correct the stale status so future queries are consistent
+      await execute(
+        `UPDATE plans SET status = 'active' WHERE id = ?`,
+        [fallback.id]
+      );
+      plan = { ...fallback, status: 'active' };
+      console.log(`[getActivePlan] Auto-healed plan #${fallback.id} for user ${userId}: status corrected to 'active' (expires ${fallback.expires_at})`);
+    }
   }
 
   setCached(cacheKey, plan || null);
-  return plan;
+  return plan || null;
 }
 
 export async function getPlansByUser(userId) {

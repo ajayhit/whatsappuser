@@ -255,6 +255,9 @@ function normalizeTargetJid(to) {
   let jid = to.trim();
   if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@g.us') && !jid.endsWith('@lid')) {
     let cleanNumber = jid.replace(/\D/g, '');
+    // Only add country code 91 if the number is exactly 10 digits (no prefix yet).
+    // NOTE: apiRouter.normalizePhone() already does this for API calls.
+    // This guard prevents double-prefixing (9191XXXXXXXXXX) when numbers already have 91.
     if (cleanNumber.length === 10) {
       cleanNumber = '91' + cleanNumber;
     }
@@ -262,6 +265,7 @@ function normalizeTargetJid(to) {
   }
   return jid;
 }
+
 
 let cachedBaileysVersion = [2, 3000, 1043857760];
 let versionLastFetchedAt = 0;
@@ -708,12 +712,17 @@ export async function sendMessageToJid(userId, to, message) {
   }
 
   const jid = normalizeTargetJid(to);
+  console.log(`[SendMessage] user=${userId} → jid=${jid} | msgLen=${message?.length || 0}`);
   const result = await sock.sendMessage(jid, { text: message });
-  if (result?.key?.id && result?.message) {
+  if (result?.key?.id) {
+    console.log(`[SendMessage] ✅ Delivered to WhatsApp | jid=${jid} | msgId=${result.key.id}`);
     storeRecentMessage(jid, result.key.id, result.message);
+  } else {
+    console.warn(`[SendMessage] ⚠️ No message ID returned from WhatsApp — message may not have been delivered | jid=${jid}`);
   }
   return result;
 }
+
 
 /**
  * Guesses the mime type of a file from its extension or media type.
