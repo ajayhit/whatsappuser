@@ -332,7 +332,7 @@ export async function initSession(userId) {
   sessionStatus.set(userId, 'CONNECTING');
 
   const sessionDir = path.join(sessionsDir, `session_${userId}`);
-  
+
   // Ensure the sessions directory structure exists
   await fs.mkdir(sessionsDir, { recursive: true });
 
@@ -446,7 +446,7 @@ export async function initSession(userId) {
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const isRestartRequired = statusCode === 515 || statusCode === DisconnectReason.restartRequired;
-      
+
       // 440 means connection replaced by another client (e.g. user opened web.whatsapp.com elsewhere)
       if (statusCode === 440 || statusCode === DisconnectReason.connectionReplaced) {
         console.log(`[Session Replaced] Another WhatsApp Web session opened elsewhere for userId: ${userId}. Halting socket to prevent collision loop.`);
@@ -456,10 +456,13 @@ export async function initSession(userId) {
         return;
       }
 
-      // ONLY 401 (loggedOut) is a genuine unrecoverable logout from WhatsApp servers.
-      // Codes like 403, 405, 408, 428, 500, 503, 515 are connection/protocol/temporary issues and should reconnect.
+      // 401 (loggedOut) and 403 (forbidden) are genuine, unrecoverable states from WhatsApp's
+      // perspective — the server has revoked this session. Reconnecting will NOT fix either one;
+      // it just loops forever hammering a dead/banned socket. Only codes like 405, 408, 428, 500,
+      // 503, 515 are real connection/protocol/temporary issues worth retrying.
       const isLoggedOut = statusCode === 401 || statusCode === DisconnectReason.loggedOut;
-      const shouldReconnect = !isLoggedOut;
+      const isBanned = statusCode === 403 || statusCode === DisconnectReason.forbidden;
+      const shouldReconnect = !isLoggedOut && !isBanned;
 
       console.log(`[Session Closed] userId: ${userId}, statusCode: ${statusCode}, shouldReconnect: ${shouldReconnect}, isRestart: ${isRestartRequired}`);
 
@@ -473,7 +476,7 @@ export async function initSession(userId) {
           reconnectCount.set(userId, retries + 1);
           const delayMs = isRestartRequired ? 600 : Math.min(2500 * Math.pow(1.2, retries), 15000);
           console.log(`[Reconnecting] userId: ${userId}, attempt: ${retries + 1}, delay: ${Math.round(delayMs)}ms...`);
-          
+
           setTimeout(() => {
             initSession(userId).catch(err => {
               console.error(`Reconnection initialization failed for ${userId}:`, err);
@@ -485,9 +488,12 @@ export async function initSession(userId) {
           pairingCodes.delete(userId);
         }
       } else {
-        // Genuine logout confirmed by WhatsApp (statusCode: 401)
-        console.log(`[Session Terminated] Cleaning up credentials for userId: ${userId} due to statusCode: ${statusCode}`);
-        sessionStatus.set(userId, 'DISCONNECTED');
+        // Genuine, unrecoverable termination confirmed by WhatsApp (401 logged out, or 403 banned).
+        // Wipe credentials in both cases — reusing a revoked/banned creds.json is pointless and
+        // repeated reconnect attempts with stale creds can make a ban stickier.
+        const reasonLabel = isBanned ? 'BANNED (403 forbidden)' : 'LOGGED_OUT (401)';
+        console.log(`[Session Terminated] userId: ${userId} — ${reasonLabel}. Cleaning up credentials, not reconnecting.`);
+        sessionStatus.set(userId, isBanned ? 'BANNED' : 'DISCONNECTED');
         qrCodes.delete(userId);
         pairingCodes.delete(userId);
         try {
@@ -521,7 +527,7 @@ export function formatPairingCode(code) {
 
 /**
  * Retrieves the current status details of a WhatsApp session.
- * @param {string} userId 
+ * @param {string} userId
  * @returns {{status: string, qr?: string, pairingCode?: string, formattedCode?: string, user?: {id: string, name: string, phone: string}}}
  */
 export function getSessionStatus(userId) {
@@ -529,7 +535,7 @@ export function getSessionStatus(userId) {
   const activePairingCode = pairingCodes.get(userId);
 
   // If the socket isn't in the map yet (initSession still running its awaits),
-  // still report the real status (CONNECTING / QR / PAIRING_CODE) so the frontend keeps polling.
+  // still report the real status (CONNECTING / QR / PAIRING_CODE / BANNED) so the frontend keeps polling.
   if (!sessions.has(userId)) {
     if (status && status !== 'DISCONNECTED') {
       return {
@@ -626,7 +632,7 @@ export async function requestPairingCode(userId, phoneNumber) {
 
 /**
  * Logs out and cleans up session resources.
- * @param {string} userId 
+ * @param {string} userId
  * @returns {Promise<{status: string}>}
  */
 export async function logoutSession(userId) {
@@ -715,9 +721,9 @@ export async function sendTypingPresence(userId, to, durationMs = 2000) {
 
 /**
  * Sends a text message to a specific number or group.
- * @param {string} userId 
- * @param {string} to 
- * @param {string} message 
+ * @param {string} userId
+ * @param {string} to
+ * @param {string} message
  */
 export async function sendMessageToJid(userId, to, message) {
   let sock = sessions.get(userId);
@@ -769,7 +775,7 @@ function getMimeType(urlOrPath, mediaType) {
   if (mediaType === 'image') return 'image/jpeg';
   if (mediaType === 'audio') return 'audio/mp3';
   if (mediaType === 'video') return 'video/mp4';
-  
+
   const ext = path.extname(urlOrPath).toLowerCase();
   switch (ext) {
     case '.pdf': return 'application/pdf';
@@ -821,7 +827,7 @@ export async function sendMediaToJid(userId, to, mediaUrl, mediaType, caption, f
   }
 
   const resolvedMimeType = mimetype || getMimeType(mediaUrl, mediaType);
-  
+
   // Resolve media content (base64 data URL, local file path, or external HTTP URL)
   let mediaContent;
   if (mediaUrl.startsWith('data:')) {
@@ -869,7 +875,7 @@ export async function sendMediaToJid(userId, to, mediaUrl, mediaType, caption, f
 
 /**
  * Fetches all groups the user is participating in.
- * @param {string} userId 
+ * @param {string} userId
  */
 export async function getGroupsList(userId) {
   const sock = sessions.get(userId);
@@ -891,7 +897,7 @@ export async function getGroupsList(userId) {
 
 /**
  * Fetches profile info (picture and number) for own account or a specific contact.
- * @param {string} userId 
+ * @param {string} userId
  * @param {string} [targetJid] - Optional number or JID
  */
 export async function getProfileInfo(userId, targetJid) {
@@ -1066,7 +1072,7 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
     if (Date.now() - lastWelcomeTime >= 86400000) {
       const welcomeMsg = await resolveAutoPlaceholders(settings.welcome_text, userId, fromPhone);
       console.log(`[AutoResponse Welcome] User ${userId} sending Welcome Message to ${fromPhone}`);
-      
+
       lastWelcomeSentMap.set(rateLimitKey, Date.now());
 
       if (settings.welcome_media_path && settings.welcome_media_type) {
@@ -1091,7 +1097,7 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
       if (Date.now() - lastAwayTime >= 60000) {
         const awayMsg = await resolveAutoPlaceholders(settings.away_text, userId, fromPhone);
         console.log(`[AutoResponse Away] User ${userId} sending Away Message to ${fromPhone}`);
-        
+
         lastAwaySentMap.set(rateLimitKey, Date.now());
         await sendMessageToJid(userId, fromJid, awayMsg);
       }
@@ -1107,7 +1113,7 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
 export async function restoreAllSessions() {
   try {
     await fs.mkdir(sessionsDir, { recursive: true });
-    
+
     // 1. Get session IDs from local disk
     const diskFiles = await fs.readdir(sessionsDir);
     const diskUserIds = diskFiles
@@ -1157,7 +1163,7 @@ export async function restoreAllSessions() {
     }
 
     console.log(`[Auto-Restore] Restoring ${activeUserIds.length} active session(s) (${allUserIds.length - activeUserIds.length} dormant skipped). Starting throttled restore queue...`);
-    
+
     // Restore in small batches of 3 with 1.5s delay to keep RAM and network usage smooth
     const BATCH_SIZE = 3;
     for (let i = 0; i < activeUserIds.length; i += BATCH_SIZE) {
@@ -1182,9 +1188,9 @@ export async function restoreAllSessions() {
 
 /**
  * Helper to wait for a session to reach one of the target states.
- * @param {string} userId 
- * @param {string[]} targetStates 
- * @param {number} timeoutMs 
+ * @param {string} userId
+ * @param {string[]} targetStates
+ * @param {number} timeoutMs
  * @returns {Promise<object>}
  */
 export async function waitForSessionState(userId, targetStates, timeoutMs = 8000) {
@@ -1245,6 +1251,12 @@ export async function ensureConnectedSession(userId, timeoutMs = 12000) {
     return sock;
   }
 
+  // Never attempt to auto-wake a session that WhatsApp has explicitly banned —
+  // credentials were already wiped when the ban was detected, so there is nothing to wake.
+  if (status === 'BANNED') {
+    return null;
+  }
+
   // Check if session has stored credentials on disk or in DB
   const hasFiles = hasSessionFiles(uid) || ((await getSessionFiles(uid))?.length > 0);
   if (hasFiles) {
@@ -1258,4 +1270,3 @@ export async function ensureConnectedSession(userId, timeoutMs = 12000) {
 
   return null;
 }
-
