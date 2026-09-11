@@ -28,6 +28,8 @@ export const sessionStatus = new Map();
 export const qrCodes = new Map();
 export const pairingCodes = new Map();
 const reconnectCount = new Map();
+const reconnectTimers = new Map();
+const initializingPromises = new Map();
 const lastWelcomeSentMap = new Map();
 const lastAwaySentMap = new Map();
 const dbSyncTimers = new Map();
@@ -252,6 +254,7 @@ export function queueSessionDbSync(userId, delayMs = 60000) {
 }
 
 function normalizeTargetJid(to) {
+  if (!to || typeof to !== 'string') return '';
   let jid = to.trim();
   if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@g.us') && !jid.endsWith('@lid')) {
     let cleanNumber = jid.replace(/\D/g, '');
@@ -288,12 +291,17 @@ async function getCachedBaileysVersion() {
 
 // Cleanup socket resources and event listeners to prevent memory leaks
 export function cleanupSocket(userId) {
-  const sock = sessions.get(userId);
+  const uid = String(userId);
+  if (reconnectTimers.has(uid)) {
+    clearTimeout(reconnectTimers.get(uid));
+    reconnectTimers.delete(uid);
+  }
+  const sock = sessions.get(uid);
   if (sock) {
     try { sock.ev.removeAllListeners(); } catch (e) {}
     try { sock.ws?.close(); } catch (e) {}
     try { sock.end(); } catch (e) {}
-    sessions.delete(userId);
+    sessions.delete(uid);
   }
 }
 
@@ -317,6 +325,19 @@ setInterval(() => {
  * @returns {Promise<{status: string, qr?: string}>}
  */
 export async function initSession(userId) {
+  const uid = String(userId);
+  if (initializingPromises.has(uid)) {
+    return initializingPromises.get(uid);
+  }
+
+  const promise = _doInitSession(uid).finally(() => {
+    initializingPromises.delete(uid);
+  });
+  initializingPromises.set(uid, promise);
+  return promise;
+}
+
+async function _doInitSession(userId) {
   // Check if active session socket already exists
   if (sessions.has(userId)) {
     const status = sessionStatus.get(userId) || 'CONNECTING';
@@ -347,7 +368,7 @@ export async function initSession(userId) {
     auth: state,
     logger: pino({ level: 'silent' }), // Suppress Baileys verbose logs
     printQRInTerminal: false,
-    browser: Browsers.ubuntu('Chrome'), // Standard tested browser profile compatible with mobile pairing code & QR
+    browser: Browsers.windows('Desktop'), // Standard Windows Desktop browser profile (safe & human-like)
     syncFullHistory: false, // CRITICAL: Disable full chat history sync to drastically reduce RAM usage
     markOnlineOnConnect: true, // MUST be true so WhatsApp servers route decryption retry requests to this client
     generateHighQualityLinkPreview: false,
@@ -460,7 +481,7 @@ export async function initSession(userId) {
       // perspective — the server has revoked this session. Reconnecting will NOT fix either one;
       // it just loops forever hammering a dead/banned socket. Only codes like 405, 408, 428, 500,
       // 503, 515 are real connection/protocol/temporary issues worth retrying.
-      const isLoggedOut = statusCode === 401 || statusCode === DisconnectReason.loggedOut;
+      const isLoggedOut = statusCode === 401 || statusCode === 411 || statusCode === DisconnectReason.loggedOut || statusCode === DisconnectReason.multideviceMismatch;
       const isBanned = statusCode === 403 || statusCode === DisconnectReason.forbidden;
       const shouldReconnect = !isLoggedOut && !isBanned;
 
@@ -477,11 +498,18 @@ export async function initSession(userId) {
           const delayMs = isRestartRequired ? 600 : Math.min(2500 * Math.pow(1.2, retries), 15000);
           console.log(`[Reconnecting] userId: ${userId}, attempt: ${retries + 1}, delay: ${Math.round(delayMs)}ms...`);
 
-          setTimeout(() => {
-            initSession(userId).catch(err => {
-              console.error(`Reconnection initialization failed for ${userId}:`, err);
+          const uid = String(userId);
+          const timer = setTimeout(() => {
+            reconnectTimers.delete(uid);
+            const currentStatus = sessionStatus.get(uid);
+            if (currentStatus === 'DISCONNECTED' || currentStatus === 'BANNED') {
+              return; // Do not reconnect if user logged out or session was revoked
+            }
+            initSession(uid).catch(err => {
+              console.error(`Reconnection initialization failed for ${uid}:`, err);
             });
           }, delayMs);
+          reconnectTimers.set(uid, timer);
         } else {
           console.log(`[Max Reconnects Reached] userId: ${userId}`);
           sessionStatus.set(userId, 'DISCONNECTED');
@@ -739,21 +767,8 @@ export async function sendMessageToJid(userId, to, message) {
   }
 
   let jid = normalizeTargetJid(to);
-
-  // Verify recipient exists on WhatsApp before sending
-  if (jid.endsWith('@s.whatsapp.net')) {
-    try {
-      const [waCheck] = await sock.onWhatsApp(jid);
-      if (waCheck && !waCheck.exists) {
-        console.warn(`[SendMessage] ❌ Target ${jid} is NOT registered on WhatsApp!`);
-        throw new Error(`Recipient number (${to}) is not registered on WhatsApp.`);
-      }
-      if (waCheck?.jid) {
-        jid = waCheck.jid;
-      }
-    } catch (checkErr) {
-      if (checkErr.message.includes('not registered on WhatsApp')) throw checkErr;
-    }
+  if (!jid) {
+    throw new Error(`Invalid recipient phone number: "${to}"`);
   }
 
   console.log(`[SendMessage] user=${userId} → jid=${jid} | msgLen=${message?.length || 0}`);
@@ -809,21 +824,8 @@ export async function sendMediaToJid(userId, to, mediaUrl, mediaType, caption, f
   }
 
   let jid = normalizeTargetJid(to);
-
-  // Verify recipient exists on WhatsApp before sending
-  if (jid.endsWith('@s.whatsapp.net')) {
-    try {
-      const [waCheck] = await sock.onWhatsApp(jid);
-      if (waCheck && !waCheck.exists) {
-        console.warn(`[SendMedia] ❌ Target ${jid} is NOT registered on WhatsApp!`);
-        throw new Error(`Recipient number (${to}) is not registered on WhatsApp.`);
-      }
-      if (waCheck?.jid) {
-        jid = waCheck.jid;
-      }
-    } catch (checkErr) {
-      if (checkErr.message.includes('not registered on WhatsApp')) throw checkErr;
-    }
+  if (!jid) {
+    throw new Error(`Invalid recipient phone number: "${to}"`);
   }
 
   const resolvedMimeType = mimetype || getMimeType(mediaUrl, mediaType);
@@ -1021,7 +1023,16 @@ async function handleIncomingAutoResponse(userId, sock, msg) {
     'ROKO', 'BAND KRO', 'BAND KARO', 'MAT BHEJO', 'HATAO'
   ];
 
-  if (OPT_OUT_KEYWORDS.some(kw => incomingText === kw || incomingText.startsWith(kw))) {
+  // Prevent false-positives: match exact keyword, or short messages (<= 3 words) starting with keyword
+  const isOptOutMatch = OPT_OUT_KEYWORDS.some(kw => {
+    if (incomingText === kw) return true;
+    if (incomingText.startsWith(kw + ' ') || incomingText.startsWith(kw + '-')) {
+      return incomingText.split(/\s+/).length <= 3;
+    }
+    return false;
+  });
+
+  if (isOptOutMatch) {
     try {
       console.log(`[Opt-Out] Contact ${fromPhone} sent opt-out keyword "${incomingText}" to user ${userId}. Excluding from all campaigns.`);
       await excludeContactByMobile(userId, fromPhone);
@@ -1194,42 +1205,52 @@ export async function restoreAllSessions() {
  * @returns {Promise<object>}
  */
 export async function waitForSessionState(userId, targetStates, timeoutMs = 8000) {
-  // Check immediately — already in target state?
-  const current = sessionStatus.get(userId);
+  const uid = String(userId);
+  const current = sessionStatus.get(uid);
   if (targetStates.includes(current)) {
-    return getSessionStatus(userId);
+    return getSessionStatus(uid);
   }
 
-  // Event-driven: subscribe to connection.update on the socket (zero CPU while waiting)
   return new Promise((resolve) => {
     let timer;
-    const sock = sessions.get(userId);
+    let pollInterval;
+    const sock = sessions.get(uid);
 
     const cleanup = () => {
-      clearTimeout(timer);
-      if (sock) sock.ev.off('connection.update', onUpdate);
-    };
-
-    const onUpdate = () => {
-      const status = sessionStatus.get(userId);
-      if (targetStates.includes(status)) {
-        cleanup();
-        resolve(getSessionStatus(userId));
+      if (timer) clearTimeout(timer);
+      if (pollInterval) clearInterval(pollInterval);
+      if (sock) {
+        try { sock.ev.off('connection.update', onUpdate); } catch (e) {}
       }
     };
 
-    // Fallback timeout
+    const checkAndResolve = () => {
+      const status = sessionStatus.get(uid);
+      if (targetStates.includes(status)) {
+        cleanup();
+        resolve(getSessionStatus(uid));
+        return true;
+      }
+      return false;
+    };
+
+    const onUpdate = () => {
+      checkAndResolve();
+    };
+
+    // Global safety timeout
     timer = setTimeout(() => {
       cleanup();
-      resolve(getSessionStatus(userId));
+      resolve(getSessionStatus(uid));
     }, timeoutMs);
 
     if (sock) {
       sock.ev.on('connection.update', onUpdate);
     } else {
-      // No socket yet, fall back to a single delayed check
-      clearTimeout(timer);
-      timer = setTimeout(() => resolve(getSessionStatus(userId)), timeoutMs);
+      // Socket is still spinning up async: poll every 200ms
+      pollInterval = setInterval(() => {
+        checkAndResolve();
+      }, 200);
     }
   });
 }

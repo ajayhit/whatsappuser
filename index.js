@@ -730,9 +730,11 @@ export async function triggerCampaignsPoller() {
 
           // ── 3k. Wait configured interval between recipients ───────────────
           // Re-read interval from DB (admin may have updated it during the run)
-          const intervalSec = (await getCampaignById(campaign.id))?.message_interval ?? 15;
-          // Jitter ±30% to appear more human
-          const jitterMs = Math.floor(intervalSec * 1000 * (0.7 + Math.random() * 0.6));
+          const rawInterval = (await getCampaignById(campaign.id))?.message_interval ?? 25;
+          // Enforce minimum anti-ban interval of 20s to prevent rapid-fire detection
+          const intervalSec = Math.max(20, Number(rawInterval) || 25);
+          // Jitter ±25% to appear more natural/human
+          const jitterMs = Math.floor(intervalSec * 1000 * (0.75 + Math.random() * 0.5));
           const shouldContinue = await interruptibleSleep(jitterMs, campaign.id);
           if (!shouldContinue) break;
         } // end while (recipient loop)
