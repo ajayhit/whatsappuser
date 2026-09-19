@@ -10,7 +10,7 @@ import authRouter from './authRouter.js';
 import adminRouter from './adminRouter.js';
 import crmRouter from './crmRouter.js';
 import razorpayRouter from './razorpayRouter.js';
-import { restoreAllSessions, getSessionStatus, sendMessageToJid, sendMediaToJid, sendTypingPresence, parseSpintax } from './sessionManager.js';
+import { restoreAllSessions, getSessionStatus, sendMessageToJid, sendMediaToJid, sendTypingPresence, parseSpintax, isOnWhatsApp } from './sessionManager.js';
 import {
   initDb, getDb, queryAll, queryOne, execute, getUserByEmail, createUser, getUserById,
   getCatalogByUserId, getAllCatalogs, getServicesByCatalogId,
@@ -650,6 +650,16 @@ export async function triggerCampaignsPoller() {
                 await updateCampaignStatus(campaign.id, 'paused');
                 break;
               }
+            }
+
+            // ── 3f-1. Verify recipient is registered on WhatsApp (anti-ban) ──
+            const waRegistered = await isOnWhatsApp(String(campaign.user_id), rec.mobile);
+            if (waRegistered === false) {
+              console.warn(`[Campaigns Poller] ⚠️ ${rec.mobile} is not registered on WhatsApp. Skipping.`);
+              await updateCampaignRecipientStatus(rec.id, 'failed', 'Number not registered on WhatsApp');
+              await incrementCampaignFailure(campaign.id);
+              consecutiveErrors = 0; // Invalid number is not a ban signal
+              continue;
             }
 
             // ── 3g. Build personalised message ─────────────────────────────

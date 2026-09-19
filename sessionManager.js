@@ -253,7 +253,7 @@ export function queueSessionDbSync(userId, delayMs = 60000) {
   dbSyncTimers.set(uid, timer);
 }
 
-function normalizeTargetJid(to) {
+export function normalizeTargetJid(to) {
   if (!to || typeof to !== 'string') return '';
   let jid = to.trim();
   if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@g.us') && !jid.endsWith('@lid')) {
@@ -267,6 +267,34 @@ function normalizeTargetJid(to) {
     jid = `${cleanNumber}@s.whatsapp.net`;
   }
   return jid;
+}
+
+/**
+ * Validates whether a phone number is registered on WhatsApp.
+ * Returns the verified JID if registered, false if not on WhatsApp, or null if check failed/indeterminate.
+ * @param {string|number} userId
+ * @param {string} phone
+ * @returns {Promise<string|boolean|null>}
+ */
+export async function isOnWhatsApp(userId, phone) {
+  try {
+    const uid = String(userId);
+    let sock = sessions.get(uid);
+    if (!sock || sessionStatus.get(uid) !== 'CONNECTED') {
+      sock = await ensureConnectedSession(uid, 5000);
+      if (!sock) return null;
+    }
+    const jid = normalizeTargetJid(phone);
+    if (!jid) return false;
+    const results = await sock.onWhatsApp(jid);
+    if (Array.isArray(results) && results.length > 0) {
+      return results[0]?.exists ? (results[0].jid || jid) : false;
+    }
+    return false;
+  } catch (err) {
+    console.warn(`[onWhatsApp Check] Could not verify ${phone}: ${err.message}`);
+    return null; // Don't block sending on transient network/check errors
+  }
 }
 
 
@@ -368,7 +396,7 @@ async function _doInitSession(userId) {
     auth: state,
     logger: pino({ level: 'silent' }), // Suppress Baileys verbose logs
     printQRInTerminal: false,
-    browser: Browsers.windows('Desktop'), // Standard Windows Desktop browser profile (safe & human-like)
+    browser: Browsers.windows('Chrome'), // Safe standard Chrome browser profile on Windows
     syncFullHistory: false, // CRITICAL: Disable full chat history sync to drastically reduce RAM usage
     markOnlineOnConnect: true, // MUST be true so WhatsApp servers route decryption retry requests to this client
     generateHighQualityLinkPreview: false,
@@ -722,7 +750,8 @@ export function parseSpintax(text) {
 }
 
 /**
- * Sends a typing/composing presence update to simulate human behavior before sending.
+ * Sends a typing/composing presence update safely.
+ * Subscribes to presence first, emits composing, waits duration, then resets to paused.
  * @param {string} userId
  * @param {string} to
  * @param {number} durationMs
@@ -738,10 +767,17 @@ export async function sendTypingPresence(userId, to, durationMs = 2000) {
     }
 
     const jid = normalizeTargetJid(to);
+    if (!jid) return;
+
+    // 1. Subscribe to chat presence to establish valid protocol context
+    await sock.presenceSubscribe(jid).catch(() => {});
+    // 2. Send composing indicator
     await sock.sendPresenceUpdate('composing', jid).catch(() => {});
     if (durationMs > 0) {
       await new Promise(r => setTimeout(r, durationMs));
     }
+    // 3. Always reset presence state to paused to prevent leaving zombie composing state
+    await sock.sendPresenceUpdate('paused', jid).catch(() => {});
   } catch (err) {
     // Non-fatal presence error
   }

@@ -1695,8 +1695,8 @@
                           </div>
                           
                           <div class="form-group">
-                            <label>Delay (Seconds)</label>
-                            <input type="number" id="bulkDelay" value="2" min="1" max="10" style="max-width: 100px;">
+                            <label>Delay (Seconds) <span style="font-size:0.75rem; color:var(--text-muted);">(Min 10s enforced for anti-ban safety)</span></label>
+                            <input type="number" id="bulkDelay" value="15" min="10" max="60" style="max-width: 100px;">
                           </div>
 
                           <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
@@ -6945,7 +6945,7 @@
 
       state.bulkCampaignStatus = 'sending';
       const delayInput = document.getElementById('bulkDelay');
-      state.bulkDelay = parseInt(delayInput.value, 10) || 2;
+      state.bulkDelay = Math.max(10, parseInt(delayInput.value, 10) || 15);
 
       logToConsole('bulkConsole', `Campaign started. Delay: ${state.bulkDelay} seconds between messages.`, 'system');
       updateBulkCampaignControls();
