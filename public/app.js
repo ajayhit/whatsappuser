@@ -166,6 +166,75 @@
       };
     }
 
+    const publicPagePaths = {
+      home: '/',
+      pricing: '/pricing',
+      about: '/about',
+      contact: '/contact',
+      refund: '/refund',
+      privacy: '/privacy',
+      terms: '/terms'
+    };
+    const publicPageSeo = {
+      home: {
+        title: 'Chat Automate | WhatsApp Messaging, Campaigns & CRM',
+        description: 'Manage WhatsApp sessions, customer contacts, campaigns, and subscriptions in one dashboard. Explore Chat Automate and start a 5-day trial.'
+      },
+      pricing: {
+        title: 'WhatsApp Messaging Plans & Pricing | Chat Automate',
+        description: 'Compare Chat Automate subscription plans for WhatsApp messaging, campaigns, and contact management. Start with a 5-day trial.'
+      },
+      about: {
+        title: 'About Chat Automate | WhatsApp Messaging for Business',
+        description: 'Learn how Chat Automate helps businesses manage customer engagement, WhatsApp campaigns, contacts, and everyday messaging workflows.'
+      },
+      contact: {
+        title: 'Contact Chat Automate Support',
+        description: 'Contact Chat Automate for help with account setup, subscriptions, payments, and WhatsApp Messaging services.'
+      },
+      refund: {
+        title: 'Refund & Cancellation Policy | Chat Automate',
+        description: 'Read the Chat Automate refund and cancellation policy for subscriptions and payments.'
+      },
+      privacy: {
+        title: 'Privacy Policy | Chat Automate',
+        description: 'Learn how Chat Automate handles personal information when you use the WhatsApp Messaging platform.'
+      },
+      terms: {
+        title: 'Terms and Conditions | Chat Automate',
+        description: 'Read the terms and conditions for using Chat Automate and its WhatsApp Messaging services.'
+      }
+    };
+
+    function getPublicPageFromPath(pathname) {
+      return Object.keys(publicPagePaths).find(page => publicPagePaths[page] === pathname) || 'home';
+    }
+
+    function updatePublicPageMetadata(page) {
+      const metadata = publicPageSeo[page] || publicPageSeo.home;
+      document.title = metadata.title;
+      document.querySelector('meta[name="description"]')?.setAttribute('content', metadata.description);
+      document.querySelector('meta[property="og:title"]')?.setAttribute('content', metadata.title);
+      document.querySelector('meta[property="og:description"]')?.setAttribute('content', metadata.description);
+      document.querySelector('meta[property="og:url"]')?.setAttribute('content', `https://chatautomate.in${publicPagePaths[page] || '/'}`);
+      document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', metadata.title);
+      document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', metadata.description);
+      document.querySelector('link[rel="canonical"]')?.setAttribute('href', `https://chatautomate.in${publicPagePaths[page] || '/'}`);
+      const pageUrl = `https://chatautomate.in${publicPagePaths[page] || '/'}`;
+      const pageSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        '@id': `${pageUrl}#webpage`,
+        url: pageUrl,
+        name: metadata.title,
+        description: metadata.description,
+        isPartOf: { '@id': 'https://chatautomate.in/#website' },
+        inLanguage: 'en-IN'
+      };
+      const schemaElement = document.getElementById('pageSchema');
+      if (schemaElement) schemaElement.textContent = JSON.stringify(pageSchema);
+    }
+
     // App State
     let state = {
       token: localStorage.getItem('token') || null,
@@ -182,7 +251,7 @@
       groups: [],
       currentTab: 'whatsappTab',
       whatsappSubTab: 'textTab',
-      publicPage: 'home',
+      publicPage: getPublicPageFromPath(window.location.pathname),
       authTab: 'login',
       loading: false,
 
@@ -229,6 +298,7 @@
     function renderApp() {
       const root = document.getElementById('appRoot');
       if (!state.token) {
+        updatePublicPageMetadata(state.publicPage);
         if (state.publicPage === 'auth') {
           root.innerHTML = renderAuthScreen();
           bindAuthEvents();
@@ -244,7 +314,9 @@
 
     // PUBLIC WEBSITE TEMPLATES
     function switchPublicPage(page) {
-      state.publicPage = page;
+      const nextPage = publicPagePaths[page] ? page : 'home';
+      state.publicPage = nextPage;
+      window.history.pushState({}, '', publicPagePaths[nextPage]);
       renderApp();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -298,12 +370,12 @@
       ];
       return `
         <nav class="site-nav">
-          <button class="site-logo" onclick="switchPublicPage('home')" style="background:none; border:none; cursor:pointer; text-align:left;">
+          <a class="site-logo" href="/" onclick="event.preventDefault(); switchPublicPage('home')" style="text-decoration:none;">
             WhatsApp Messaging
             <span>Studio & SaaS Panel</span>
-          </button>
-          <div class="site-links">
-            ${links.map(([page, label]) => `<button class="site-link ${state.publicPage === page ? 'active' : ''}" onclick="switchPublicPage('${page}')">${label}</button>`).join('')}
+          </a>
+          <div class="site-links" aria-label="Main navigation">
+            ${links.map(([page, label]) => `<a class="site-link ${state.publicPage === page ? 'active' : ''}" href="${publicPagePaths[page]}" ${state.publicPage === page ? 'aria-current="page"' : ''} onclick="event.preventDefault(); switchPublicPage('${page}')">${label}</a>`).join('')}
           </div>
           <div class="site-actions">
             <button type="button" class="btn-secondary" onclick="showAuth('login')" style="width:auto;">Login</button>
@@ -944,7 +1016,14 @@
       return `
         <footer class="site-footer">
           <span>© ${new Date().getFullYear()} WhatsApp Messaging Studio. All rights reserved.</span>
-          <span>Home | About Us | Privacy Policy | Terms | Refund Policy | Contact</span>
+          <nav aria-label="Footer navigation">
+            <a href="/">Home</a> |
+            <a href="/about">About Us</a> |
+            <a href="/privacy">Privacy Policy</a> |
+            <a href="/terms">Terms</a> |
+            <a href="/refund">Refund Policy</a> |
+            <a href="/contact">Contact</a>
+          </nav>
         </footer>
       `;
     }
@@ -8807,6 +8886,13 @@
       const el = document.getElementById(consoleId);
       if (el) el.innerHTML = '<div class="console-line system">[System] Console logs cleared.</div>';
     }
+
+    window.addEventListener('popstate', () => {
+      if (!state.token) {
+        state.publicPage = getPublicPageFromPath(window.location.pathname);
+        renderApp();
+      }
+    });
 
     // Bootstrap
     renderApp();

@@ -6,6 +6,7 @@ Disallow: /api/
 Disallow: /auth/
 Disallow: /razorpay/
 Disallow: /uploads/
+Disallow: /health
 
 # XML Sitemap Location
 Sitemap: https://chatautomate.in/sitemap.xml

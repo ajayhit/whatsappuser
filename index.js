@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
 import dotenv from 'dotenv';
+import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRouter from './apiRouter.js';
@@ -31,6 +32,98 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const publicPages = {
+  '/': {
+    title: 'Chat Automate | WhatsApp Messaging, Campaigns & CRM',
+    description: 'Manage WhatsApp sessions, customer contacts, campaigns, and subscriptions in one dashboard. Explore Chat Automate and start a 5-day trial.',
+    heading: 'WhatsApp messaging, campaigns, and customer management in one dashboard',
+    summary: 'Chat Automate helps businesses manage WhatsApp sessions, organize contacts, run campaigns, and track subscriptions from one secure workspace.'
+  },
+  '/pricing': {
+    title: 'WhatsApp Messaging Plans & Pricing | Chat Automate',
+    description: 'Compare Chat Automate subscription plans for WhatsApp messaging, campaigns, and contact management. Start with a 5-day trial.',
+    heading: 'WhatsApp Messaging Plans & Pricing',
+    summary: 'Choose a subscription plan for your business. Plans include access to WhatsApp Messaging Studio, Excel contact imports, group campaigns, and automation tools.'
+  },
+  '/about': {
+    title: 'About Chat Automate | WhatsApp Messaging for Business',
+    description: 'Learn how Chat Automate helps businesses manage customer engagement, WhatsApp campaigns, contacts, and everyday messaging workflows.',
+    heading: 'About Chat Automate',
+    summary: 'Chat Automate helps businesses communicate with customers through WhatsApp messaging tools, campaign workflows, contact organization, and a centralized dashboard.'
+  },
+  '/contact': {
+    title: 'Contact Chat Automate Support',
+    description: 'Contact Chat Automate for help with account setup, subscriptions, payments, and WhatsApp Messaging services.',
+    heading: 'Contact Chat Automate',
+    summary: 'For support with account setup, subscriptions, payments, or WhatsApp Messaging services, email info@chatautomate.in or call +91 7597550701.'
+  },
+  '/refund': {
+    title: 'Refund & Cancellation Policy | Chat Automate',
+    description: 'Read the Chat Automate refund and cancellation policy for subscriptions and payments.',
+    heading: 'Refund & Cancellation Policy',
+    summary: 'Review the terms that apply to subscription cancellations, refund requests, and payments made to Chat Automate.'
+  },
+  '/privacy': {
+    title: 'Privacy Policy | Chat Automate',
+    description: 'Learn how Chat Automate handles personal information when you use the WhatsApp Messaging platform.',
+    heading: 'Privacy Policy',
+    summary: 'This policy explains how information is handled when you create an account and use Chat Automate services.'
+  },
+  '/terms': {
+    title: 'Terms and Conditions | Chat Automate',
+    description: 'Read the terms and conditions for using Chat Automate and its WhatsApp Messaging services.',
+    heading: 'Terms and Conditions',
+    summary: 'These terms describe the conditions for accessing and using the Chat Automate platform and services.'
+  }
+};
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
+}
+
+async function sendPublicPage(req, res, next) {
+  const page = publicPages[req.path];
+  if (!page) return next();
+
+  try {
+    const indexHtml = await readFile(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    const pageUrl = `https://chatautomate.in${req.path}`;
+    const escaped = {
+      title: escapeHtml(page.title),
+      description: escapeHtml(page.description),
+      heading: escapeHtml(page.heading),
+      summary: escapeHtml(page.summary),
+      url: escapeHtml(pageUrl)
+    };
+    const pageSchema = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      '@id': `${pageUrl}#webpage`,
+      url: pageUrl,
+      name: page.title,
+      description: page.description,
+      isPartOf: { '@id': 'https://chatautomate.in/#website' },
+      inLanguage: 'en-IN'
+    }).replace(/</g, '\\u003c');
+    const content = `<main class="seo-fallback"><h1>${escaped.heading}</h1><p>${escaped.summary}</p><nav aria-label="Main navigation"><a href="/">Home</a><a href="/pricing">Pricing</a><a href="/about">About Us</a><a href="/contact">Contact</a><a href="/refund">Refund Policy</a><a href="/privacy">Privacy Policy</a><a href="/terms">Terms</a></nav></main>`;
+    const html = indexHtml
+      .replaceAll('__SEO_TITLE__', escaped.title)
+      .replaceAll('__SEO_DESCRIPTION__', escaped.description)
+      .replaceAll('__SEO_URL__', escaped.url)
+      .replace('__SEO_PAGE_SCHEMA__', pageSchema)
+      .replace('__SEO_CONTENT__', content);
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    return res.type('html').send(html);
+  } catch (err) {
+    return next(err);
+  }
+}
 
 // Initialize database
 initDb().catch(err => { console.error('[DB Init Error]', err); process.exit(1); });
@@ -53,8 +146,42 @@ app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
+// Serve crawlable public pages before the static files, including the sitemap.
+app.get('/sitemap.xml', async (req, res) => {
+  res.header('Content-Type', 'application/xml');
+  try {
+    const catalogs = await getAllCatalogs();
+    const escapeXml = value => String(value).replace(/[<>&'"]/g, character => ({
+      '<': '&lt;',
+      '>': '&gt;',
+      '&': '&amp;',
+      "'": '&apos;',
+      '"': '&quot;'
+    })[character]);
+    const urls = Object.keys(publicPages).concat('/api_documentation.md');
+    for (const catalog of catalogs) {
+      if (Number.isSafeInteger(Number(catalog.user_id)) && Number(catalog.user_id) > 0) {
+        urls.push(`/catalog/view/${Number(catalog.user_id)}`);
+      }
+    }
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map(url => `  <url><loc>${escapeXml(`https://chatautomate.in${url}`)}</loc></url>`).join('\n')}
+</urlset>`;
+    res.send(xml);
+  } catch (err) {
+    console.error('Error generating dynamic sitemap:', err);
+    res.status(500).send('Error generating sitemap');
+  }
+});
+app.get(['/', '/pricing', '/about', '/contact', '/refund', '/privacy', '/terms'], sendPublicPage);
+app.get('/index.html', (req, res) => res.redirect(301, '/'));
+app.get(['/pricing/', '/about/', '/contact/', '/refund/', '/privacy/', '/terms/'], (req, res) => {
+  res.redirect(301, `${req.path.slice(0, -1)}${req.url.slice(req.path.length)}`);
+});
+
 // Serve static control panel assets from the 'public' folder.
-// app.css and app.js use ?v=5.0 cache-busting query strings in index.html,
+// app.css and app.js use ?v=6.0 cache-busting query strings in index.html,
 // so they get long-lived immutable caching. index.html itself gets no cache
 // (must-revalidate) so browsers always fetch the latest version references.
 app.use(express.static('public', {
@@ -92,6 +219,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 // Health check endpoint (lightweight for uptime monitors and pingers)
 app.get('/health', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.json({
     status: 'OK',
     uptime: Math.floor(process.uptime()),
@@ -99,43 +227,8 @@ app.get('/health', (req, res) => {
   });
 });
 app.head('/health', (req, res) => {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.status(200).end();
-});
-
-// Dynamic XML Sitemap Endpoint for Search Engine SEO
-app.get('/sitemap.xml', async (req, res) => {
-  res.header('Content-Type', 'application/xml');
-  try {
-    const catalogs = await getAllCatalogs();
-    const today = new Date().toISOString().split('T')[0];
-    const catalogUrls = catalogs.map(c => `
-  <url>
-    <loc>https://chatautomate.in/catalog/view/${c.user_id}</loc>
-    <lastmod>${(c.updated_at || c.created_at || today).split('T')[0]}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`).join('');
-
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://chatautomate.in/</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://chatautomate.in/api_documentation.md</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>${catalogUrls}
-</urlset>`;
-    res.send(xml);
-  } catch (err) {
-    console.error('Error generating dynamic sitemap:', err);
-    res.status(500).send('Error generating sitemap');
-  }
 });
 
 // Mount the Auth Router at /auth
@@ -155,7 +248,20 @@ app.use('/razorpay', razorpayRouter);
 
 // Public Digital Catalog View with Rich SEO Metadata
 app.get('/catalog/view/:userId', async (req, res) => {
-  const userId = parseInt(req.params.userId);
+  const userId = Number(req.params.userId);
+  if (!Number.isSafeInteger(userId) || userId <= 0) {
+    return res.status(404).send(`
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="robots" content="noindex, follow">
+          <title>Catalog Not Found | Chat Automate</title>
+        </head>
+        <body><h1>Catalog not found or not set up yet.</h1></body>
+      </html>
+    `);
+  }
   try {
     const catalog = await getCatalogByUserId(userId);
     if (!catalog) {
@@ -176,26 +282,29 @@ app.get('/catalog/view/:userId', async (req, res) => {
 
     const services = await getServicesByCatalogId(catalog.id);
     const pageTitle = `${catalog.brand_name} | Digital Store & Catalog - Chat Automate`;
-    const pageDesc = (catalog.description || `Browse products, services, and price lists for ${catalog.brand_name} on Chat Automate.`).replace(/"/g, '&quot;');
+    const pageDesc = catalog.description || `Browse products, services, and price lists for ${catalog.brand_name} on Chat Automate.`;
     const pageUrl = `https://chatautomate.in/catalog/view/${userId}`;
-    const logoUrl = catalog.logo_path ? `https://chatautomate.in/${catalog.logo_path}` : 'https://chatautomate.in/og-image.png';
+    const logoUrl = catalog.logo_path ? `https://chatautomate.in/${catalog.logo_path}` : 'https://chatautomate.in/favicon.svg';
+    const safePageTitle = escapeHtml(pageTitle);
+    const safePageDesc = escapeHtml(pageDesc);
+    const safeLogoUrl = escapeHtml(logoUrl);
 
     const logoHtml = catalog.logo_path 
-      ? `<img class="logo" src="/${catalog.logo_path}" alt="${catalog.brand_name} Logo">`
-      : `<div class="logo" style="display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);color:#a5b4fc;font-size:2.5rem;font-weight:800;">${catalog.brand_name.charAt(0).toUpperCase()}</div>`;
+      ? `<img class="logo" src="/${escapeHtml(catalog.logo_path)}" alt="${escapeHtml(catalog.brand_name)} Logo">`
+      : `<div class="logo" style="display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);color:#a5b4fc;font-size:2.5rem;font-weight:800;">${escapeHtml(String(catalog.brand_name || '').charAt(0).toUpperCase())}</div>`;
 
     const audioHtml = catalog.catalog_audio_path
-      ? `<audio class="catalog-audio" controls src="/${catalog.catalog_audio_path}"></audio>`
+      ? `<audio class="catalog-audio" controls src="/${escapeHtml(catalog.catalog_audio_path)}"></audio>`
       : '';
 
     const servicesHtml = services.length > 0 
       ? services.map(s => {
           const serviceImg = s.image_path
-            ? `<img class="card-img" src="/${s.image_path}" alt="${s.name}">`
+            ? `<img class="card-img" src="/${escapeHtml(s.image_path)}" alt="${escapeHtml(s.name)}">`
             : `<div class="card-img" style="display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.02);color:#94a3b8;font-size:1.5rem;font-weight:600;">Service</div>`;
 
           const serviceAudio = s.audio_path
-            ? `<audio class="card-audio" controls src="/${s.audio_path}"></audio>`
+            ? `<audio class="card-audio" controls src="/${escapeHtml(s.audio_path)}"></audio>`
             : '';
 
           return `
@@ -203,11 +312,11 @@ app.get('/catalog/view/:userId', async (req, res) => {
               ${serviceImg}
               <div class="card-content">
                 <div class="card-info">
-                  <h3 class="card-title">${s.name}</h3>
-                  <p class="card-desc">${s.description || ''}</p>
+                  <h3 class="card-title">${escapeHtml(s.name)}</h3>
+                  <p class="card-desc">${escapeHtml(s.description || '')}</p>
                 </div>
                 <div style="margin-top:0.75rem;">
-                  <div class="card-price">₹${s.price}</div>
+                  <div class="card-price">₹${escapeHtml(s.price)}</div>
                   ${serviceAudio}
                 </div>
               </div>
@@ -251,7 +360,7 @@ app.get('/catalog/view/:userId', async (req, res) => {
           "itemListElement": itemListElement
         }
       ]
-    });
+    }).replace(/</g, '\\u003c');
 
     return res.send(`
       <!DOCTYPE html>
@@ -259,24 +368,24 @@ app.get('/catalog/view/:userId', async (req, res) => {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${pageTitle}</title>
-        <meta name="description" content="${pageDesc}">
+        <title>${safePageTitle}</title>
+        <meta name="description" content="${safePageDesc}">
         <meta name="robots" content="index, follow, max-image-preview:large">
         <link rel="canonical" href="${pageUrl}">
 
         <!-- Open Graph / Facebook -->
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="Chat Automate">
-        <meta property="og:title" content="${pageTitle}">
-        <meta property="og:description" content="${pageDesc}">
+        <meta property="og:title" content="${safePageTitle}">
+        <meta property="og:description" content="${safePageDesc}">
         <meta property="og:url" content="${pageUrl}">
-        <meta property="og:image" content="${logoUrl}">
+        <meta property="og:image" content="${safeLogoUrl}">
 
         <!-- Twitter Card -->
-        <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="${pageTitle}">
-        <meta name="twitter:description" content="${pageDesc}">
-        <meta name="twitter:image" content="${logoUrl}">
+        <meta name="twitter:card" content="${catalog.logo_path ? 'summary_large_image' : 'summary'}">
+        <meta name="twitter:title" content="${safePageTitle}">
+        <meta name="twitter:description" content="${safePageDesc}">
+        <meta name="twitter:image" content="${safeLogoUrl}">
 
         <!-- JSON-LD Structured Data Schema -->
         <script type="application/ld+json">
@@ -375,8 +484,8 @@ app.get('/catalog/view/:userId', async (req, res) => {
         <div class="container">
           <div class="header">
             ${logoHtml}
-            <h1 class="title">${catalog.brand_name}</h1>
-            <p class="desc">${catalog.description || ''}</p>
+            <h1 class="title">${escapeHtml(catalog.brand_name)}</h1>
+            <p class="desc">${escapeHtml(catalog.description || '')}</p>
             ${audioHtml}
           </div>
           
@@ -390,6 +499,7 @@ app.get('/catalog/view/:userId', async (req, res) => {
       </html>
     `);
   } catch (err) {
+    console.error('Error rendering public catalog:', err);
     return res.status(500).send('Error rendering catalog');
   }
 });
@@ -1114,4 +1224,3 @@ function startUnifiedBackgroundPoller() {
     runUnifiedBackgroundJobs().catch(e => console.error('[Scheduled Unified Jobs Error]', e));
   }, 10 * 60 * 1000);
 }
-
