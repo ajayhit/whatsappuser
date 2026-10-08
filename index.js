@@ -34,46 +34,153 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const publicPages = {
   '/': {
-    title: 'Chat Automate | WhatsApp Messaging, Campaigns & CRM',
-    description: 'Manage WhatsApp sessions, customer contacts, campaigns, and subscriptions in one dashboard. Explore Chat Automate and start a 5-day trial.',
-    heading: 'WhatsApp messaging, campaigns, and customer management in one dashboard',
-    summary: 'Chat Automate helps businesses manage WhatsApp sessions, organize contacts, run campaigns, and track subscriptions from one secure workspace.'
+    title: 'WhatsApp Automation Software for Business | ChatAutomate',
+    description:
+      'ChatAutomate is WhatsApp automation software for businesses. Manage WhatsApp campaigns, customer contacts, chatbots, follow-ups, CRM and messaging workflows from one platform.',
+    heading: 'WhatsApp Automation Software for Business',
+    summary:
+      'ChatAutomate helps businesses manage WhatsApp messaging, customer contacts, campaigns, automation, follow-ups and customer engagement from one centralized platform.',
+    type: 'WebSite'
   },
+
+  '/features': {
+    title: 'WhatsApp Automation Features | ChatAutomate',
+    description:
+      'Explore ChatAutomate features including WhatsApp automation, campaigns, contact management, chatbot workflows, scheduling, auto replies, CRM and reports.',
+    heading: 'Powerful WhatsApp Automation Features',
+    summary:
+      'Everything you need to manage WhatsApp communication, customer engagement, campaigns and business messaging workflows.',
+    type: 'CollectionPage'
+  },
+
+  '/whatsapp-automation': {
+    title: 'WhatsApp Automation Software | Automate WhatsApp Messages',
+    description:
+      'Automate WhatsApp messages, customer follow-ups, campaigns, reminders, notifications and replies with ChatAutomate.',
+    heading: 'WhatsApp Automation Software',
+    summary:
+      'Automate repetitive WhatsApp communication and customer engagement while keeping your business messaging organized.',
+    type: 'WebPage'
+  },
+
+  '/whatsapp-api': {
+    title: 'WhatsApp API for Business | WhatsApp API Integration | ChatAutomate',
+    description:
+      'Connect your business applications with WhatsApp messaging using ChatAutomate API, webhooks and automation features.',
+    heading: 'WhatsApp API for Business',
+    summary:
+      'Connect your applications and business workflows with WhatsApp messaging through APIs, webhooks and automation.',
+    type: 'WebPage'
+  },
+
+  '/whatsapp-crm': {
+    title: 'WhatsApp CRM Software for Business | ChatAutomate',
+    description:
+      'Manage WhatsApp contacts, customer conversations, groups, tags, campaigns and follow-ups with ChatAutomate WhatsApp CRM.',
+    heading: 'WhatsApp CRM Software',
+    summary:
+      'Organize customer contacts and WhatsApp communication in one centralized CRM workspace.',
+    type: 'WebPage'
+  },
+
+  '/whatsapp-chatbot': {
+    title: 'WhatsApp Chatbot for Business | WhatsApp Automation | ChatAutomate',
+    description:
+      'Build WhatsApp chatbot workflows for automatic replies, customer support, lead qualification and business automation.',
+    heading: 'WhatsApp Chatbot for Business',
+    summary:
+      'Create automated WhatsApp conversations using keyword replies, welcome messages, away messages and chatbot workflows.',
+    type: 'WebPage'
+  },
+
+  '/whatsapp-bulk-messaging': {
+    title: 'WhatsApp Bulk Messaging Software | Business Messaging | ChatAutomate',
+    description:
+      'Manage customer messaging campaigns with personalized WhatsApp messages, contact groups, scheduling and campaign reporting.',
+    heading: 'WhatsApp Bulk Messaging for Business',
+    summary:
+      'Organize customer campaigns and business messaging with contact groups, personalization, scheduling and campaign analytics.',
+    type: 'WebPage'
+  },
+
+  '/whatsapp-marketing': {
+    title: 'WhatsApp Marketing Software for Business | ChatAutomate',
+    description:
+      'Use WhatsApp marketing tools to manage customer campaigns, personalized messaging, follow-ups, notifications and engagement.',
+    heading: 'WhatsApp Marketing Software',
+    summary:
+      'Create organized WhatsApp marketing campaigns and customer engagement workflows for your business.',
+    type: 'WebPage'
+  },
+
+  '/use-cases': {
+    title: 'WhatsApp Automation Use Cases for Business | ChatAutomate',
+    description:
+      'Discover WhatsApp automation use cases for customer support, lead follow-ups, payment reminders, order notifications and marketing.',
+    heading: 'WhatsApp Automation Use Cases',
+    summary:
+      'Discover practical ways businesses can use WhatsApp automation to improve customer communication and follow-ups.',
+    type: 'CollectionPage'
+  },
+
   '/pricing': {
-    title: 'WhatsApp Messaging Plans & Pricing | Chat Automate',
-    description: 'Compare Chat Automate subscription plans for WhatsApp messaging, campaigns, and contact management. Start with a 5-day trial.',
-    heading: 'WhatsApp Messaging Plans & Pricing',
-    summary: 'Choose a subscription plan for your business. Plans include access to WhatsApp Messaging Studio, Excel contact imports, group campaigns, and automation tools.'
+    title: 'WhatsApp Automation Pricing | ChatAutomate Plans',
+    description:
+      'Compare ChatAutomate plans for WhatsApp automation, campaigns, contact management and customer messaging.',
+    heading: 'WhatsApp Automation Plans & Pricing',
+    summary:
+      'Choose a ChatAutomate plan based on your business messaging and automation requirements.',
+    type: 'WebPage'
   },
+
   '/about': {
-    title: 'About Chat Automate | WhatsApp Messaging for Business',
-    description: 'Learn how Chat Automate helps businesses manage customer engagement, WhatsApp campaigns, contacts, and everyday messaging workflows.',
-    heading: 'About Chat Automate',
-    summary: 'Chat Automate helps businesses communicate with customers through WhatsApp messaging tools, campaign workflows, contact organization, and a centralized dashboard.'
+    title: 'About ChatAutomate | WhatsApp Automation Platform',
+    description:
+      'Learn about ChatAutomate and how our WhatsApp automation platform helps businesses manage customer communication.',
+    heading: 'About ChatAutomate',
+    summary:
+      'ChatAutomate provides WhatsApp messaging, automation, campaign and customer management tools for businesses.',
+    type: 'AboutPage'
   },
+
   '/contact': {
-    title: 'Contact Chat Automate Support',
-    description: 'Contact Chat Automate for help with account setup, subscriptions, payments, and WhatsApp Messaging services.',
-    heading: 'Contact Chat Automate',
-    summary: 'For support with account setup, subscriptions, payments, or WhatsApp Messaging services, email info@chatautomate.in or call +91 7597550701.'
+    title: 'Contact ChatAutomate | WhatsApp Automation Support',
+    description:
+      'Contact ChatAutomate for account setup, WhatsApp automation, subscriptions, payments and technical support.',
+    heading: 'Contact ChatAutomate',
+    summary:
+      'Get help with your ChatAutomate account, subscriptions, payments and WhatsApp automation services.',
+    type: 'ContactPage'
   },
+
   '/refund': {
-    title: 'Refund & Cancellation Policy | Chat Automate',
-    description: 'Read the Chat Automate refund and cancellation policy for subscriptions and payments.',
+    title: 'Refund & Cancellation Policy | ChatAutomate',
+    description:
+      'Read the ChatAutomate refund and cancellation policy for subscriptions and payments.',
     heading: 'Refund & Cancellation Policy',
-    summary: 'Review the terms that apply to subscription cancellations, refund requests, and payments made to Chat Automate.'
+    summary:
+      'Review the terms that apply to subscription cancellations and refund requests.',
+    type: 'WebPage'
   },
+
   '/privacy': {
-    title: 'Privacy Policy | Chat Automate',
-    description: 'Learn how Chat Automate handles personal information when you use the WhatsApp Messaging platform.',
+    title: 'Privacy Policy | ChatAutomate',
+    description:
+      'Read the ChatAutomate privacy policy and learn how customer information is handled.',
     heading: 'Privacy Policy',
-    summary: 'This policy explains how information is handled when you create an account and use Chat Automate services.'
+    summary:
+      'Learn how ChatAutomate handles information when you use our services.',
+    type: 'WebPage'
   },
+
   '/terms': {
-    title: 'Terms and Conditions | Chat Automate',
-    description: 'Read the terms and conditions for using Chat Automate and its WhatsApp Messaging services.',
+    title: 'Terms & Conditions | ChatAutomate',
+    description:
+      'Read the terms and conditions for using ChatAutomate WhatsApp messaging and automation services.',
     heading: 'Terms and Conditions',
-    summary: 'These terms describe the conditions for accessing and using the Chat Automate platform and services.'
+    summary:
+      'These terms describe the conditions for accessing and using the ChatAutomate platform.',
+    type: 'WebPage'
   }
 };
 
@@ -86,14 +193,444 @@ function escapeHtml(value) {
     "'": '&#39;'
   })[character]);
 }
+function getSeoContent(pathname) {
+  const sections = {
+
+    '/': `
+      <section>
+        <h1>WhatsApp Automation Software for Business</h1>
+        <p>
+          ChatAutomate is a WhatsApp automation platform designed to help businesses
+          manage customer communication, campaigns, contacts, follow-ups and
+          everyday WhatsApp workflows from one centralized dashboard.
+        </p>
+
+        <h2>Powerful WhatsApp Automation</h2>
+        <p>
+          Automate repetitive WhatsApp tasks such as customer follow-ups,
+          reminders, welcome messages, away messages, notifications and
+          personalized business communication.
+        </p>
+
+        <h2>WhatsApp Campaigns</h2>
+        <p>
+          Create organized messaging campaigns using customer contacts,
+          groups and personalized message templates. Schedule campaigns
+          and monitor campaign activity from your dashboard.
+        </p>
+
+        <h2>WhatsApp CRM</h2>
+        <p>
+          Organize customers with contact management, groups, tags and
+          customer information. Keep your WhatsApp communication connected
+          with your customer management workflow.
+        </p>
+
+        <h2>WhatsApp Chatbot Automation</h2>
+        <p>
+          Build automated customer conversations using keyword-based replies,
+          welcome messages, away messages and chatbot workflows.
+        </p>
+
+        <h2>Business Follow-ups and Notifications</h2>
+        <p>
+          Automate customer follow-ups, payment reminders, order notifications,
+          birthday messages and other recurring business communication.
+        </p>
+
+        <h2>Why Businesses Use ChatAutomate</h2>
+        <ul>
+          <li>WhatsApp messaging automation</li>
+          <li>Customer contact management</li>
+          <li>Campaign scheduling</li>
+          <li>Personalized message templates</li>
+          <li>Auto replies and chatbot workflows</li>
+          <li>Customer follow-up automation</li>
+          <li>Campaign reporting</li>
+          <li>API and webhook integration</li>
+        </ul>
+
+        <h2>Start Automating WhatsApp</h2>
+        <p>
+          Explore ChatAutomate features and choose a plan that fits your
+          business messaging requirements.
+        </p>
+      </section>
+    `,
+
+    '/features': `
+      <section>
+        <h1>WhatsApp Automation Features</h1>
+
+        <p>
+          ChatAutomate provides tools for WhatsApp messaging, customer
+          management, campaigns and business automation.
+        </p>
+
+        <h2>WhatsApp Messaging</h2>
+        <p>
+          Manage text messages and supported business media from a centralized
+          messaging workspace.
+        </p>
+
+        <h2>Campaign Management</h2>
+        <p>
+          Create campaigns, organize recipients, personalize messages,
+          schedule campaigns and review campaign activity.
+        </p>
+
+        <h2>Contact Management</h2>
+        <p>
+          Import, organize and manage customer contacts using groups and tags.
+        </p>
+
+        <h2>Automation</h2>
+        <p>
+          Automate welcome messages, away messages, keyword replies,
+          reminders, follow-ups and notifications.
+        </p>
+
+        <h2>API and Webhooks</h2>
+        <p>
+          Connect your business applications with WhatsApp-related workflows
+          using API endpoints, API keys and webhooks.
+        </p>
+
+        <h2>Reports</h2>
+        <p>
+          Track messaging activity and campaign results with business reports.
+        </p>
+      </section>
+    `,
+
+    '/whatsapp-automation': `
+      <section>
+        <h1>WhatsApp Automation Software</h1>
+
+        <p>
+          WhatsApp automation helps businesses reduce repetitive communication
+          tasks and create consistent customer engagement workflows.
+        </p>
+
+        <h2>Automate Customer Communication</h2>
+        <p>
+          Use automated replies, welcome messages, away messages, reminders
+          and customer follow-ups to manage recurring communication.
+        </p>
+
+        <h2>Automate Business Follow-ups</h2>
+        <p>
+          Create workflows for payment reminders, order status notifications,
+          birthday messages and other customer follow-up activities.
+        </p>
+
+        <h2>WhatsApp Campaign Automation</h2>
+        <p>
+          Organize contacts into groups, use personalized templates and
+          schedule business messaging campaigns.
+        </p>
+
+        <h2>Who Can Use WhatsApp Automation?</h2>
+        <p>
+          Small businesses, service businesses, retailers, agencies and
+          customer-facing teams can use automation to organize repetitive
+          WhatsApp communication.
+        </p>
+      </section>
+    `,
+
+    '/whatsapp-api': `
+      <section>
+        <h1>WhatsApp API for Business</h1>
+
+        <p>
+          ChatAutomate provides API-oriented tools for connecting business
+          applications with WhatsApp messaging workflows.
+        </p>
+
+        <h2>Connect Your Business Application</h2>
+        <p>
+          Use API endpoints and webhooks to connect messaging workflows
+          with your existing business applications.
+        </p>
+
+        <h2>API Automation</h2>
+        <p>
+          Build workflows for customer notifications, reminders,
+          transactional communication and application-driven messaging.
+        </p>
+
+        <h2>Developer Integration</h2>
+        <p>
+          API keys, webhooks and documented endpoints can help developers
+          integrate WhatsApp messaging into business systems.
+        </p>
+      </section>
+    `,
+
+    '/whatsapp-crm': `
+      <section>
+        <h1>WhatsApp CRM Software</h1>
+
+        <p>
+          ChatAutomate combines WhatsApp communication with customer
+          contact management to help businesses organize customer engagement.
+        </p>
+
+        <h2>Customer Contacts</h2>
+        <p>
+          Manage customer contacts and organize them into groups and tags.
+        </p>
+
+        <h2>Customer Follow-ups</h2>
+        <p>
+          Keep track of customer communication and automate important
+          follow-up activities.
+        </p>
+
+        <h2>Campaign Management</h2>
+        <p>
+          Use organized customer lists for business messaging campaigns
+          and customer engagement.
+        </p>
+      </section>
+    `,
+
+    '/whatsapp-chatbot': `
+      <section>
+        <h1>WhatsApp Chatbot for Business</h1>
+
+        <p>
+          Build automated WhatsApp conversation workflows for common
+          customer questions and business communication.
+        </p>
+
+        <h2>Keyword-Based Replies</h2>
+        <p>
+          Respond automatically when customers send predefined keywords.
+        </p>
+
+        <h2>Welcome and Away Messages</h2>
+        <p>
+          Provide automatic responses when customers start conversations
+          or when your business is unavailable.
+        </p>
+
+        <h2>Business Automation</h2>
+        <p>
+          Combine chatbot workflows with customer management and
+          follow-up automation.
+        </p>
+      </section>
+    `,
+
+    '/whatsapp-bulk-messaging': `
+      <section>
+        <h1>WhatsApp Bulk Messaging for Business</h1>
+
+        <p>
+          ChatAutomate provides campaign tools for businesses that need
+          organized customer messaging.
+        </p>
+
+        <h2>Contact Groups</h2>
+        <p>
+          Organize customers into groups and use relevant contact lists
+          for campaigns.
+        </p>
+
+        <h2>Personalized Messages</h2>
+        <p>
+          Use message templates to personalize business communication.
+        </p>
+
+        <h2>Scheduled Campaigns</h2>
+        <p>
+          Plan campaigns and schedule messaging according to your
+          business workflow.
+        </p>
+
+        <p>
+          Always use messaging responsibly and communicate with customers
+          according to applicable WhatsApp policies and consent requirements.
+        </p>
+      </section>
+    `,
+
+    '/whatsapp-marketing': `
+      <section>
+        <h1>WhatsApp Marketing Software</h1>
+
+        <p>
+          ChatAutomate helps businesses organize WhatsApp marketing,
+          customer engagement and follow-up workflows.
+        </p>
+
+        <h2>Marketing Campaigns</h2>
+        <p>
+          Create customer campaigns using organized contacts and
+          personalized messaging templates.
+        </p>
+
+        <h2>Customer Engagement</h2>
+        <p>
+          Combine campaigns with automated replies and follow-up workflows
+          to maintain customer engagement.
+        </p>
+      </section>
+    `,
+
+    '/use-cases': `
+      <section>
+        <h1>WhatsApp Automation Use Cases</h1>
+
+        <h2>Lead Follow-ups</h2>
+        <p>
+          Automate follow-up communication with potential customers.
+        </p>
+
+        <h2>Payment Reminders</h2>
+        <p>
+          Create reminder workflows for customers with pending payments.
+        </p>
+
+        <h2>Order Notifications</h2>
+        <p>
+          Send customer notifications related to order status and updates.
+        </p>
+
+        <h2>Customer Support</h2>
+        <p>
+          Use automated replies and chatbot workflows for frequently
+          asked customer questions.
+        </p>
+
+        <h2>Birthday Messages</h2>
+        <p>
+          Automate personalized birthday communication for customers.
+        </p>
+
+        <h2>Marketing Campaigns</h2>
+        <p>
+          Organize customer campaigns using contact groups and
+          personalized templates.
+        </p>
+      </section>
+    `,
+
+    '/pricing': `
+      <section>
+        <h1>WhatsApp Automation Plans & Pricing</h1>
+
+        <p>
+          Choose a ChatAutomate plan based on your WhatsApp messaging,
+          campaign, contact management and automation requirements.
+        </p>
+
+        <h2>WhatsApp Business Automation</h2>
+        <p>
+          ChatAutomate plans provide access to tools designed to help
+          businesses manage customer messaging and automation workflows.
+        </p>
+
+        <h2>Start With a Trial</h2>
+        <p>
+          Explore the platform and select the plan that fits your
+          business requirements.
+        </p>
+      </section>
+    `,
+
+    '/about': `
+      <section>
+        <h1>About ChatAutomate</h1>
+
+        <p>
+          ChatAutomate is a WhatsApp messaging and automation platform
+          designed to help businesses organize customer communication.
+        </p>
+
+        <h2>Our Platform</h2>
+        <p>
+          The platform combines messaging, contact management, campaigns,
+          automation, customer follow-ups and business reporting.
+        </p>
+
+        <h2>Built for Businesses</h2>
+        <p>
+          ChatAutomate is designed for businesses that want to centralize
+          their WhatsApp communication and automate repetitive workflows.
+        </p>
+      </section>
+    `,
+
+    '/contact': `
+      <section>
+        <h1>Contact ChatAutomate</h1>
+
+        <p>
+          Contact the ChatAutomate team for account setup, subscriptions,
+          payments, technical support and WhatsApp automation questions.
+        </p>
+
+        <h2>Support</h2>
+        <p>
+          Email: info@chatautomate.in
+        </p>
+      </section>
+    `,
+
+    '/refund': `
+      <section>
+        <h1>Refund & Cancellation Policy</h1>
+        <p>
+          Review the ChatAutomate subscription cancellation and refund
+          terms before purchasing a plan.
+        </p>
+      </section>
+    `,
+
+    '/privacy': `
+      <section>
+        <h1>Privacy Policy</h1>
+        <p>
+          Learn how ChatAutomate handles information when customers
+          create accounts and use the platform.
+        </p>
+      </section>
+    `,
+
+    '/terms': `
+      <section>
+        <h1>Terms and Conditions</h1>
+        <p>
+          Review the terms and conditions that apply when accessing
+          and using ChatAutomate.
+        </p>
+      </section>
+    `
+  };
+
+  return sections[pathname] || '';
+}
 
 async function sendPublicPage(req, res, next) {
   const page = publicPages[req.path];
-  if (!page) return next();
+
+  if (!page) {
+    return next();
+  }
 
   try {
-    const indexHtml = await readFile(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    const indexHtml = await readFile(
+      path.join(__dirname, 'public', 'index.html'),
+      'utf8'
+    );
+
     const pageUrl = `https://chatautomate.in${req.path}`;
+
+    const seoContent = getSeoContent(req.path);
+
     const escaped = {
       title: escapeHtml(page.title),
       description: escapeHtml(page.description),
@@ -101,26 +638,136 @@ async function sendPublicPage(req, res, next) {
       summary: escapeHtml(page.summary),
       url: escapeHtml(pageUrl)
     };
-    const pageSchema = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'WebPage',
+
+    const websiteId = 'https://chatautomate.in/#website';
+
+   const pageSchema = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': 'https://chatautomate.in/#organization',
+      name: 'ChatAutomate',
+      url: 'https://chatautomate.in/',
+      logo: 'https://chatautomate.in/favicon.svg'
+    },
+    {
+      '@type': 'WebSite',
+      '@id': 'https://chatautomate.in/#website',
+      url: 'https://chatautomate.in/',
+      name: 'ChatAutomate',
+      publisher: {
+        '@id': 'https://chatautomate.in/#organization'
+      },
+      inLanguage: 'en-IN'
+    },
+    {
+      '@type': page.type || 'WebPage',
       '@id': `${pageUrl}#webpage`,
       url: pageUrl,
       name: page.title,
       description: page.description,
-      isPartOf: { '@id': 'https://chatautomate.in/#website' },
+      isPartOf: {
+        '@id': 'https://chatautomate.in/#website'
+      },
+      publisher: {
+        '@id': 'https://chatautomate.in/#organization'
+      },
       inLanguage: 'en-IN'
-    }).replace(/</g, '\\u003c');
-    const content = `<main class="seo-fallback"><h1>${escaped.heading}</h1><p>${escaped.summary}</p><nav aria-label="Main navigation"><a href="/">Home</a><a href="/pricing">Pricing</a><a href="/about">About Us</a><a href="/contact">Contact</a><a href="/refund">Refund Policy</a><a href="/privacy">Privacy Policy</a><a href="/terms">Terms</a></nav></main>`;
+    }
+  ]
+}).replace(/</g, '\\u003c');
+
+    const content = `
+      <main class="seo-fallback">
+
+        ${seoContent}
+
+        <section>
+          <h2>Explore ChatAutomate</h2>
+
+          <nav aria-label="ChatAutomate SEO navigation">
+            <ul>
+              <li>
+                <a href="/whatsapp-automation">
+                  WhatsApp Automation
+                </a>
+              </li>
+
+              <li>
+                <a href="/whatsapp-api">
+                  WhatsApp API
+                </a>
+              </li>
+
+              <li>
+                <a href="/whatsapp-crm">
+                  WhatsApp CRM
+                </a>
+              </li>
+
+              <li>
+                <a href="/whatsapp-chatbot">
+                  WhatsApp Chatbot
+                </a>
+              </li>
+
+              <li>
+                <a href="/whatsapp-bulk-messaging">
+                  WhatsApp Bulk Messaging
+                </a>
+              </li>
+
+              <li>
+                <a href="/whatsapp-marketing">
+                  WhatsApp Marketing
+                </a>
+              </li>
+
+              <li>
+                <a href="/features">
+                  Features
+                </a>
+              </li>
+
+              <li>
+                <a href="/use-cases">
+                  Use Cases
+                </a>
+              </li>
+
+              <li>
+                <a href="/pricing">
+                  Pricing
+                </a>
+              </li>
+
+              <li>
+                <a href="/contact">
+                  Contact
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </section>
+
+      </main>
+    `;
+
     const html = indexHtml
       .replaceAll('__SEO_TITLE__', escaped.title)
       .replaceAll('__SEO_DESCRIPTION__', escaped.description)
       .replaceAll('__SEO_URL__', escaped.url)
       .replace('__SEO_PAGE_SCHEMA__', pageSchema)
       .replace('__SEO_CONTENT__', content);
+
     res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+
     return res.type('html').send(html);
+
   } catch (err) {
+    console.error('[SEO Page Error]', err);
     return next(err);
   }
 }
@@ -148,37 +795,111 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 // Serve crawlable public pages before the static files, including the sitemap.
 app.get('/sitemap.xml', async (req, res) => {
-  res.header('Content-Type', 'application/xml');
+  res.type('application/xml');
+
   try {
-    const catalogs = await getAllCatalogs();
-    const escapeXml = value => String(value).replace(/[<>&'"]/g, character => ({
-      '<': '&lt;',
-      '>': '&gt;',
-      '&': '&amp;',
-      "'": '&apos;',
-      '"': '&quot;'
-    })[character]);
-    const urls = Object.keys(publicPages).concat('/api_documentation.md');
-    for (const catalog of catalogs) {
-      if (Number.isSafeInteger(Number(catalog.user_id)) && Number(catalog.user_id) > 0) {
-        urls.push(`/catalog/view/${Number(catalog.user_id)}`);
+    const publicUrls = Object.keys(publicPages);
+
+    const catalogUrls = [];
+
+    try {
+      const catalogs = await getAllCatalogs();
+
+      for (const catalog of catalogs) {
+        const userId = Number(catalog.user_id);
+
+        if (
+          Number.isSafeInteger(userId) &&
+          userId > 0
+        ) {
+          catalogUrls.push(`/catalog/view/${userId}`);
+        }
       }
+    } catch (catalogError) {
+      console.error(
+        '[Sitemap Catalog Error]',
+        catalogError.message
+      );
     }
+
+    const urls = [
+      ...new Set([
+        ...publicUrls,
+        ...catalogUrls
+      ])
+    ];
+
+    const escapeXml = value =>
+      String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map(url => `  <url><loc>${escapeXml(`https://chatautomate.in${url}`)}</loc></url>`).join('\n')}
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+${urls.map(url => `
+  <url>
+    <loc>${escapeXml(`https://chatautomate.in${url}`)}</loc>
+  </url>
+`).join('')}
+
 </urlset>`;
+
     res.send(xml);
+
   } catch (err) {
-    console.error('Error generating dynamic sitemap:', err);
-    res.status(500).send('Error generating sitemap');
+    console.error(
+      '[Sitemap Error]',
+      err
+    );
+
+    res.status(500).type('text/plain').send(
+      'Unable to generate sitemap'
+    );
   }
 });
-app.get(['/', '/pricing', '/about', '/contact', '/refund', '/privacy', '/terms'], sendPublicPage);
-app.get('/index.html', (req, res) => res.redirect(301, '/'));
-app.get(['/pricing/', '/about/', '/contact/', '/refund/', '/privacy/', '/terms/'], (req, res) => {
-  res.redirect(301, `${req.path.slice(0, -1)}${req.url.slice(req.path.length)}`);
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+
+  res.send(
+`User-agent: *
+Allow: /
+
+Disallow: /admin/
+Disallow: /api/
+Disallow: /api/crm/
+Disallow: /auth/
+Disallow: /razorpay/
+Disallow: /health
+
+Sitemap: https://chatautomate.in/sitemap.xml
+`
+  );
 });
+
+app.get(
+  Object.keys(publicPages),
+  sendPublicPage
+);
+
+app.get('/index.html', (req, res) => res.redirect(301, '/'));
+
+app.get(
+  Object.keys(publicPages).map(pathname => `${pathname}/`),
+  (req, res) => {
+    const cleanPath = req.path.slice(0, -1);
+
+    res.redirect(
+      301,
+      `${cleanPath}${req.url.slice(req.path.length)}`
+    );
+  }
+);
 
 // Serve static control panel assets from the 'public' folder.
 // app.css and app.js use ?v=6.0 cache-busting query strings in index.html,

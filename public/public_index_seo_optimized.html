@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>__SEO_TITLE__</title>
+
+  <!-- Primary SEO -->
+  <meta name="description" content="__SEO_DESCRIPTION__">
+  <meta name="author" content="ChatAutomate">
+  <meta name="application-name" content="ChatAutomate">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="google-site-verification" content="YrFZ-fHqlz291vnoEz_eyn18VcsO8V4sblLns0zWCIc">
+  <link rel="canonical" href="__SEO_URL__">
+
+  <!-- Open Graph -->
+  <meta property="og:locale" content="en_IN">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ChatAutomate">
+  <meta property="og:title" content="__SEO_TITLE__">
+  <meta property="og:description" content="__SEO_DESCRIPTION__">
+  <meta property="og:url" content="__SEO_URL__">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="__SEO_TITLE__">
+  <meta name="twitter:description" content="__SEO_DESCRIPTION__">
+
+  <!-- Site-wide structured data. Route-specific schema is injected by index.js. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://chatautomate.in/#organization",
+        "name": "ChatAutomate",
+        "url": "https://chatautomate.in/",
+        "logo": "https://chatautomate.in/favicon.svg"
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://chatautomate.in/#website",
+        "url": "https://chatautomate.in/",
+        "name": "ChatAutomate",
+        "publisher": {
+          "@id": "https://chatautomate.in/#organization"
+        },
+        "inLanguage": "en-IN"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://chatautomate.in/#software",
+        "name": "ChatAutomate",
+        "url": "https://chatautomate.in/",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "All",
+        "description": "WhatsApp automation software for business messaging, campaigns, customer management, scheduling and workflow automation.",
+        "publisher": {
+          "@id": "https://chatautomate.in/#organization"
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- Dynamic page schema injected by index.js -->
+  <script type="application/ld+json" id="pageSchema">__SEO_PAGE_SCHEMA__</script>
+
+  <!-- Google Fonts & Preconnect -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
+
+  <link rel="stylesheet" href="app.css?v=6.0">
+</head>
+
+
+
+<body>
+
+
+
+  <div class="container" id="appRoot">
+
+    __SEO_CONTENT__
+
+  </div>
+
+
+
+  <script src="app.js?v=6.0" defer></script>
+
+
+
+  <!-- JWT Token Modal -->
+
+  <div id="tokenModal"
+
+    style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+
+    <div
+
+      style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:640px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+
+        <div>
+
+          <div style="font-size:1.1rem; font-weight:700; color:#e2e8f0;">🔑 Generated JWT Token</div>
+
+          <div id="tokenModalUser" style="font-size:0.8rem; color:#94a3b8; margin-top:0.25rem;"></div>
+
+        </div>
+
+        <button onclick="closeTokenModal()"
+
+          style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px; line-height:1;">✕</button>
+
+      </div>
+
+
+
+      <div
+
+        style="background:rgba(0,0,0,0.4); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:1rem; margin-bottom:1rem;">
+
+        <div style="font-size:0.7rem; color:#6366f1; font-weight:600; letter-spacing:0.05em; margin-bottom:0.5rem;">
+
+          BEARER TOKEN</div>
+
+        <code id="tokenModalValue"
+
+          style="font-size:0.72rem; color:#a5b4fc; word-break:break-all; line-height:1.6; display:block; font-family:Consolas,'Courier New',monospace;"></code>
+
+      </div>
+
+
+
+      <div
+
+        style="background:rgba(99, 102, 241, 0.08); border:1px solid rgba(99, 102, 241, 0.25); border-radius:8px; padding:0.75rem; margin-bottom:1.25rem;">
+
+        <div style="font-size:0.78rem; color:#94a3b8; line-height:1.6;">
+
+          Use this token in API requests as:<br>
+
+          <code style="color:#a5b4fc; font-size:0.75rem;">Authorization: Bearer &lt;token&gt;</code><br><br>
+
+          Example:<br>
+
+          <code style="color:#a5b4fc; font-size:0.72rem;">GET /api/session/status</code>
+
+        </div>
+
+      </div>
+
+
+
+      <div style="display:flex; gap:0.75rem;">
+
+        <button id="copyTokenBtn" onclick="copyToken()"
+
+          style="flex:1; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; color:#fff; padding:0.65rem 1rem; border-radius:8px; font-weight:600; cursor:pointer; font-size:0.9rem;">📋
+
+          Copy Token</button>
+
+        <button onclick="closeTokenModal()" class="btn-secondary" style="flex:1;">Close</button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Add Contact Modal -->
+
+  <div id="addContactModal"
+
+    style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+
+    <div
+
+      style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:450px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+
+        <div style="font-size:1.1rem; font-weight:700; color:#e2e8f0;">➕ Add New Contact</div>
+
+        <button onclick="hideAddContactModal()"
+
+          style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px; line-height:1;">✕</button>
+
+      </div>
+
+
+
+      <form id="addContactModalForm" onsubmit="handleAddContactModalSubmit(event)"
+
+        style="display:flex; flex-direction:column; gap:1rem;">
+
+        <div class="form-group">
+
+          <label>Full Name</label>
+
+          <input type="text" id="modalContactName" required placeholder="e.g. John Doe">
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Mobile Number (with country code)</label>
+
+          <input type="text" id="modalContactPhone" required placeholder="e.g. 919876543210">
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Shop / Business Name (Optional)</label>
+
+          <input type="text" id="modalContactShop" placeholder="e.g. Apex Traders">
+
+        </div>
+
+        <button type="submit">Save Contact</button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Add Service Item Modal -->
+
+  <div id="addServiceModal"
+
+    style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+
+    <div
+
+      style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:480px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+
+        <div style="font-size:1.1rem; font-weight:700; color:#e2e8f0;">➕ Add Service / Product Item</div>
+
+        <button onclick="hideAddServiceModal()"
+
+          style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px; line-height:1;">✕</button>
+
+      </div>
+
+
+
+      <form id="addServiceModalForm" onsubmit="handleAddServiceModalSubmit(event)"
+
+        style="display:flex; flex-direction:column; gap:1rem;">
+
+        <div class="form-group">
+
+          <label>Service / Product Name</label>
+
+          <input type="text" id="modalServiceName" required placeholder="e.g. Professional Consulting">
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Price (₹)</label>
+
+          <input type="number" id="modalServicePrice" required min="0" placeholder="e.g. 999">
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Description</label>
+
+          <textarea id="modalServiceDescription" rows="2" placeholder="Describe the service..."></textarea>
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Upload Item Image (Optional)</label>
+
+          <input type="file" id="modalServiceImage" accept="image/*">
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Upload Item Audio Description (Optional)</label>
+
+          <input type="file" id="modalServiceAudio" accept="audio/*">
+
+        </div>
+
+        <button type="submit">Create Service Item</button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Broadcast Template Modal -->
+
+  <div id="broadcastTemplateModal"
+
+    style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+
+    <div
+
+      style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:550px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+
+        <div>
+
+          <div style="font-size:1.1rem; font-weight:700; color:#e2e8f0;">📢 Send Template Broadcast</div>
+
+          <div style="font-size:0.8rem; color:#a5b4fc; margin-top:0.2rem;">Recipient Target: <span
+
+              id="broadcastRecipientCountLabel" style="font-weight:700; color:#34d399;">All Active Contacts</span></div>
+
+        </div>
+
+        <button onclick="hideBroadcastTemplateModal()"
+
+          style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px; line-height:1;">✕</button>
+
+      </div>
+
+
+
+      <form id="broadcastTemplateForm" onsubmit="sendTemplateBroadcast(event)"
+
+        style="display:flex; flex-direction:column; gap:1rem;">
+
+        <div class="form-group">
+
+          <label>Select Saved Template</label>
+
+          <select id="broadcastTemplateSelect" onchange="handleBroadcastTemplateSelect(this.value)">
+
+            <option value="">-- Choose Saved Template --</option>
+
+          </select>
+
+        </div>
+
+
+
+        <div class="form-group">
+
+          <label>Message Content (Personalized)</label>
+
+          <textarea id="broadcastMsgContent" rows="5" required
+
+            placeholder="Select a template above or type your personalized message here..."></textarea>
+
+
+
+          <div style="margin-top:0.5rem;">
+
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:
+
+            </div>
+
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+
+              <button type="button" onclick="insertPlaceholder('{Name}', 'broadcastMsgContent')"
+
+                style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+
+
+                {Name}</button>
+
+              <button type="button" onclick="insertPlaceholder('{ShopName}', 'broadcastMsgContent')"
+
+                style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+
+
+                {ShopName}</button>
+
+              <button type="button" onclick="insertPlaceholder('{Mobile}', 'broadcastMsgContent')"
+
+                style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+
+
+                {Mobile}</button>
+
+              <button type="button" onclick="insertPlaceholder('{Email}', 'broadcastMsgContent')"
+
+                style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+
+
+                {Email}</button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="form-group">
+
+          <label>Delay Between Messages (ms)</label>
+
+          <input type="number" id="broadcastDelay" value="1500" min="500" step="500" placeholder="1500 ms (1.5s)">
+
+          <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.2rem;">Recommended delay of 1500ms to
+
+            prevent WhatsApp rate limits.</div>
+
+        </div>
+
+
+
+        <button type="submit" id="submitBroadcastBtn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">🚀
+
+          Launch Personalized Broadcast</button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+  <!-- Create Campaign Modal -->
+
+  <div id="createCampaignModal"
+
+    style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem; overflow-y:auto;">
+
+    <div
+
+      style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:650px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5); max-height:90vh; overflow-y:auto;">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+
+        <div>
+
+          <div style="font-size:1.2rem; font-weight:700; color:#e2e8f0;">📢 Create New Campaign</div>
+
+          <div style="font-size:0.8rem; color:#a5b4fc; margin-top:0.2rem;">Schedule a personalized broadcast to your
+
+            contacts</div>
+
+        </div>
+
+        <button onclick="hideCreateCampaignModal()"
+
+          style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px;">✕</button>
+
+      </div>
+
+
+
+      <form id="createCampaignForm" onsubmit="handleCreateCampaignSubmit(event)"
+
+        style="display:flex; flex-direction:column; gap:1.25rem;">
+
+
+
+        <!-- Campaign Name -->
+
+        <div class="form-group">
+
+          <label>Campaign Name</label>
+
+          <input type="text" id="campaignName" required placeholder="e.g. Diwali Sale Offer 2025">
+
+        </div>
+
+
+
+        <!-- Template Selector -->
+
+        <div class="form-group">
+
+          <label>Select from Saved Templates (Optional)</label>
+
+          <select id="campaignTemplateSelect" onchange="handleCampaignTemplateSelect(this.value)">
+
+            <option value="">-- Or Select a Saved Template --</option>
+
+          </select>
+
+        </div>
+
+
+
+        <!-- Message Text -->
+
+        <div class="form-group">
+
+          <label>Message Content</label>
+
+          <textarea id="campaignMsgContent" rows="5" required
+
+            placeholder="Type your personalized message here..."></textarea>
+
+          <div style="margin-top:0.5rem;">
+
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:
+
+            </div>
+
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+
+              <button type="button" onclick="insertPlaceholder('{Name}', 'campaignMsgContent')"
+
+                style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+
+
+                {Name}</button>
+
+              <button type="button" onclick="insertPlaceholder('{ShopName}', 'campaignMsgContent')"
+
+                style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+
+
+                {ShopName}</button>
+
+              <button type="button" onclick="insertPlaceholder('{Mobile}', 'campaignMsgContent')"
+
+                style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+
+
+                {Mobile}</button>
+
+              <button type="button" onclick="insertPlaceholder('{Email}', 'campaignMsgContent')"
+
+                style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+
+
+                {Email}</button>
+
+              <button type="button" onclick="insertPlaceholder('{Hi|Hello|Hey}', 'campaignMsgContent')"
+
+                style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#6ee7b7;width:auto;margin:0;" title="Spintax randomizes greetings per contact to prevent spam detection">+
+
+                🎲 Spintax {Hi|Hello|Hey}</button>
+
+            </div>
+
+            <div style="margin-top:0.6rem; padding:0.6rem 0.8rem; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.25); border-radius:8px; font-size:0.74rem; color:#6ee7b7; line-height:1.4;">
+
+              🛡️ <strong>Anti-Ban Engine Active:</strong> Campaigns automatically use randomized human typing presence (2-4s), safe interval delays (10-20s), and batch cool-down periods to protect your WhatsApp account.
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        <!-- Media Attachment -->
+
+        <div class="form-group">
+
+          <label>Attach Media (Optional)</label>
+
+          <input type="file" id="campaignMedia" accept="image/*,video/*,audio/*,.pdf">
+
+          <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.2rem;">Supports images, videos, audio,
+
+            PDFs</div>
+
+        </div>
+
+
+
+        <!-- Schedule -->
+
+        <div class="form-group">
+
+          <label>Send Time</label>
+
+          <select id="campaignSendMode"
+
+            onchange="document.getElementById('campaignScheduleRow').style.display = this.value === 'schedule' ? 'block' : 'none'">
+
+            <option value="immediate">Send Immediately</option>
+
+            <option value="schedule">Schedule for Later</option>
+
+          </select>
+
+        </div>
+
+
+
+        <div id="campaignScheduleRow" style="display:none;" class="form-group">
+
+          <label>Scheduled Date & Time (Your Local Time)</label>
+
+          <input type="datetime-local" id="campaignScheduledAt">
+
+        </div>
+
+
+
+        <!-- Contact Selection -->
+
+        <div class="form-group">
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem;flex-wrap:wrap;gap:0.5rem;">
+
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+
+              <span style="font-weight:600;color:#f8fafc;">Select Recipients</span>
+
+              <span id="campaignSelectedBadge" style="background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.35);color:#34d399;font-weight:700;padding:0.18rem 0.6rem;border-radius:12px;font-size:0.75rem;">
+
+                <span id="campaignSelectedCount">0</span> / <span id="campaignTotalCount">0</span> Selected
+
+              </span>
+
+            </div>
+
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+
+              <label style="font-size:0.8rem;font-weight:normal;display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;color:#a5b4fc;">
+
+                <input type="checkbox" id="campaignSelectAllCheckbox" checked onchange="toggleCampaignContactsSelectAll(this)" style="width:auto;">
+
+                Select All
+
+              </label>
+
+              <button type="button" onclick="clearCampaignContactsSelection()" style="background:none;border:none;color:#f87171;font-size:0.75rem;cursor:pointer;padding:0;text-decoration:underline;width:auto;">Clear</button>
+
+            </div>
+
+          </div>
+
+
+
+          <!-- Quick Search Filter within Campaign Contacts -->
+
+          <div style="margin-bottom:0.5rem;position:relative;">
+
+            <input type="text" id="campaignContactSearchInput" placeholder="🔍 Filter contacts by name or phone..." oninput="filterCampaignContactsSelector(this.value)" style="padding:0.45rem 0.75rem;font-size:0.8rem;width:100%;background:rgba(0,0,0,0.35);border:1px solid var(--glass-border);border-radius:6px;color:#fff;">
+
+          </div>
+
+
+
+          <div id="campaignContactsGrid"
+
+            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.5rem;max-height:200px;overflow-y:auto;padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid var(--border-color);">
+
+            <div style="color:var(--text-muted);font-size:0.85rem;">Loading contacts...</div>
+
+          </div>
+
+        </div>
+
+
+
+        <button type="submit" id="submitCampaignBtn"
+
+          style="background:linear-gradient(135deg,#6366f1,#8b5cf6); font-size:1rem;">🚀 Launch Campaign</button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Campaign Delivery Status Modal -->
+
+  <div id="campaignRecipientsModal"
+
+    style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+
+    <div
+
+      style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:520px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5); max-height:85vh; display:flex; flex-direction:column;">
+
+      <div
+
+        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-shrink:0;">
+
+        <div style="font-size:1.1rem; font-weight:700; color:#e2e8f0;">📊 Delivery Status</div>
+
+        <button onclick="hideCampaignRecipientsModal()"
+
+          style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px;">✕</button>
+
+      </div>
+
+      <div id="campaignRecipientsList"
+
+        style="display:flex; flex-direction:column; gap:0.6rem; overflow-y:auto; flex:1;">
+
+        <div style="text-align:center; padding:1rem; color:var(--text-muted);">Loading...</div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Excel Contact Import Progress / Result Modal -->
+
+  <div id="excelImportModal"
+
+    style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.8); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:1.5rem;">
+
+    <div style="background:linear-gradient(135deg,#0f172a,#1e1b4b); border:1px solid rgba(99,102,241,0.5); border-radius:18px; padding:2rem; max-width:480px; width:100%; box-shadow:0 25px 70px rgba(0,0,0,0.6); text-align:center;">
+
+
+
+      <!-- Loading State -->
+
+      <div id="excelImportLoadingState" style="display:flex; flex-direction:column; align-items:center; gap:1.2rem;">
+
+        <div style="width:54px; height:54px; border:4px solid rgba(99,102,241,0.2); border-top-color:#818cf8; border-radius:50%; animation:spin 1s linear infinite;"></div>
+
+        <div>
+
+          <div style="font-size:1.15rem; font-weight:700; color:#f8fafc;">Importing Contacts Spreadsheet...</div>
+
+          <div id="excelImportFileName" style="font-size:0.85rem; color:#a5b4fc; margin-top:0.4rem; word-break:break-all;">Processing file...</div>
+
+        </div>
+
+        <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:0.75rem 1rem; width:100%; font-size:0.8rem; color:#cbd5e1; text-align:left; line-height:1.5;">
+
+          ⏳ Uploading file, detecting phone numbers, and syncing contacts into your CRM directory...
+
+        </div>
+
+      </div>
+
+
+
+      <!-- Success State -->
+
+      <div id="excelImportSuccessState" style="display:none; flex-direction:column; align-items:center; gap:1.2rem;">
+
+        <div style="width:60px; height:60px; background:rgba(16,185,129,0.15); border:2px solid #10b981; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:#10b981;">
+
+          ✓
+
+        </div>
+
+        <div>
+
+          <div style="font-size:1.25rem; font-weight:700; color:#f8fafc;">Contacts Imported Successfully!</div>
+
+          <div style="font-size:0.85rem; color:#94a3b8; margin-top:0.3rem;">Your contacts list is now updated and ready for campaigns.</div>
+
+        </div>
+
+        <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:12px; padding:1rem; width:100%; text-align:left; display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem;">
+
+          <div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8;">File:</span> <strong id="excelSuccessFileName" style="color:#e2e8f0;">-</strong></div>
+
+          <div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8;">Total Rows Processed:</span> <strong id="excelSuccessTotalRows" style="color:#e2e8f0;">0</strong></div>
+
+          <div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8;">Imported / Updated Contacts:</span> <strong id="excelSuccessCount" style="color:#34d399; font-size:1rem;">0</strong></div>
+
+        </div>
+
+        <div style="display:flex; gap:0.75rem; width:100%;">
+
+          <button onclick="closeExcelImportModal()" style="flex:1; background:rgba(255,255,255,0.1); border:1px solid var(--border-color); color:#fff; padding:0.75rem; border-radius:8px; font-weight:600; cursor:pointer;">Close & View Contacts</button>
+
+          <button onclick="closeExcelImportModal(); openCreateCampaignModal();" style="flex:1; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; padding:0.75rem; border-radius:8px; font-weight:600; border:none; cursor:pointer;">📢 Create Campaign</button>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- Error State -->
+
+      <div id="excelImportErrorState" style="display:none; flex-direction:column; align-items:center; gap:1.2rem;">
+
+        <div style="width:60px; height:60px; background:rgba(239,68,68,0.15); border:2px solid #ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:#ef4444;">
+
+          ✕
+
+        </div>
+
+        <div>
+
+          <div style="font-size:1.25rem; font-weight:700; color:#f8fafc;">Import Failed</div>
+
+          <div id="excelImportErrorMsg" style="font-size:0.85rem; color:#f87171; margin-top:0.4rem; line-height:1.4;">An error occurred while reading the Excel file.</div>
+
+        </div>
+
+        <div style="display:flex; gap:0.75rem; width:100%;">
+
+          <button onclick="closeExcelImportModal()" style="flex:1; background:rgba(255,255,255,0.1); border:1px solid var(--border-color); color:#fff; padding:0.75rem; border-radius:8px; font-weight:600; cursor:pointer;">Close</button>
+
+          <button onclick="closeExcelImportModal(); downloadSampleContactsExcel();" style="flex:1; background:linear-gradient(135deg,#0284c7,#0369a1); color:#fff; padding:0.75rem; border-radius:8px; font-weight:600; border:none; cursor:pointer;">📄 Download Sample Excel</button>
+
+        </div>
+
+      </div>
+
+
+
+    </div>
+
+  </div>
+
+
+
+</body>
+
+
+
+</html>
