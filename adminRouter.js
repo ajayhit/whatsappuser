@@ -567,6 +567,7 @@ router.post('/send-message', async (req, res) => {
 router.get('/settings', async (req, res) => {
   try {
     return res.json({
+      plan_price_trial: await getSetting('plan_price_trial', '50'),
       plan_price_28: await getSetting('plan_price_28', '199'),
       plan_price_quarter: await getSetting('plan_price_quarter', '549'),
       plan_price_half_year: await getSetting('plan_price_half_year', '999'),

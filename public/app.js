@@ -399,11 +399,11 @@
       return `
         <section class="site-hero">
           <div class="site-hero-content">
-            <div class="site-kicker">✨ 5-Day Free Trial Available • WhatsApp Messaging for Business Teams</div>
+            <div class="site-kicker">✨ 5-Day Trial Available • WhatsApp Messaging for Business Teams</div>
             <h1>Manage messaging, campaigns, contacts, and subscriptions from one secure dashboard.</h1>
             <p>Run WhatsApp sessions, send bulk messages, parse Excel contact lists, track plan access, and manage payments from a clean SaaS panel built for daily operations.</p>
             <div class="site-hero-actions">
-              <button type="button" onclick="showAuth('register')" style="width:auto; padding:0.8rem 1.2rem;">Start 5-Day Free Trial</button>
+              <button type="button" onclick="showAuth('register')" style="width:auto; padding:0.8rem 1.2rem;">Start 5-Day Trial (₹50)</button>
               <button type="button" class="btn-secondary" onclick="showAuth('login')" style="width:auto; padding:0.8rem 1.2rem;">Login</button>
             </div>
           </div>
@@ -411,10 +411,10 @@
 
         <section class="site-band">
           <div class="site-grid">
-            <div class="site-panel" style="border-color: rgba(59, 130, 246, 0.35); background: rgba(59, 130, 246, 0.08);">
-              <i class="fa-solid fa-gift" style="color: #60a5fa;"></i>
-              <h3 style="color: #93c5fd;">5-Day Free Demo</h3>
-              <p>Get instant access with a 5-day trial to experience our full WhatsApp Studio, Excel bulk messaging, and automation tools.</p>
+            <div class="site-panel" style="border-color: rgba(99, 102, 241, 0.35); background: rgba(99, 102, 241, 0.08);">
+              <i class="fa-solid fa-gift" style="color: #a5b4fc;"></i>
+              <h3 style="color: #c7d2fe;">5-Day Trial Plan</h3>
+              <p>Get instant access with a 5-day trial plan (₹50) to experience our full WhatsApp Studio, Excel bulk messaging, and automation tools.</p>
             </div>
             <div class="site-panel">
               <i class="fa-solid fa-message"></i>
@@ -525,7 +525,7 @@
       const plans = (state.planOptions && state.planOptions.length > 0)
         ? state.planOptions
         : [
-          { type: 'demo', name: 'Demo Plan', durationDays: 5, price: 0 },
+          { type: 'trial', name: 'Trial Plan', durationDays: 5, price: 50 },
           { type: 'plan_28', name: 'Monthly Plan', durationDays: 28, price: 199 },
           { type: 'quarter', name: 'Quarter Plan', durationDays: 90, price: 549 },
           { type: 'half_year', name: 'Half-Year Plan', durationDays: 180, price: 999 },
@@ -533,7 +533,7 @@
         ];
 
       const featuresMap = {
-        demo: ['Full WhatsApp Studio Access', 'Excel Campaign Messaging', 'Media & Document Broadcasts', '5 Days Validity'],
+        trial: ['Full WhatsApp Studio Access', 'Excel Campaign Messaging', 'Media & Document Broadcasts', '5 Days Validity'],
         plan_28: ['Full WhatsApp Studio Access', 'Unlimited Contacts & Groups', 'Excel Bulk Messaging', 'Media & Document Broadcast', '28 Days Validity'],
         quarter: ['Full WhatsApp Studio Access', 'Unlimited Contacts & Groups', 'Excel Bulk Messaging', 'Priority Delivery Speed', '90 Days Validity'],
         half_year: ['Full WhatsApp Studio Access', 'Unlimited Contacts & Groups', 'Excel Bulk Messaging', 'Priority Delivery & Support', '180 Days Validity'],
@@ -553,12 +553,12 @@
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-top: 2rem;">
             ${plans.map(p => {
         const isYear = p.type === 'year';
-        const isDemo = p.type === 'demo';
+        const isTrial = p.type === 'trial';
         const features = featuresMap[p.type] || featuresMap['plan_28'];
         return `
-                <div style="background: var(--glass-bg); backdrop-filter: blur(16px); border: 1px solid ${isYear ? 'rgba(16,185,129,0.5)' : 'var(--glass-border)'}; border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: ${isYear ? '0 10px 30px rgba(16,185,129,0.15)' : '0 8px 24px rgba(0,0,0,0.2)'};">
+                <div style="background: var(--glass-bg); backdrop-filter: blur(16px); border: 1px solid ${isYear ? 'rgba(16,185,129,0.5)' : isTrial ? 'rgba(99,102,241,0.5)' : 'var(--glass-border)'}; border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: ${isYear ? '0 10px 30px rgba(16,185,129,0.15)' : '0 8px 24px rgba(0,0,0,0.2)'};">
                   ${isYear ? `<div style="position:absolute; top:-12px; right:16px; background:var(--accent-color); color:#fff; font-size:0.7rem; font-weight:700; text-transform:uppercase; padding:0.2rem 0.6rem; border-radius:12px; letter-spacing:0.05em;">Best Value</div>` : ''}
-                  ${isDemo ? `<div style="position:absolute; top:-12px; right:16px; background:var(--info-color); color:#fff; font-size:0.7rem; font-weight:700; text-transform:uppercase; padding:0.2rem 0.6rem; border-radius:12px; letter-spacing:0.05em;">Free Trial</div>` : ''}
+                  ${isTrial ? `<div style="position:absolute; top:-12px; right:16px; background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; font-size:0.7rem; font-weight:700; text-transform:uppercase; padding:0.2rem 0.6rem; border-radius:12px; letter-spacing:0.05em;">Trial Plan</div>` : ''}
                   
                   <div>
                     <h3 style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.25rem;">${p.name}</h3>
@@ -573,8 +573,8 @@
                     </ul>
                   </div>
 
-                  <button type="button" onclick="showAuth('register')" style="width:100%; margin-top: auto; background: ${isYear ? 'var(--accent-color)' : 'rgba(255,255,255,0.08)'}; color: #ffffff; border: 1px solid ${isYear ? 'var(--accent-color)' : 'var(--glass-border)'}; font-weight: 600;">
-                    ${isDemo ? 'Start Free Trial' : 'Get Started'}
+                  <button type="button" onclick="showAuth('register')" style="width:100%; margin-top: auto; background: ${isYear ? 'var(--accent-color)' : isTrial ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : 'rgba(255,255,255,0.08)'}; color: #ffffff; border: 1px solid ${isYear ? 'var(--accent-color)' : isTrial ? 'transparent' : 'var(--glass-border)'}; font-weight: 600;">
+                    Get Started
                   </button>
                 </div>
               `;
@@ -1207,6 +1207,7 @@
     // Helper to get formatted plan name
     function getPlanName(planType) {
       const names = {
+        trial: 'Trial Plan (5 Days)',
         demo: 'Demo Plan (5 Days)',
         plan_28: 'Monthly Plan (28 Days)',
         quarter: 'Quarter Plan (90 Days)',
@@ -1225,28 +1226,17 @@
       const activePlanType = hasActivePlan ? state.plan.plan_type : null;
 
       return state.planOptions.map(function (plan) {
-        const isDemo = plan.type === 'demo';
+        const isTrial = plan.type === 'trial';
         const isCurrentActive = hasActivePlan && activePlanType === plan.type;
 
-        let btnText = isDemo ? 'Claim Demo (5d)' : 'Subscribe Now';
-        let btnClass = isDemo ? 'btn-secondary' : '';
+        let btnText = isCurrentActive ? '⚡ Renew / Extend (₹' + plan.price + ')' : 'Use Wallet Balance (₹' + plan.price + ')';
+        let btnClass = isCurrentActive ? 'btn-secondary' : '';
         let btnAttrs = '';
-
-        const alreadyClaimedDemo = isDemo && state.plans && state.plans.some(function (p) { return p.plan_type === 'demo'; });
-
-        if (isCurrentActive) {
-          btnText = isDemo ? '✅ Demo Active' : '⚡ Active (Extend/Renew)';
-          btnClass = 'btn-secondary';
-        } else if (alreadyClaimedDemo) {
-          btnText = 'Trial Claimed';
-          btnClass = 'btn-secondary';
-          btnAttrs = 'disabled style="opacity:0.5;cursor:not-allowed;"';
-        }
 
         const borderColor = isCurrentActive 
           ? 'rgba(16, 185, 129, 0.85)' 
-          : isDemo 
-            ? 'rgba(59,130,246,0.35)' 
+          : isTrial 
+            ? 'rgba(99,102,241,0.5)' 
             : 'var(--glass-border)';
 
         const cardBg = isCurrentActive 
@@ -1257,15 +1247,15 @@
           ? '0 0 20px rgba(16, 185, 129, 0.2)' 
           : 'none';
 
-        const nameColor = isCurrentActive ? '#34d399' : isDemo ? '#60a5fa' : 'var(--text-main)';
+        const nameColor = isCurrentActive ? '#34d399' : isTrial ? '#a5b4fc' : 'var(--text-main)';
 
         const activeTag = isCurrentActive 
           ? '<div style="background:linear-gradient(135deg, #10b981, #059669); color:#fff; font-size:0.68rem; font-weight:800; text-transform:uppercase; padding:0.22rem 0.6rem; border-radius:12px; letter-spacing:0.06em; display:inline-flex; align-items:center; gap:0.35rem; width:fit-content; box-shadow:0 2px 8px rgba(16,185,129,0.35);"><i class="fa-solid fa-circle-check"></i> ACTIVATED</div>'
-          : isDemo
-            ? '<div style="background:rgba(59,130,246,0.2); color:#60a5fa; font-size:0.68rem; font-weight:700; text-transform:uppercase; padding:0.2rem 0.55rem; border-radius:10px; width:fit-content;">Free Trial</div>'
+          : isTrial
+            ? '<div style="background:rgba(99,102,241,0.2); color:#a5b4fc; font-size:0.68rem; font-weight:700; text-transform:uppercase; padding:0.2rem 0.55rem; border-radius:10px; width:fit-content; border:1px solid rgba(99,102,241,0.35);">Trial Plan</div>'
             : '';
 
-        const razorpayBtn = (!isDemo && plan.price > 0)
+        const razorpayBtn = (plan.price > 0)
           ? '<button type="button" onclick="payWithRazorpay(\'' + plan.type + '\',' + plan.price + ')" style="width:100%;font-size:0.8rem;padding:0.4rem 0.8rem;margin-top:0.4rem;background:linear-gradient(135deg,#0284c7,#0369a1);border:none;color:#fff;border-radius:8px;cursor:pointer;font-weight:600;">📱 Pay via UPI / QR Code</button>'
           : '';
 
@@ -1273,12 +1263,12 @@
           + '<div style="display:flex; flex-direction:column; gap:0.35rem;">'
           + (activeTag ? '<div style="margin-bottom:0.25rem;">' + activeTag + '</div>' : '')
           + '<div style="font-weight:700; font-size:1rem; color:' + nameColor + ';">' + plan.name + '</div>'
-          + '<div style="font-size:0.75rem; color:var(--text-muted);">' + plan.durationDays + ' Days Duration</div>'
+          + '<div style="font-size:0.75rem; color:var(--text-muted);">' + plan.durationDays + ' Days Validity</div>'
           + '<div style="font-size:1.45rem; font-weight:800; color:var(--accent-color); margin-top:0.25rem;">\u20b9' + plan.price + '</div>'
           + '</div>'
           + '<div style="display:flex; flex-direction:column; gap:0.4rem; width:100%;">'
           + '<button type="button" class="' + btnClass + '" ' + btnAttrs + ' onclick="purchasePlan(\'' + plan.type + '\',' + plan.price + ',' + plan.durationDays + ')" style="width:100%; font-size:0.8rem; padding:0.45rem 0.8rem; margin:0;" title="Pay using your existing wallet balance">'
-          + (isDemo ? btnText : isCurrentActive ? '⚡ Renew / Extend (₹' + plan.price + ')' : 'Use Wallet Balance (₹' + plan.price + ')')
+          + btnText
           + '</button>'
           + razorpayBtn
           + '</div>'
@@ -1415,7 +1405,7 @@
                   <div style="font-size: 1.6rem; color: #ef4444;">⚠️</div>
                   <div>
                     <div style="font-size: 0.95rem; font-weight: 700; color: #fca5a5;">No Active Subscription Plan</div>
-                    <div style="font-size: 0.8rem; color: #cbd5e1; margin-top: 0.2rem;">Your account currently does not have an active plan. Select a subscription below or claim the Free Demo Plan to unlock WhatsApp messaging.</div>
+                    <div style="font-size: 0.8rem; color: #cbd5e1; margin-top: 0.2rem;">Your account currently does not have an active plan. Select a subscription below to unlock WhatsApp messaging.</div>
                   </div>
                 </div>
               `}
@@ -1522,7 +1512,7 @@
                     <label>Purpose / Plan to Buy</label>
                     <select id="orderPlanTypeSelect" onchange="handleOrderPlanSelectChange(this)" required>
                       <option value="wallet">Just recharge wallet (Add funds)</option>
-                      ${state.planOptions ? state.planOptions.filter(p => p.type !== 'demo').map(p => `
+                      ${state.planOptions ? state.planOptions.map(p => `
                         <option value="${p.type}">${p.name} - ₹${p.price} (${p.durationDays} Days)</option>
                       `).join('') : ''}
                     </select>
@@ -3363,6 +3353,10 @@
                   <div style="font-weight: 600; font-size: 1rem; color: #a5b4fc; margin-bottom: 1rem;">🏷️ Plan Prices</div>
                   <form id="adminPriceForm" onsubmit="handlePriceSubmit(event)" style="display: flex; flex-direction: column; gap: 1rem;">
                     <div class="form-group">
+                      <label>Trial Plan Price (₹ / 5 Days)</label>
+                      <input type="number" id="settingPlanPriceTrial" required min="1" placeholder="e.g. 50">
+                    </div>
+                    <div class="form-group">
                       <label>Monthly Plan Price (₹ / 28 Days)</label>
                       <input type="number" id="settingPlanPrice28" required min="1" placeholder="e.g. 199">
                     </div>
@@ -4692,12 +4686,8 @@
     }
 
     async function purchasePlan(planType, price, durationDays) {
-      if (planType === 'demo') {
-        if (!confirm('Are you sure you want to claim your 5-day Free Demo Plan? This can only be claimed once.')) return;
-      } else {
-        const planName = planType === 'plan_28' ? 'Monthly' : planType === 'quarter' ? 'Quarter' : planType === 'half_year' ? 'Half-Year' : 'Year';
-        if (!confirm(`Are you sure you want to subscribe to the ${planName} Plan for ₹${price}?`)) return;
-      }
+      const planName = planType === 'trial' ? 'Trial (5 Days)' : planType === 'plan_28' ? 'Monthly (28 Days)' : planType === 'quarter' ? 'Quarter' : planType === 'half_year' ? 'Half-Year' : 'Year';
+      if (!confirm(`Are you sure you want to subscribe to the ${planName} Plan for ₹${price}?`)) return;
 
       try {
         const res = await fetch('/auth/subscribe', {
@@ -4843,11 +4833,13 @@
         });
         const data = await res.json();
 
+        const pTrialInput = document.getElementById('settingPlanPriceTrial');
         const p28Input = document.getElementById('settingPlanPrice28');
         const pQuarterInput = document.getElementById('settingPlanPriceQuarter');
         const pHalfYearInput = document.getElementById('settingPlanPriceHalfYear');
         const pYearInput = document.getElementById('settingPlanPriceYear');
 
+        if (pTrialInput && data.plan_price_trial) pTrialInput.value = data.plan_price_trial;
         if (p28Input && data.plan_price_28) p28Input.value = data.plan_price_28;
         if (pQuarterInput && data.plan_price_quarter) pQuarterInput.value = data.plan_price_quarter;
         if (pHalfYearInput && data.plan_price_half_year) pHalfYearInput.value = data.plan_price_half_year;
@@ -5071,6 +5063,7 @@
 
     async function handlePriceSubmit(e) {
       e.preventDefault();
+      const pTrial = document.getElementById('settingPlanPriceTrial')?.value.trim();
       const p28 = document.getElementById('settingPlanPrice28').value.trim();
       const pQuarter = document.getElementById('settingPlanPriceQuarter').value.trim();
       const pHalfYear = document.getElementById('settingPlanPriceHalfYear').value.trim();
@@ -5092,6 +5085,7 @@
           }
         };
 
+        if (pTrial) await updateSetting('plan_price_trial', pTrial);
         await updateSetting('plan_price_28', p28);
         await updateSetting('plan_price', p28); // legacy fallback
         await updateSetting('plan_price_quarter', pQuarter);

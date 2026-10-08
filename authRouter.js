@@ -158,7 +158,7 @@ const upload = multer({
 router.get('/public-plans', async (req, res) => {
   try {
     const planOptions = await Promise.all([
-      getPlanDetails('demo'),
+      getPlanDetails('trial'),
       getPlanDetails('plan_28'),
       getPlanDetails('quarter'),
       getPlanDetails('half_year'),
@@ -308,7 +308,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 
     // Get all subscription options
     const planOptions = await Promise.all([
-      getPlanDetails('demo'),
+      getPlanDetails('trial'),
       getPlanDetails('plan_28'),
       getPlanDetails('quarter'),
       getPlanDetails('half_year'),

@@ -608,6 +608,7 @@ export async function initDb() {
 
       const defaultPrices = {
         plan_price: '199',
+        plan_price_trial: '50',
         plan_price_demo: '0',
         plan_price_28: '199',
         plan_price_quarter: '549',
@@ -689,6 +690,7 @@ export async function initDb() {
 
   const defaultPrices = {
     plan_price: '199',
+    plan_price_trial: '50',
     plan_price_demo: '0',
     plan_price_28: '199',
     plan_price_quarter: '549',
@@ -1312,11 +1314,12 @@ export async function activatePlan(userId, planType = 'plan_28', durationDays = 
 
 export async function getPlanDetails(planType) {
   const prices = {
-    demo: { name: 'Demo Plan', durationDays: 5, settingKey: 'plan_price_demo', defaultPrice: 0 },
+    trial: { name: 'Trial Plan', durationDays: 5, settingKey: 'plan_price_trial', defaultPrice: 50 },
     plan_28: { name: 'Monthly Plan', durationDays: 28, settingKey: 'plan_price_28', defaultPrice: 199 },
     quarter: { name: 'Quarter Plan', durationDays: 90, settingKey: 'plan_price_quarter', defaultPrice: 549 },
     half_year: { name: 'Half-Year Plan', durationDays: 180, settingKey: 'plan_price_half_year', defaultPrice: 999 },
-    year: { name: 'Year Plan', durationDays: 365, settingKey: 'plan_price_year', defaultPrice: 1899 }
+    year: { name: 'Year Plan', durationDays: 365, settingKey: 'plan_price_year', defaultPrice: 1899 },
+    demo: { name: 'Demo Plan', durationDays: 5, settingKey: 'plan_price_demo', defaultPrice: 0 }
   };
 
   const plan = prices[planType];
@@ -1338,13 +1341,7 @@ export async function subscribeToPlan(userId, planType) {
   if (!planDetails) throw new Error('Invalid plan type');
 
   if (planType === 'demo') {
-    const hasDemo = await queryOne(`
-      SELECT COUNT(*) as count FROM plans 
-      WHERE user_id = ? AND plan_type = 'demo'
-    `, [userId]);
-    if (hasDemo && parseInt(hasDemo.count) > 0) {
-      throw new Error('You have already claimed the Demo Plan. It can only be claimed once.');
-    }
+    throw new Error('Demo Plan is discontinued. Please select the 5-Day Trial Plan or another subscription.');
   }
 
   if (planDetails.price > 0) {
