@@ -378,6 +378,7 @@ export async function initDb() {
           name TEXT NOT NULL,
           mobile TEXT NOT NULL,
           shop_name TEXT,
+          category TEXT DEFAULT 'General',
           is_excluded INTEGER NOT NULL DEFAULT 0,
           created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
           email TEXT,
@@ -605,6 +606,10 @@ export async function initDb() {
 
       // PG Column Migrations (ADD COLUMN IF NOT EXISTS is safe and idempotent)
       await client.query(`ALTER TABLE automation_settings ADD COLUMN IF NOT EXISTS daily_campaign_limit INTEGER DEFAULT 200`);
+      await client.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General'`);
+      await client.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS email TEXT`);
+      await client.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS birthday TEXT`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_user_category ON contacts(user_id, category)`);
 
       const defaultPrices = {
         plan_price: '199',
@@ -810,12 +815,19 @@ export async function initDb() {
       name TEXT NOT NULL,
       mobile TEXT NOT NULL,
       shop_name TEXT,
+      category TEXT DEFAULT 'General',
       is_excluded INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      email TEXT,
+      birthday TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       UNIQUE(user_id, mobile)
     )
   `);
+
+  // SQLite Column Migrations (safe — errors are silently caught)
+  try { db.exec(`ALTER TABLE contacts ADD COLUMN email TEXT`); } catch (e) {}
+  try { db.exec(`ALTER TABLE contacts ADD COLUMN birthday TEXT`); } catch (e) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS contact_groups (
@@ -1082,6 +1094,8 @@ export async function initDb() {
   try { db.exec("ALTER TABLE orders ADD COLUMN plan_type TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE contacts ADD COLUMN email TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE contacts ADD COLUMN birthday TEXT"); } catch (e) {}
+  try { db.exec("ALTER TABLE contacts ADD COLUMN category TEXT DEFAULT 'General'"); } catch (e) {}
+  try { db.exec("CREATE INDEX IF NOT EXISTS idx_contacts_user_category ON contacts(user_id, category)"); } catch (e) {}
   try { db.exec("ALTER TABLE birthday_wishes ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'"); } catch (e) {}
   try { db.exec("ALTER TABLE birthday_wishes ADD COLUMN last_error TEXT"); } catch (e) {}
   try { db.exec("ALTER TABLE birthday_wishes ADD COLUMN last_sent_at TEXT"); } catch (e) {}
@@ -1799,25 +1813,28 @@ export async function getContactsByUser(userId) {
   return await queryAll('SELECT * FROM contacts WHERE user_id = ? ORDER BY name ASC', [userId]);
 }
 
-export async function upsertContact({ user_id, name, mobile, shop_name, is_excluded = 0 }) {
+export async function upsertContact({ user_id, name, mobile, shop_name, category = 'General', is_excluded = 0 }) {
+  const cat = (category && category.trim()) ? category.trim() : 'General';
   if (isPg()) {
     await execute(`
-      INSERT INTO contacts (user_id, name, mobile, shop_name, is_excluded)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO contacts (user_id, name, mobile, shop_name, category, is_excluded)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT (user_id, mobile) DO UPDATE SET
         name = EXCLUDED.name,
         shop_name = COALESCE(EXCLUDED.shop_name, contacts.shop_name),
+        category = COALESCE(EXCLUDED.category, contacts.category),
         is_excluded = COALESCE(EXCLUDED.is_excluded, contacts.is_excluded)
-    `, [user_id, name, mobile, shop_name || null, is_excluded]);
+    `, [user_id, name, mobile, shop_name || null, cat, is_excluded]);
   } else {
     await execute(`
-      INSERT INTO contacts (user_id, name, mobile, shop_name, is_excluded)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO contacts (user_id, name, mobile, shop_name, category, is_excluded)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id, mobile) DO UPDATE SET
         name = excluded.name,
         shop_name = COALESCE(excluded.shop_name, shop_name),
+        category = COALESCE(excluded.category, category),
         is_excluded = COALESCE(excluded.is_excluded, is_excluded)
-    `, [user_id, name, mobile, shop_name || null, is_excluded]);
+    `, [user_id, name, mobile, shop_name || null, cat, is_excluded]);
   }
   return await queryOne('SELECT * FROM contacts WHERE user_id = ? AND mobile = ?', [user_id, mobile]);
 }
@@ -1833,15 +1850,16 @@ export async function upsertContactsBatch(contactsList) {
       const placeholders = [];
       let idx = 1;
       for (const item of chunk) {
-        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
-        values.push(item.user_id, item.name, item.mobile, item.shop_name || null, item.is_excluded || 0);
+        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
+        values.push(item.user_id, item.name, item.mobile, item.shop_name || null, item.category || 'General', item.is_excluded || 0);
       }
       const sql = `
-        INSERT INTO contacts (user_id, name, mobile, shop_name, is_excluded)
+        INSERT INTO contacts (user_id, name, mobile, shop_name, category, is_excluded)
         VALUES ${placeholders.join(', ')}
         ON CONFLICT (user_id, mobile) DO UPDATE SET
           name = EXCLUDED.name,
           shop_name = COALESCE(EXCLUDED.shop_name, contacts.shop_name),
+          category = COALESCE(EXCLUDED.category, contacts.category),
           is_excluded = COALESCE(EXCLUDED.is_excluded, contacts.is_excluded)
       `;
       await getPgPool().query(sql, values);
@@ -1849,21 +1867,76 @@ export async function upsertContactsBatch(contactsList) {
   } else {
     const db = getDb();
     const insertStmt = db.prepare(`
-      INSERT INTO contacts (user_id, name, mobile, shop_name, is_excluded)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO contacts (user_id, name, mobile, shop_name, category, is_excluded)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id, mobile) DO UPDATE SET
         name = excluded.name,
         shop_name = COALESCE(excluded.shop_name, shop_name),
+        category = COALESCE(excluded.category, category),
         is_excluded = COALESCE(excluded.is_excluded, is_excluded)
     `);
     const insertMany = db.transaction((items) => {
       for (const item of items) {
-        insertStmt.run(item.user_id, item.name, item.mobile, item.shop_name || null, item.is_excluded || 0);
+        insertStmt.run(item.user_id, item.name, item.mobile, item.shop_name || null, item.category || 'General', item.is_excluded || 0);
       }
     });
     insertMany(contactsList);
   }
   return contactsList.length;
+}
+
+export async function updateContact(contactId, userId, { name, mobile, shop_name, category }) {
+  await execute(`
+    UPDATE contacts
+    SET name = COALESCE(?, name),
+        mobile = COALESCE(?, mobile),
+        shop_name = COALESCE(?, shop_name),
+        category = COALESCE(?, category)
+    WHERE id = ? AND user_id = ?
+  `, [
+    name !== undefined ? name : null,
+    mobile !== undefined ? mobile : null,
+    shop_name !== undefined ? shop_name : null,
+    category !== undefined ? category : null,
+    contactId,
+    userId
+  ]);
+  return await queryOne('SELECT * FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
+}
+
+export async function updateContactCategory(contactId, userId, category) {
+  const cat = (category && category.trim()) ? category.trim() : 'General';
+  await execute(`
+    UPDATE contacts
+    SET category = ?
+    WHERE id = ? AND user_id = ?
+  `, [cat, contactId, userId]);
+  return await queryOne('SELECT * FROM contacts WHERE id = ? AND user_id = ?', [contactId, userId]);
+}
+
+export async function updateContactsCategoryBatch(contactIds, userId, category) {
+  if (!contactIds || contactIds.length === 0) return { updated: 0, category: category || 'General' };
+  const cat = (category && category.trim()) ? category.trim() : 'General';
+  let count = 0;
+  for (const id of contactIds) {
+    const res = await execute(`
+      UPDATE contacts
+      SET category = ?
+      WHERE id = ? AND user_id = ?
+    `, [cat, id, userId]);
+    if (res && res.changes > 0) count++;
+  }
+  return { updated: count, category: cat };
+}
+
+export async function getContactCategoriesByUser(userId) {
+  const rows = await queryAll(`
+    SELECT DISTINCT category
+    FROM contacts
+    WHERE user_id = ? AND category IS NOT NULL AND TRIM(category) != ''
+    ORDER BY category ASC
+  `, [userId]);
+  return rows.map(r => r.category);
 }
 
 export async function getContactByMobile(userId, mobile) {
