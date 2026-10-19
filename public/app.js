@@ -9515,6 +9515,159 @@
       });
     }
 
+    // ─── Anti-Ban & AI Spintax Engine Handlers ──────────────────────────────
+    function handleAntiBanModeChange(mode) {
+      const modeInput = document.getElementById('campaignAntiBanMode');
+      const intervalInput = document.getElementById('campaignMessageInterval');
+      const delayLabel = document.getElementById('antiBanDelayLabel');
+      const typingLabel = document.getElementById('antiBanTypingLabel');
+
+      if (modeInput) modeInput.value = mode;
+
+      if (mode === 'ultra-safe') {
+        if (intervalInput) intervalInput.value = 35;
+        if (delayLabel) delayLabel.innerText = '25s - 45s randomized';
+        if (typingLabel) typingLabel.innerText = '3.0s - 4.5s';
+      } else if (mode === 'turbo') {
+        if (intervalInput) intervalInput.value = 12;
+        if (delayLabel) delayLabel.innerText = '8s - 15s randomized';
+        if (typingLabel) typingLabel.innerText = '1.2s - 2.0s';
+      } else {
+        if (intervalInput) intervalInput.value = 20;
+        if (delayLabel) delayLabel.innerText = '15s - 25s randomized';
+        if (typingLabel) typingLabel.innerText = '2.0s - 3.2s';
+      }
+
+      updateBanRiskBadge();
+    }
+
+    function handleCampaignMsgInput(val) {
+      updateBanRiskBadge();
+    }
+
+    function updateBanRiskBadge() {
+      const badge = document.getElementById('banRiskBadge');
+      if (!badge) return;
+
+      const text = document.getElementById('campaignMsgContent')?.value || '';
+      const mode = document.getElementById('campaignAntiBanMode')?.value || 'balanced';
+      const checkedCount = document.querySelectorAll('input[name="campaignContact"]:checked').length;
+      const hasSpintax = /\{[^{}|]+(?:\|[^{}|]+)+\}/.test(text);
+
+      if (checkedCount > 80 && mode === 'turbo') {
+        badge.style.background = 'rgba(239,68,68,0.2)';
+        badge.style.borderColor = 'rgba(239,68,68,0.5)';
+        badge.style.color = '#fca5a5';
+        badge.innerText = '🔴 High Risk: Turbo with 80+ contacts may trigger Meta bans';
+      } else if (checkedCount > 25 && !hasSpintax) {
+        badge.style.background = 'rgba(245,158,11,0.2)';
+        badge.style.borderColor = 'rgba(245,158,11,0.5)';
+        badge.style.color = '#fcd34d';
+        badge.innerText = '🟡 Moderate Risk: Add Spintax to randomize identical messages';
+      } else if (mode === 'ultra-safe') {
+        badge.style.background = 'rgba(16,185,129,0.25)';
+        badge.style.borderColor = 'rgba(16,185,129,0.5)';
+        badge.style.color = '#6ee7b7';
+        badge.innerText = '🛡️ Maximum Protection: Ultra-Safe Active';
+      } else {
+        badge.style.background = 'rgba(16,185,129,0.2)';
+        badge.style.borderColor = 'rgba(16,185,129,0.4)';
+        badge.style.color = '#6ee7b7';
+        badge.innerText = '🟢 Safe Anti-Ban Pacing Active';
+      }
+    }
+
+    async function handleAutoGenerateSpintax() {
+      const textarea = document.getElementById('campaignMsgContent');
+      if (!textarea) return;
+      const currentText = textarea.value.trim();
+      if (!currentText) {
+        alert('Please enter your campaign message text first, then click Auto-Spintax.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/crm/campaigns/spintax-generate', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ text: currentText })
+        });
+        const data = await res.json();
+        if (data.spintaxText) {
+          textarea.value = data.spintaxText;
+          updateBanRiskBadge();
+          const container = document.getElementById('spintaxPreviewContainer');
+          if (container) container.style.display = 'block';
+          generateSpintaxLivePreviews();
+        }
+      } catch (err) {
+        console.error('Spintax generation error:', err);
+      }
+    }
+
+    function toggleSpintaxPreviewDrawer() {
+      const container = document.getElementById('spintaxPreviewContainer');
+      if (!container) return;
+      if (container.style.display === 'none' || !container.style.display) {
+        container.style.display = 'block';
+        generateSpintaxLivePreviews();
+      } else {
+        container.style.display = 'none';
+      }
+    }
+
+    async function generateSpintaxLivePreviews() {
+      const text = document.getElementById('campaignMsgContent')?.value.trim();
+      const container = document.getElementById('spintaxPreviewCards');
+      if (!container) return;
+
+      if (!text) {
+        container.innerHTML = '<div style="color:#94a3b8; font-size:0.75rem; font-style:italic;">Please enter message content first.</div>';
+        return;
+      }
+
+      container.innerHTML = '<div style="color:#94a3b8; font-size:0.75rem;">Generating preview variations...</div>';
+
+      try {
+        const res = await fetch('/api/crm/campaigns/spintax-preview', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ text, count: 3 })
+        });
+        const data = await res.json();
+        if (data.samples && data.samples.length > 0) {
+          const names = ['Rahul Sharma', 'Priya Patel', 'Amit Verma'];
+          const shops = ['Sharma Electronics', 'Patel Boutique', 'Amit Enterprises'];
+          container.innerHTML = data.samples.map((s, idx) => `
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0.6rem 0.75rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; font-size:0.7rem;">
+                <span style="color:#38bdf8; font-weight:700;">Recipient #${idx + 1}: ${names[idx % names.length]} (${shops[idx % shops.length]})</span>
+                <span style="background:rgba(99,102,241,0.25); color:#c7d2fe; padding:0.1rem 0.4rem; border-radius:10px; font-size:0.65rem;">Variation ${idx + 1}</span>
+              </div>
+              <div style="color:#f1f5f9; font-size:0.75rem; white-space:pre-wrap; line-height:1.45; font-family:sans-serif;">${s.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = '<div style="color:#f87171; font-size:0.75rem;">Could not generate previews.</div>';
+        }
+      } catch (err) {
+        container.innerHTML = '<div style="color:#f87171; font-size:0.75rem;">Error generating previews.</div>';
+      }
+    }
+
+    window.handleAntiBanModeChange = handleAntiBanModeChange;
+    window.handleCampaignMsgInput = handleCampaignMsgInput;
+    window.handleAutoGenerateSpintax = handleAutoGenerateSpintax;
+    window.toggleSpintaxPreviewDrawer = toggleSpintaxPreviewDrawer;
+    window.generateSpintaxLivePreviews = generateSpintaxLivePreviews;
+    window.updateBanRiskBadge = updateBanRiskBadge;
+
     async function handleCreateCampaignSubmit(e) {
       e.preventDefault();
       const checkboxes = document.querySelectorAll('input[name="campaignContact"]:checked');
@@ -9537,12 +9690,16 @@
       }
 
       const mediaFile = document.getElementById('campaignMedia').files[0];
+      const anti_ban_mode = document.getElementById('campaignAntiBanMode')?.value || 'balanced';
+      const message_interval = document.getElementById('campaignMessageInterval')?.value || '20';
 
       const formData = new FormData();
       formData.append('name', name);
       formData.append('message_text', message_text);
       if (scheduled_at) formData.append('scheduled_at', scheduled_at);
       formData.append('contactsStr', JSON.stringify(selectedContacts));
+      formData.append('anti_ban_mode', anti_ban_mode);
+      formData.append('message_interval', message_interval);
       if (mediaFile) formData.append('media', mediaFile);
 
       const btn = document.getElementById('submitCampaignBtn');

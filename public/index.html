@@ -379,11 +379,12 @@
         <div class="form-group">
           <label>Message Content</label>
           <textarea id="campaignMsgContent" rows="5" required
+            oninput="handleCampaignMsgInput(this.value)"
             placeholder="Type your personalized message here..."></textarea>
           <div style="margin-top:0.5rem;">
             <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.3rem;">Insert Variable Placeholders:
             </div>
-            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
               <button type="button" onclick="insertPlaceholder('{Name}', 'campaignMsgContent')"
                 style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;width:auto;margin:0;">+
                 {Name}</button>
@@ -399,9 +400,68 @@
               <button type="button" onclick="insertPlaceholder('{Hi|Hello|Hey}', 'campaignMsgContent')"
                 style="padding:0.25rem 0.6rem;font-size:0.75rem;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#6ee7b7;width:auto;margin:0;" title="Spintax randomizes greetings per contact to prevent spam detection">+
                 🎲 Spintax {Hi|Hello|Hey}</button>
+              <button type="button" onclick="handleAutoGenerateSpintax()"
+                style="padding:0.25rem 0.75rem;font-size:0.75rem;background:linear-gradient(135deg,rgba(147,51,234,0.35),rgba(79,70,229,0.35));border:1px solid rgba(168,85,247,0.5);color:#d8b4fe;font-weight:600;border-radius:6px;cursor:pointer;width:auto;margin:0;" title="Automatically transform repeated words into varied Spintax phrases to prevent WhatsApp spam flags">
+                ✨ Auto-Spintax Variations</button>
+              <button type="button" onclick="toggleSpintaxPreviewDrawer()"
+                style="padding:0.25rem 0.7rem;font-size:0.75rem;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#fcd34d;font-weight:600;border-radius:6px;cursor:pointer;width:auto;margin:0;" title="See 3 live randomized sample messages before broadcasting">
+                👁️ Preview Variations</button>
             </div>
-            <div style="margin-top:0.6rem; padding:0.6rem 0.8rem; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.25); border-radius:8px; font-size:0.74rem; color:#6ee7b7; line-height:1.4;">
-              🛡️ <strong>Anti-Ban Engine Active:</strong> Campaigns automatically use randomized human typing presence (2-4s), safe interval delays (10-20s), and batch cool-down periods to protect your WhatsApp account.
+
+            <!-- Live Spintax Variations Preview Box (Collapsible) -->
+            <div id="spintaxPreviewContainer" style="display:none; margin-top:0.75rem; background:rgba(0,0,0,0.35); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:0.85rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <div style="font-size:0.78rem; font-weight:700; color:#c7d2fe;">🎲 Live Variation Previews (How different recipients see it):</div>
+                <button type="button" onclick="generateSpintaxLivePreviews()" style="padding:0.2rem 0.5rem; font-size:0.7rem; background:rgba(99,102,241,0.25); border:1px solid rgba(99,102,241,0.4); color:#fff; border-radius:4px; cursor:pointer; width:auto;">🔄 Re-Roll</button>
+              </div>
+              <div id="spintaxPreviewCards" style="display:flex; flex-direction:column; gap:0.5rem;">
+                <!-- Generated preview cards render here -->
+              </div>
+            </div>
+
+            <!-- Anti-Ban Shield Protection Profile -->
+            <div style="margin-top:0.85rem; background:rgba(15,23,42,0.65); padding:0.85rem; border-radius:10px; border:1px solid rgba(99,102,241,0.25);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.4rem;">
+                <div style="font-weight:600; color:#e2e8f0; font-size:0.82rem; display:flex; align-items:center; gap:0.4rem;">
+                  🛡️ <strong>Anti-Ban Protection Shield:</strong>
+                </div>
+                <span id="banRiskBadge" style="font-size:0.74rem; padding:0.18rem 0.6rem; border-radius:20px; font-weight:600; background:rgba(16,185,129,0.2); color:#6ee7b7; border:1px solid rgba(16,185,129,0.4);">
+                  🟢 Safe Pacing Active
+                </span>
+              </div>
+
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:0.5rem; margin-bottom:0.65rem;">
+                <label style="border:1px solid rgba(16,185,129,0.4); background:rgba(16,185,129,0.08); padding:0.6rem; border-radius:8px; cursor:pointer; font-size:0.75rem; display:flex; flex-direction:column; gap:0.25rem;">
+                  <div style="display:flex; align-items:center; gap:0.35rem;">
+                    <input type="radio" name="antiBanMode" value="ultra-safe" onchange="handleAntiBanModeChange(this.value)">
+                    <span style="font-weight:700; color:#6ee7b7;">🛡️ Ultra-Safe</span>
+                  </div>
+                  <span style="color:#94a3b8; font-size:0.7rem;">25-45s delay + 4m cooldown (Best for new numbers)</span>
+                </label>
+
+                <label style="border:1px solid rgba(99,102,241,0.5); background:rgba(99,102,241,0.15); padding:0.6rem; border-radius:8px; cursor:pointer; font-size:0.75rem; display:flex; flex-direction:column; gap:0.25rem;">
+                  <div style="display:flex; align-items:center; gap:0.35rem;">
+                    <input type="radio" name="antiBanMode" value="balanced" checked onchange="handleAntiBanModeChange(this.value)">
+                    <span style="font-weight:700; color:#a5b4fc;">⚖️ Balanced (Recommended)</span>
+                  </div>
+                  <span style="color:#94a3b8; font-size:0.7rem;">15-25s delay + 2.5m cooldown (General marketing)</span>
+                </label>
+
+                <label style="border:1px solid rgba(245,158,11,0.3); background:rgba(245,158,11,0.08); padding:0.6rem; border-radius:8px; cursor:pointer; font-size:0.75rem; display:flex; flex-direction:column; gap:0.25rem;">
+                  <div style="display:flex; align-items:center; gap:0.35rem;">
+                    <input type="radio" name="antiBanMode" value="turbo" onchange="handleAntiBanModeChange(this.value)">
+                    <span style="font-weight:700; color:#fcd34d;">🚀 Turbo Speed</span>
+                  </div>
+                  <span style="color:#94a3b8; font-size:0.7rem;">8-15s delay (Warm & established accounts only)</span>
+                </label>
+              </div>
+
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; font-size:0.74rem; color:#94a3b8; flex-wrap:wrap;">
+                <span>Pacing Interval: <strong id="antiBanDelayLabel" style="color:#fff;">15s - 25s randomized</strong></span>
+                <span>Typing Emulation: <strong id="antiBanTypingLabel" style="color:#fff;">2.0s - 3.2s</strong></span>
+                <input type="hidden" id="campaignAntiBanMode" value="balanced">
+                <input type="hidden" id="campaignMessageInterval" value="20">
+              </div>
             </div>
           </div>
         </div>

@@ -466,6 +466,8 @@ export async function initDb() {
           media_type TEXT,
           scheduled_at TIMESTAMP WITH TIME ZONE,
           status TEXT NOT NULL DEFAULT 'pending',
+          anti_ban_mode TEXT DEFAULT 'balanced',
+          message_interval INTEGER DEFAULT 20,
           total_contacts INTEGER DEFAULT 0,
           successful_deliveries INTEGER DEFAULT 0,
           failed_deliveries INTEGER DEFAULT 0,
@@ -612,6 +614,8 @@ export async function initDb() {
       await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_user_category ON contacts(user_id, category)`);
       // Backfill: existing rows added before the column existed will have NULL — set them to 'General'
       await client.query(`UPDATE contacts SET category = 'General' WHERE category IS NULL OR TRIM(category) = ''`);
+      await client.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS anti_ban_mode TEXT DEFAULT 'balanced'`);
+      await client.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS message_interval INTEGER DEFAULT 20`);
 
       const defaultPrices = {
         plan_price: '199',
@@ -928,6 +932,8 @@ export async function initDb() {
       media_type TEXT,
       scheduled_at TEXT, 
       status TEXT NOT NULL DEFAULT 'pending',
+      anti_ban_mode TEXT DEFAULT 'balanced',
+      message_interval INTEGER DEFAULT 20,
       total_contacts INTEGER DEFAULT 0,
       successful_deliveries INTEGER DEFAULT 0,
       failed_deliveries INTEGER DEFAULT 0,
@@ -1110,6 +1116,8 @@ export async function initDb() {
   try { db.exec("ALTER TABLE orders ADD COLUMN razorpay_payment_id TEXT"); } catch (e) {}
   // Anti-ban: daily campaign limit per user (defaults to 200 if not set)
   try { db.exec("ALTER TABLE automation_settings ADD COLUMN daily_campaign_limit INTEGER DEFAULT 200"); } catch (e) {}
+  try { db.exec("ALTER TABLE campaigns ADD COLUMN anti_ban_mode TEXT DEFAULT 'balanced'"); } catch (e) {}
+  try { db.exec("ALTER TABLE campaigns ADD COLUMN message_interval INTEGER DEFAULT 20"); } catch (e) {}
 
   try {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@whatsapp.local';
@@ -2291,11 +2299,14 @@ export async function getCampaignById(campaignId) {
   return await queryOne('SELECT * FROM campaigns WHERE id = ?', [campaignId]);
 }
 
-export async function createCampaign(userId, { name, message_text, media_path, media_type, scheduled_at, contacts }) {
+export async function createCampaign(userId, { name, message_text, media_path, media_type, scheduled_at, contacts, anti_ban_mode = 'balanced', message_interval = 20 }) {
+  const safeMode = ['ultra-safe', 'balanced', 'turbo'].includes(anti_ban_mode) ? anti_ban_mode : 'balanced';
+  const safeInterval = Math.max(5, parseInt(message_interval, 10) || 20);
+
   const res = await execute(`
-    INSERT INTO campaigns (user_id, name, message_text, media_path, media_type, scheduled_at, total_contacts, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-  `, [userId, name, message_text, media_path, media_type, scheduled_at || null, contacts.length]);
+    INSERT INTO campaigns (user_id, name, message_text, media_path, media_type, scheduled_at, total_contacts, status, anti_ban_mode, message_interval)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+  `, [userId, name, message_text, media_path, media_type, scheduled_at || null, contacts.length, safeMode, safeInterval]);
   
   const campaignId = res.lastInsertRowid;
 

@@ -1507,8 +1507,16 @@ export async function triggerCampaignsPoller() {
             text = text.replace(/\[email\]/gi, emailVal);
             text = parseSpintax(text);
 
-            // ── 3h. Typing indicator (human-like) ──────────────────────────
-            const typingDuration = Math.floor(Math.random() * 1700) + 1800;
+            // ── 3h. Typing indicator (human-like based on anti-ban mode) ───
+            const mode = campaign.anti_ban_mode || 'balanced';
+            let typingDuration;
+            if (mode === 'ultra-safe') {
+              typingDuration = Math.floor(Math.random() * 1500) + 3000; // 3.0s - 4.5s
+            } else if (mode === 'turbo') {
+              typingDuration = Math.floor(Math.random() * 800) + 1200; // 1.2s - 2.0s
+            } else {
+              typingDuration = Math.floor(Math.random() * 1200) + 2000; // 2.0s - 3.2s (balanced)
+            }
             await sendTypingPresence(String(campaign.user_id), rec.mobile, typingDuration);
 
             // ── 3i. Send message / media ────────────────────────────────────
@@ -1522,7 +1530,7 @@ export async function triggerCampaignsPoller() {
             await updateCampaignRecipientStatus(rec.id, 'sent');
             await incrementCampaignSuccess(campaign.id);
             consecutiveErrors = 0; // Reset ban counter on success
-            console.log(`[Campaigns Poller] ✓ Campaign #${campaign.id} → ${rec.mobile}`);
+            console.log(`[Campaigns Poller] ✓ Campaign #${campaign.id} [${mode}] → ${rec.mobile}`);
 
           } catch (err) {
             console.error(`[Campaigns Poller] ✗ Campaign #${campaign.id} → ${rec.mobile}: ${err.message}`);
@@ -1570,14 +1578,39 @@ export async function triggerCampaignsPoller() {
           }
 
           // ── 3k. Wait configured interval between recipients ───────────────
-          // Re-read interval from DB (admin may have updated it during the run)
-          const rawInterval = (await getCampaignById(campaign.id))?.message_interval ?? 25;
-          // Enforce minimum anti-ban interval of 20s to prevent rapid-fire detection
-          const intervalSec = Math.max(20, Number(rawInterval) || 25);
+          const curCampaign = (await getCampaignById(campaign.id)) || campaign;
+          const currentMode = curCampaign.anti_ban_mode || 'balanced';
+          let minInterval = 15;
+          let defaultInterval = 20;
+
+          if (currentMode === 'ultra-safe') {
+            minInterval = 25;
+            defaultInterval = 35;
+          } else if (currentMode === 'turbo') {
+            minInterval = 8;
+            defaultInterval = 12;
+          }
+
+          const rawInterval = curCampaign.message_interval ?? defaultInterval;
+          const intervalSec = Math.max(minInterval, Number(rawInterval) || defaultInterval);
+
           // Jitter ±25% to appear more natural/human
           const jitterMs = Math.floor(intervalSec * 1000 * (0.75 + Math.random() * 0.5));
           const shouldContinue = await interruptibleSleep(jitterMs, campaign.id);
           if (!shouldContinue) break;
+
+          // ── 3l. Anti-Ban Periodic Batch Cooling ───────────────────────────
+          const freshCamp = await getCampaignById(campaign.id);
+          const sentSoFar = freshCamp?.successful_deliveries || 0;
+          if (currentMode === 'ultra-safe' && sentSoFar > 0 && sentSoFar % 25 === 0) {
+            console.log(`[Anti-Ban Shield] 🛡️ Ultra-Safe batch cooling: ${sentSoFar} sent in campaign #${campaign.id}. Pausing 4 min to keep number safe.`);
+            const cooldownOk = await interruptibleSleep(4 * 60 * 1000, campaign.id);
+            if (!cooldownOk) break;
+          } else if (currentMode === 'balanced' && sentSoFar > 0 && sentSoFar % 50 === 0) {
+            console.log(`[Anti-Ban Shield] ⚖️ Balanced batch cooling: ${sentSoFar} sent in campaign #${campaign.id}. Pausing 2.5 min.`);
+            const cooldownOk = await interruptibleSleep(150 * 1000, campaign.id);
+            if (!cooldownOk) break;
+          }
         } // end while (recipient loop)
       } // end for (campaign loop)
 

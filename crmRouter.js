@@ -861,9 +861,126 @@ router.get('/campaigns/:id', async (req, res) => {
   }
 });
 
+// Smart Anti-Ban Spintax Generator
+function generateSmartSpintax(rawText) {
+  if (!rawText || typeof rawText !== 'string') return '';
+  let text = rawText.trim();
+
+  const replacements = [
+    {
+      regex: /\b(hi|hello|hey|greetings|dear)\b/gi,
+      spintax: '{Hi|Hello|Hey|Greetings}'
+    },
+    {
+      regex: /\b(hope you are doing well|hope you're doing well|hope all is well)\b/gi,
+      spintax: "{hope you are doing well|hope this finds you well|hope you're having a wonderful day}"
+    },
+    {
+      regex: /\b(special offer|exclusive offer|great offer|limited offer)\b/gi,
+      spintax: '{special offer|exclusive deal|limited-time promotion|exclusive privilege}'
+    },
+    {
+      regex: /\b(check out|take a look at|check this out)\b/gi,
+      spintax: '{check out|explore|take a look at|discover}'
+    },
+    {
+      regex: /\b(discount|off|savings)\b/gi,
+      spintax: '{discount|special price|savings}'
+    },
+    {
+      regex: /\b(reply to this message|reply back|let us know)\b/gi,
+      spintax: '{reply to this message|let us know|feel free to respond here|drop us a reply}'
+    },
+    {
+      regex: /\b(contact us|reach out to us|call us)\b/gi,
+      spintax: '{reach out to us|contact our team|connect with us|call or message us}'
+    },
+    {
+      regex: /\b(thank you|thanks & regards|thanks and regards|best regards|regards)\b/gi,
+      spintax: '{Thank you & regards|Best wishes|Warm regards|Thanks and have a great day}'
+    }
+  ];
+
+  // Protect existing Spintax {a|b} and variables {name}, {shopname}, {mobile}, {email}
+  const protectedTokens = [];
+  text = text.replace(/\{[^{}]+\}/g, (match) => {
+    const id = `___PROT_${protectedTokens.length}___`;
+    protectedTokens.push({ id, match });
+    return id;
+  });
+
+  for (const item of replacements) {
+    text = text.replace(item.regex, item.spintax);
+  }
+
+  for (const item of protectedTokens) {
+    text = text.replace(item.id, item.match);
+  }
+
+  // Prepend greeting if none exists
+  if (!text.match(/^\{[^{}]+\}/) && !text.match(/^(\s*hi|\s*hello|\s*hey|\s*dear)/i)) {
+    if (!text.includes('{name}') && !text.includes('[name]')) {
+      text = '{Hello|Hi|Greetings} {name},\n\n' + text;
+    } else {
+      text = '{Hello|Hi|Greetings},\n\n' + text;
+    }
+  }
+
+  return text;
+}
+
+router.post('/campaigns/spintax-generate', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'Message text is required' });
+    }
+    const spintaxText = generateSmartSpintax(text);
+    return res.json({ spintaxText });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/campaigns/spintax-preview', async (req, res) => {
+  try {
+    const { text, count = 3 } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'Message text is required' });
+    }
+    const samples = [];
+    const sampleNames = ['Rahul Sharma', 'Priya Patel', 'Amit Verma', 'Sneha Gupta', 'Vikram Singh'];
+    const sampleShops = ['Sharma Electronics', 'Patel Boutique', 'Amit Enterprises', 'Gupta Traders', 'Singh General Store'];
+    const totalSamples = Math.min(5, Math.max(1, parseInt(count, 10) || 3));
+
+    for (let i = 0; i < totalSamples; i++) {
+      let preview = text;
+      const dummyName = sampleNames[i % sampleNames.length];
+      const dummyShop = sampleShops[i % sampleShops.length];
+      const dummyMobile = '91987654321' + i;
+      const dummyEmail = req.user?.email || 'customer@example.com';
+
+      preview = preview.replace(/\{name\}/gi, dummyName);
+      preview = preview.replace(/\[name\]/gi, dummyName);
+      preview = preview.replace(/\{shopname\}/gi, dummyShop);
+      preview = preview.replace(/\[shopname\]/gi, dummyShop);
+      preview = preview.replace(/\{mobile\}/gi, dummyMobile);
+      preview = preview.replace(/\[mobile\]/gi, dummyMobile);
+      preview = preview.replace(/\{email\}/gi, dummyEmail);
+      preview = preview.replace(/\[email\]/gi, dummyEmail);
+      preview = parseSpintax(preview);
+      samples.push(preview);
+    }
+
+    return res.json({ samples });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/campaigns', upload.single('media'), async (req, res) => {
   try {
-    const { name, message_text, scheduled_at, contactsStr } = req.body;
+    const { name, message_text, scheduled_at, contactsStr, anti_ban_mode, message_interval } = req.body;
     let contacts = [];
     if (contactsStr) {
       contacts = JSON.parse(contactsStr);
@@ -882,7 +999,9 @@ router.post('/campaigns', upload.single('media'), async (req, res) => {
       media_path,
       media_type,
       scheduled_at: scheduled_at || null,
-      contacts
+      contacts,
+      anti_ban_mode: anti_ban_mode || 'balanced',
+      message_interval: parseInt(message_interval, 10) || 20
     });
 
     // Instantly wake up the campaign poller to begin sending
