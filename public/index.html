@@ -600,6 +600,34 @@
         </div>
       </div>
 
+  <!-- Canned Replies Modal -->
+  <div id="cannedRepliesModal"
+    style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+    <div
+      style="background:linear-gradient(135deg,#1e1b4b,#1e293b); border:1px solid rgba(99,102,241,0.4); border-radius:16px; padding:2rem; max-width:550px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5); max-height:85vh; display:flex; flex-direction:column;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+        <div>
+          <div style="font-size:1.15rem; font-weight:700; color:#e2e8f0;">⚡ Quick Canned Replies (/snippets)</div>
+          <div style="font-size:0.78rem; color:#94a3b8; margin-top:0.2rem;">Save frequent answers to send with 1 click in Live Chat</div>
+        </div>
+        <button onclick="closeCannedRepliesModal()"
+          style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px;">✕</button>
+      </div>
+
+      <!-- Add Canned Reply Form -->
+      <form id="addCannedReplyForm" onsubmit="handleCreateCannedReply(event)" style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.25rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex; gap:0.5rem;">
+          <input type="text" id="newCannedShortcut" placeholder="Shortcut (e.g. /hours, /pricing)" required style="flex:1; padding:0.5rem 0.75rem; font-size:0.8rem; background:#0f172a; border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff;">
+          <button type="submit" style="padding:0.5rem 0.85rem; font-size:0.8rem; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; color:#fff; border-radius:6px; font-weight:600; cursor:pointer; width:auto;">+ Add</button>
+        </div>
+        <textarea id="newCannedMessage" rows="2" placeholder="Full response message sent to customer..." required style="width:100%; padding:0.5rem 0.75rem; font-size:0.8rem; background:#0f172a; border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff;"></textarea>
+      </form>
+
+      <!-- Existing Canned List -->
+      <div style="font-size:0.8rem; font-weight:600; color:#cbd5e1; margin-bottom:0.5rem;">Saved Canned Snippets:</div>
+      <div id="cannedRepliesList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0.5rem;">
+        <div style="color:#94a3b8; font-size:0.8rem; text-align:center; padding:1rem;">Loading snippets...</div>
+      </div>
     </div>
   </div>
 

@@ -584,6 +584,32 @@ export async function initDb() {
           PRIMARY KEY (user_id, file_name)
         );
 
+        CREATE TABLE IF NOT EXISTS inbox_messages (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          contact_phone TEXT NOT NULL,
+          contact_name TEXT,
+          message_text TEXT NOT NULL,
+          direction TEXT NOT NULL DEFAULT 'inbound',
+          media_type TEXT,
+          media_url TEXT,
+          is_read INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS canned_replies (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          shortcut TEXT NOT NULL,
+          message TEXT NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_inbox_user_phone ON inbox_messages(user_id, contact_phone);
+        CREATE INDEX IF NOT EXISTS idx_inbox_user_read ON inbox_messages(user_id, is_read);
+        CREATE INDEX IF NOT EXISTS idx_inbox_created ON inbox_messages(user_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_canned_user ON canned_replies(user_id);
+
         CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id);
         CREATE INDEX IF NOT EXISTS idx_contacts_user_mobile ON contacts(user_id, mobile);
         CREATE INDEX IF NOT EXISTS idx_campaigns_status_sched ON campaigns(status, scheduled_at);
@@ -1073,6 +1099,34 @@ export async function initDb() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (user_id, file_name)
     );
+
+    CREATE TABLE IF NOT EXISTS inbox_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      contact_phone TEXT NOT NULL,
+      contact_name TEXT,
+      message_text TEXT NOT NULL,
+      direction TEXT NOT NULL DEFAULT 'inbound',
+      media_type TEXT,
+      media_url TEXT,
+      is_read INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS canned_replies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      shortcut TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_inbox_user_phone ON inbox_messages(user_id, contact_phone);
+    CREATE INDEX IF NOT EXISTS idx_inbox_user_read ON inbox_messages(user_id, is_read);
+    CREATE INDEX IF NOT EXISTS idx_inbox_created ON inbox_messages(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_canned_user ON canned_replies(user_id);
 
     CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id);
     CREATE INDEX IF NOT EXISTS idx_contacts_user_mobile ON contacts(user_id, mobile);
@@ -2815,5 +2869,101 @@ export async function deleteSessionFiles(userId) {
 export async function getAllSessionUserIdsFromDb() {
   const rows = await queryAll('SELECT DISTINCT user_id FROM whatsapp_session_auth');
   return (rows || []).map(r => String(r.user_id));
+}
+
+// ─── Live Two-Way Inbox & Canned Replies ────────────────────────────────────
+
+export async function saveInboxMessage(userId, { contact_phone, contact_name = null, message_text, direction = 'inbound', media_type = 'text', media_url = null }) {
+  if (!contact_phone || !message_text) return null;
+  const cleanPhone = String(contact_phone).replace(/[^0-9]/g, '');
+
+  let finalName = contact_name;
+  if (!finalName) {
+    const contact = await queryOne('SELECT name, shop_name FROM contacts WHERE user_id = ? AND mobile = ?', [userId, cleanPhone]);
+    if (contact) {
+      finalName = contact.name || contact.shop_name || null;
+    }
+  }
+
+  const res = await execute(`
+    INSERT INTO inbox_messages (user_id, contact_phone, contact_name, message_text, direction, media_type, media_url, is_read)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `, [userId, cleanPhone, finalName, message_text, direction, media_type, media_url, direction === 'outbound' ? 1 : 0]);
+
+  return {
+    id: res.lastInsertRowid,
+    user_id: userId,
+    contact_phone: cleanPhone,
+    contact_name: finalName,
+    message_text,
+    direction,
+    media_type,
+    media_url,
+    is_read: direction === 'outbound' ? 1 : 0
+  };
+}
+
+export async function getInboxConversations(userId) {
+  const sql = `
+    WITH latest_msgs AS (
+      SELECT 
+        contact_phone,
+        MAX(id) AS last_msg_id,
+        SUM(CASE WHEN is_read = 0 AND direction = 'inbound' THEN 1 ELSE 0 END) AS unread_count
+      FROM inbox_messages
+      WHERE user_id = ?
+      GROUP BY contact_phone
+    )
+    SELECT 
+      lm.contact_phone,
+      COALESCE(lm.unread_count, 0) AS unread_count,
+      m.contact_name,
+      m.message_text AS last_message,
+      m.direction AS last_direction,
+      m.created_at AS last_message_at,
+      c.name AS crm_contact_name,
+      c.shop_name AS crm_shop_name,
+      c.category AS crm_category
+    FROM latest_msgs lm
+    JOIN inbox_messages m ON m.id = lm.last_msg_id
+    LEFT JOIN contacts c ON c.user_id = ? AND c.mobile = lm.contact_phone
+    ORDER BY m.id DESC
+  `;
+  return await queryAll(sql, [userId, userId]);
+}
+
+export async function getInboxMessagesByPhone(userId, contactPhone, limit = 100) {
+  const cleanPhone = String(contactPhone).replace(/[^0-9]/g, '');
+  return await queryAll(`
+    SELECT * FROM inbox_messages 
+    WHERE user_id = ? AND contact_phone = ? 
+    ORDER BY id ASC 
+    LIMIT ?
+  `, [userId, cleanPhone, limit]);
+}
+
+export async function markInboxThreadAsRead(userId, contactPhone) {
+  const cleanPhone = String(contactPhone).replace(/[^0-9]/g, '');
+  return await execute(`
+    UPDATE inbox_messages 
+    SET is_read = 1 
+    WHERE user_id = ? AND contact_phone = ? AND is_read = 0
+  `, [userId, cleanPhone]);
+}
+
+export async function getCannedRepliesByUser(userId) {
+  return await queryAll('SELECT * FROM canned_replies WHERE user_id = ? ORDER BY id ASC', [userId]);
+}
+
+export async function createCannedReply(userId, { shortcut, message }) {
+  const res = await execute(
+    'INSERT INTO canned_replies (user_id, shortcut, message) VALUES (?, ?, ?)',
+    [userId, shortcut, message]
+  );
+  return await queryOne('SELECT * FROM canned_replies WHERE id = ?', [res.lastInsertRowid]);
+}
+
+export async function deleteCannedReply(userId, id) {
+  return await execute('DELETE FROM canned_replies WHERE user_id = ? AND id = ?', [userId, id]);
 }
 

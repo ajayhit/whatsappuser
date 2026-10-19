@@ -22,7 +22,9 @@ import {
   getPaymentRemindersByUser, createPaymentReminder, updatePaymentReminderStatus, deletePaymentReminder,
   getOrderNotificationsByUser, createOrderNotification, deleteOrderNotification,
   getFollowupAutomationsByUser, createFollowupAutomation, updateFollowupAutomation, deleteFollowupAutomation,
-  getFollowupLogsByUser, deleteFollowupLog
+  getFollowupLogsByUser, deleteFollowupLog,
+  getInboxConversations, getInboxMessagesByPhone, markInboxThreadAsRead, saveInboxMessage,
+  getCannedRepliesByUser, createCannedReply, deleteCannedReply
 } from './db.js';
 
 
@@ -1294,6 +1296,89 @@ router.delete('/followup-logs/:id', async (req, res) => {
   try {
     await deleteFollowupLog(req.params.id, req.user.id);
     return res.json({ message: 'Follow-up log deleted' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Live Two-Way Team Inbox Routes ──────────────────────────────────────────
+
+router.get('/inbox/conversations', async (req, res) => {
+  try {
+    const conversations = await getInboxConversations(req.user.id);
+    return res.json({ conversations: conversations || [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/inbox/messages/:phone', async (req, res) => {
+  try {
+    const cleanPhone = String(req.params.phone).replace(/[^0-9]/g, '');
+    const messages = await getInboxMessagesByPhone(req.user.id, cleanPhone);
+    // Mark as read
+    await markInboxThreadAsRead(req.user.id, cleanPhone);
+    return res.json({ messages: messages || [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/inbox/send', async (req, res) => {
+  try {
+    const { phone, message } = req.body;
+    if (!phone || !message || !message.trim()) {
+      return res.status(400).json({ error: 'Phone number and message text are required' });
+    }
+    const cleanPhone = String(phone).replace(/[^0-9]/g, '');
+    // Send via WhatsApp
+    await sendMessageToJid(String(req.user.id), cleanPhone, message.trim());
+    return res.json({ success: true, message: 'Message sent successfully' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/inbox/read/:phone', async (req, res) => {
+  try {
+    const cleanPhone = String(req.params.phone).replace(/[^0-9]/g, '');
+    await markInboxThreadAsRead(req.user.id, cleanPhone);
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/inbox/canned-replies', async (req, res) => {
+  try {
+    const replies = await getCannedRepliesByUser(req.user.id);
+    return res.json({ cannedReplies: replies || [] });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/inbox/canned-replies', async (req, res) => {
+  try {
+    const { shortcut, message } = req.body;
+    if (!shortcut || !message) {
+      return res.status(400).json({ error: 'Shortcut and message are required' });
+    }
+    const formattedShortcut = shortcut.startsWith('/') ? shortcut : `/${shortcut}`;
+    const canned = await createCannedReply(req.user.id, {
+      shortcut: formattedShortcut,
+      message: message.trim()
+    });
+    return res.json({ message: 'Canned reply created', canned });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/inbox/canned-replies/:id', async (req, res) => {
+  try {
+    await deleteCannedReply(req.user.id, req.params.id);
+    return res.json({ message: 'Canned reply deleted' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

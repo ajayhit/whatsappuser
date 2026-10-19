@@ -18,7 +18,8 @@ import {
   getAllSessionUserIdsFromDb,
   excludeContactByMobile,
   execute,
-  invalidateCache
+  invalidateCache,
+  saveInboxMessage
 } from './db.js';
 
 
@@ -439,6 +440,33 @@ async function _doInitSession(userId) {
           storeRecentMessage(msg.key.remoteJid, msg.key.id, msg.message);
         }
         console.log(`[Message Received] from: ${msg.key.remoteJid}, isFromMe: ${msg.key.fromMe}`);
+
+        // Persist message into Live Two-Way Inbox
+        const remoteJid = msg.key?.remoteJid;
+        if (remoteJid && !remoteJid.endsWith('@g.us') && remoteJid !== 'status@broadcast') {
+          const fromPhone = remoteJid.split('@')[0].replace(/[^0-9]/g, '');
+          const textBody = (
+            msg.message?.conversation ||
+            msg.message?.extendedTextMessage?.text ||
+            msg.message?.imageMessage?.caption ||
+            msg.message?.videoMessage?.caption ||
+            (msg.message?.imageMessage ? '📷 [Photo]' : '') ||
+            (msg.message?.videoMessage ? '🎥 [Video]' : '') ||
+            (msg.message?.audioMessage ? '🎵 [Voice Note]' : '') ||
+            (msg.message?.documentMessage ? '📄 [Document]' : '') ||
+            ''
+          ).trim();
+
+          if (textBody && fromPhone) {
+            saveInboxMessage(userId, {
+              contact_phone: fromPhone,
+              contact_name: msg.pushName || null,
+              message_text: textBody,
+              direction: msg.key.fromMe ? 'outbound' : 'inbound'
+            }).catch(err => console.error('[Inbox Ingestion Error]', err.message));
+          }
+        }
+
         await handleIncomingAutoResponse(userId, sock, msg);
       } catch (err) {
         console.error(`[AutoResponse Error] Failed for user ${userId}:`, err);
@@ -812,6 +840,12 @@ export async function sendMessageToJid(userId, to, message) {
   if (result?.key?.id) {
     console.log(`[SendMessage] ✅ Delivered to WhatsApp | jid=${jid} | msgId=${result.key.id}`);
     storeRecentMessage(jid, result.key.id, result.message);
+    const cleanPhone = String(to).replace(/[^0-9]/g, '');
+    saveInboxMessage(userId, {
+      contact_phone: cleanPhone,
+      message_text: message,
+      direction: 'outbound'
+    }).catch(err => console.error('[Inbox Outbound Error]', err.message));
   } else {
     console.warn(`[SendMessage] ⚠️ No message ID returned from WhatsApp — message may not have been delivered | jid=${jid}`);
   }
