@@ -610,6 +610,8 @@ export async function initDb() {
       await client.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS email TEXT`);
       await client.query(`ALTER TABLE contacts ADD COLUMN IF NOT EXISTS birthday TEXT`);
       await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_user_category ON contacts(user_id, category)`);
+      // Backfill: existing rows added before the column existed will have NULL — set them to 'General'
+      await client.query(`UPDATE contacts SET category = 'General' WHERE category IS NULL OR TRIM(category) = ''`);
 
       const defaultPrices = {
         plan_price: '199',
