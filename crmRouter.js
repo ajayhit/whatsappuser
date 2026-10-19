@@ -11,6 +11,7 @@ import {
   getCatalogByUserId, getServicesByCatalogId, upsertCatalog,
   createService, updateService, deleteService,
   getContactsByUser, upsertContact, upsertContactsBatch, deleteContact, toggleContactExclude,
+  updateContact, updateContactCategory, updateContactsCategoryBatch, getContactCategoriesByUser,
   getRemindersByUser, createReminder, deleteReminder, calculateNextScheduleDate,
   getTemplatesByUser, createTemplate, updateTemplate, deleteTemplate,
   getUserById, getAutomationSettings, upsertAutomationSettings,
@@ -215,8 +216,19 @@ router.get('/contacts', async (req, res) => {
   }
 });
 
+router.get('/contacts/categories', async (req, res) => {
+  try {
+    const customCategories = await getContactCategoriesByUser(req.user.id);
+    const standardCategories = ['General', 'Customer', 'VIP', 'Lead', 'Wholesale', 'Retail', 'Supplier'];
+    const merged = Array.from(new Set([...standardCategories, ...customCategories])).filter(Boolean);
+    return res.json({ categories: merged });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/contacts', async (req, res) => {
-  const { name, mobile, shop_name } = req.body;
+  const { name, mobile, shop_name, category } = req.body;
   if (!name || !mobile) {
     return res.status(400).json({ error: 'name and mobile are required' });
   }
@@ -229,11 +241,61 @@ router.post('/contacts', async (req, res) => {
   try {
     const contact = await upsertContact({
       user_id: req.user.id,
-      name,
+      name: name.trim(),
       mobile: phone,
-      shop_name: shop_name || ''
+      shop_name: shop_name ? shop_name.trim() : '',
+      category: category ? category.trim() : 'General'
     });
     return res.json({ message: 'Contact saved successfully', contact });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/contacts/:id', async (req, res) => {
+  const contactId = parseInt(req.params.id);
+  const { name, mobile, shop_name, category } = req.body;
+
+  try {
+    let phone = undefined;
+    if (mobile) {
+      phone = normalizePhone(mobile);
+      if (phone.length < 10) {
+        return res.status(400).json({ error: 'Invalid phone number. Must be at least 10 digits.' });
+      }
+    }
+    const contact = await updateContact(contactId, req.user.id, {
+      name: name !== undefined ? name.trim() : undefined,
+      mobile: phone,
+      shop_name: shop_name !== undefined ? shop_name.trim() : undefined,
+      category: category !== undefined ? category.trim() : undefined
+    });
+    if (!contact) return res.status(404).json({ error: 'Contact not found' });
+    return res.json({ message: 'Contact updated successfully', contact });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/contacts/switch-category', async (req, res) => {
+  const { contactId, contactIds, category } = req.body;
+  if (!category || !category.trim()) {
+    return res.status(400).json({ error: 'Category is required' });
+  }
+
+  const targetCategory = category.trim();
+
+  try {
+    if (Array.isArray(contactIds) && contactIds.length > 0) {
+      const result = await updateContactsCategoryBatch(contactIds.map(Number), req.user.id, targetCategory);
+      return res.json({ message: `${result.updated} contact(s) moved to category "${targetCategory}"`, result });
+    } else if (contactId) {
+      const contact = await updateContactCategory(parseInt(contactId), req.user.id, targetCategory);
+      if (!contact) return res.status(404).json({ error: 'Contact not found' });
+      return res.json({ message: `Contact moved to category "${targetCategory}"`, contact });
+    } else {
+      return res.status(400).json({ error: 'contactId or contactIds array is required' });
+    }
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -388,10 +450,12 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
     const nameKeys = ['name', 'fullname', 'username', 'customername', 'contactname'];
     const phoneKeys = ['phone', 'mobile', 'number', 'contact', 'phonenumber', 'mobilenumber', 'recipient', 'to'];
     const shopKeys = ['shop', 'shopname', 'store', 'storename', 'business', 'businessname'];
+    const categoryKeys = ['category', 'contactcategory', 'cat', 'group', 'tag', 'type'];
 
     const nameKey = keys.find(k => nameKeys.includes(k.toLowerCase().replace(/[\s_-]/g, '')));
     const phoneKey = keys.find(k => phoneKeys.includes(k.toLowerCase().replace(/[\s_-]/g, '')));
     const shopKey = keys.find(k => shopKeys.includes(k.toLowerCase().replace(/[\s_-]/g, '')));
+    const categoryKey = keys.find(k => categoryKeys.includes(k.toLowerCase().replace(/[\s_-]/g, '')));
 
     if (!phoneKey) {
       return res.status(400).json({ error: 'Could not find a phone number column in the Excel file (e.g. phone, mobile, number)' });
@@ -405,12 +469,14 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
 
       const name = String(row[nameKey] || phone).trim();
       const shopName = shopKey ? String(row[shopKey] || '').trim() : '';
+      const category = categoryKey ? String(row[categoryKey] || 'General').trim() : 'General';
 
       contactsToInsert.push({
         user_id: req.user.id,
         name,
         mobile: phone,
         shop_name: shopName,
+        category: category || 'General',
         is_excluded: 0
       });
     }
@@ -441,16 +507,17 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
 router.get('/contacts/sample-excel', async (req, res) => {
   try {
     const sampleContacts = [
-      { Name: 'John Doe', Mobile: '919876543210', ShopName: 'Acme Traders' },
-      { Name: 'Jane Smith', Mobile: '919876543211', ShopName: 'Smith Enterprises' },
-      { Name: 'Rahul Sharma', Mobile: '919123456789', ShopName: 'Sharma Electronics' }
+      { Name: 'John Doe', Mobile: '919876543210', ShopName: 'Acme Traders', Category: 'Customer' },
+      { Name: 'Jane Smith', Mobile: '919876543211', ShopName: 'Smith Enterprises', Category: 'VIP' },
+      { Name: 'Rahul Sharma', Mobile: '919123456789', ShopName: 'Sharma Electronics', Category: 'Wholesale' }
     ];
 
     const worksheet = xlsx.utils.json_to_sheet(sampleContacts);
     worksheet['!cols'] = [
       { wch: 20 },
       { wch: 18 },
-      { wch: 25 }
+      { wch: 25 },
+      { wch: 18 }
     ];
 
     const workbook = xlsx.utils.book_new();
@@ -473,12 +540,13 @@ router.get('/contacts/export-excel', async (req, res) => {
       Name: c.name || '',
       Mobile: c.mobile || '',
       ShopName: c.shop_name || '',
-      Excluded: c.excluded ? 'Yes' : 'No',
+      Category: c.category || 'General',
+      Excluded: c.is_excluded ? 'Yes' : 'No',
       CreatedAt: c.created_at || ''
     }));
 
-    const worksheet = xlsx.utils.json_to_sheet(data.length ? data : [{ Name: '', Mobile: '', ShopName: '' }]);
-    worksheet['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 10 }, { wch: 20 }];
+    const worksheet = xlsx.utils.json_to_sheet(data.length ? data : [{ Name: '', Mobile: '', ShopName: '', Category: '' }]);
+    worksheet['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 18 }, { wch: 10 }, { wch: 20 }];
 
     const workbook = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(workbook, worksheet, 'Contacts');
@@ -647,6 +715,11 @@ router.post('/templates/send-bulk', async (req, res) => {
     // Filter out excluded contacts
     contacts = contacts.filter(c => c.is_excluded !== 1);
 
+    // If category provided, filter down to that category
+    if (req.body.category && req.body.category !== 'ALL') {
+      contacts = contacts.filter(c => (c.category || 'General').toLowerCase() === String(req.body.category).toLowerCase());
+    }
+
     // If specific contact IDs provided, filter down to them
     if (Array.isArray(contactIds) && contactIds.length > 0) {
       const idSet = new Set(contactIds.map(id => parseInt(id)));
@@ -770,6 +843,19 @@ router.get('/campaigns/:id/recipients', async (req, res) => {
   try {
     const recipients = await getCampaignRecipients(req.params.id);
     return res.json({ recipients });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/campaigns/:id', async (req, res) => {
+  try {
+    const campaign = await getCampaignById(req.params.id);
+    if (!campaign || campaign.user_id !== req.user.id) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    const recipients = await getCampaignRecipients(req.params.id);
+    return res.json({ campaign, recipients });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

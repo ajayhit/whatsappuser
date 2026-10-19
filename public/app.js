@@ -259,6 +259,7 @@
       banks: [],
       contacts: [],
       contactSearchQuery: '',
+      contactCategoryFilter: 'ALL',
       contactsPage: 1,
       contactsPageSize: 25,
       contactGroups: [],
@@ -1967,9 +1968,29 @@
               </div>
 
               <div style="margin-bottom:1rem; width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-                <input type="text" id="contactSearchInput" placeholder="Search contacts by name, phone or shop..." oninput="filterContactsList(this.value)" style="padding:0.6rem;font-size:0.85rem; max-width:350px;">
-                <div id="selectedContactsCount" style="font-size:0.85rem; color:#a5b4fc; font-weight:600;">
-                  Selected: <span id="contactCheckCount">0</span> contact(s)
+                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; flex:1;">
+                  <input type="text" id="contactSearchInput" placeholder="Search contacts by name, phone, shop or category..." oninput="filterContactsList(this.value)" style="padding:0.6rem;font-size:0.85rem; min-width:240px; max-width:340px;">
+                  
+                  <div style="display:flex; align-items:center; gap:0.4rem;">
+                    <label style="font-size:0.8rem; color:var(--text-muted); margin:0;">Category:</label>
+                    <select id="contactCategoryFilterSelect" onchange="changeContactCategoryFilter(this.value)" style="padding:0.5rem 0.75rem; font-size:0.82rem; background:#1e293b; color:#fff; border:1px solid var(--glass-border); border-radius:8px; cursor:pointer;">
+                      ${renderCategoryFilterOptions()}
+                    </select>
+                  </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                  <div id="batchCategoryActionBox" style="display:${(state.selectedContactIds || []).length > 0 ? 'flex' : 'none'}; align-items:center; gap:0.5rem; background:rgba(99,102,241,0.12); padding:0.35rem 0.6rem; border-radius:8px; border:1px solid rgba(99,102,241,0.25);">
+                    <span style="font-size:0.8rem; color:#c7d2fe; font-weight:600;">Move To:</span>
+                    <select id="batchCategorySelect" style="padding:0.3rem 0.5rem; font-size:0.8rem; background:#0f172a; color:#fff; border:1px solid rgba(255,255,255,0.2); border-radius:6px;">
+                      ${getAllAvailableCategories().map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                    </select>
+                    <button onclick="applyBatchCategorySwitch()" style="padding:0.3rem 0.7rem; font-size:0.8rem; background:linear-gradient(135deg, #10b981, #059669); border-radius:6px; margin:0;" title="Move selected contacts to this category">Apply</button>
+                  </div>
+
+                  <div id="selectedContactsCount" style="font-size:0.85rem; color:#a5b4fc; font-weight:600;">
+                    Selected: <span id="contactCheckCount">${(state.selectedContactIds || []).length}</span> contact(s)
+                  </div>
                 </div>
               </div>
 
@@ -1981,6 +2002,7 @@
                       <th>Name</th>
                       <th>Mobile Phone</th>
                       <th>Shop Name</th>
+                      <th>Category</th>
                       <th>Date Added</th>
                       <th>Block List (Exclude)</th>
                       <th>Action</th>
@@ -5960,20 +5982,6 @@
       });
     }
 
-    function copyUserApiToken() {
-      const tokenDisplay = document.getElementById('userApiTokenValue');
-      if (!tokenDisplay) return;
-      navigator.clipboard.writeText(tokenDisplay.textContent.trim()).then(() => {
-        const btn = document.getElementById('copyUserApiTokenBtn');
-        if (btn) {
-          btn.textContent = '✅ Copied!';
-          setTimeout(() => btn.textContent = '📋 Copy Token', 2000);
-        }
-      }).catch(() => {
-        alert('Copy failed. Please select and copy the token manually.');
-      });
-    }
-
     async function handleAdminCreateUser(e) {
       e.preventDefault();
       const name = document.getElementById('adminNewName').value.trim();
@@ -7319,17 +7327,73 @@
     // ─── CRM rendering lists & items functions ───────────────────────────────
     function getFilteredContacts() {
       const q = (state.contactSearchQuery || '').trim().toLowerCase();
+      const catFilter = state.contactCategoryFilter || 'ALL';
       let list = state.contacts || [];
+
+      if (catFilter !== 'ALL') {
+        list = list.filter(c => (c.category || 'General').toLowerCase() === catFilter.toLowerCase());
+      }
 
       if (q) {
         list = list.filter(c => {
           const name = (c.name || '').toLowerCase();
           const mobile = (c.mobile || '').toLowerCase();
           const shop = (c.shop_name || '').toLowerCase();
-          return name.includes(q) || mobile.includes(q) || shop.includes(q);
+          const cat = (c.category || 'General').toLowerCase();
+          return name.includes(q) || mobile.includes(q) || shop.includes(q) || cat.includes(q);
         });
       }
       return list;
+    }
+
+    function getCategoryMeta(cat) {
+      const clean = (cat || 'General').trim();
+      const lower = clean.toLowerCase();
+      if (lower === 'customer' || lower === 'customers') {
+        return { icon: '💼', color: '#60a5fa', bg: 'rgba(59,130,246,0.15)', border: 'rgba(59,130,246,0.35)' };
+      }
+      if (lower === 'vip') {
+        return { icon: '⭐', color: '#fbbf24', bg: 'rgba(245,158,11,0.18)', border: 'rgba(245,158,11,0.45)' };
+      }
+      if (lower === 'lead' || lower === 'leads') {
+        return { icon: '🎯', color: '#34d399', bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.35)' };
+      }
+      if (lower === 'wholesale') {
+        return { icon: '📦', color: '#a78bfa', bg: 'rgba(139,92,246,0.15)', border: 'rgba(139,92,246,0.35)' };
+      }
+      if (lower === 'retail') {
+        return { icon: '🛍️', color: '#f472b6', bg: 'rgba(236,72,153,0.15)', border: 'rgba(236,72,153,0.35)' };
+      }
+      if (lower === 'supplier' || lower === 'suppliers') {
+        return { icon: '🏭', color: '#fb923c', bg: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.35)' };
+      }
+      return { icon: '🏷️', color: '#94a3b8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)' };
+    }
+
+    function getAllAvailableCategories() {
+      const standard = ['General', 'Customer', 'VIP', 'Lead', 'Wholesale', 'Retail', 'Supplier'];
+      const dynamic = (state.contacts || []).map(c => (c.category || 'General').trim()).filter(Boolean);
+      return Array.from(new Set([...standard, ...dynamic]));
+    }
+
+    function renderCategoryFilterOptions() {
+      const contacts = state.contacts || [];
+      const totalCount = contacts.length;
+      const categories = getAllAvailableCategories();
+      const current = state.contactCategoryFilter || 'ALL';
+
+      let html = `<option value="ALL" ${current === 'ALL' ? 'selected' : ''}>All Categories (${totalCount})</option>`;
+      categories.forEach(cat => {
+        const count = contacts.filter(c => (c.category || 'General').toLowerCase() === cat.toLowerCase()).length;
+        html += `<option value="${cat}" ${current.toLowerCase() === cat.toLowerCase() ? 'selected' : ''}>${cat} (${count})</option>`;
+      });
+      return html;
+    }
+
+    function changeContactCategoryFilter(cat) {
+      state.contactCategoryFilter = cat || 'ALL';
+      state.contactsPage = 1;
+      refreshContactsTable();
     }
 
     function getPaginatedContacts() {
@@ -7364,9 +7428,13 @@
       if (paginated.total === 0) {
         const msg = state.contactSearchQuery 
           ? `No contacts match "${state.contactSearchQuery}".` 
-          : 'No contacts found. Click Import or Add Contact to get started.';
-        return `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">${msg}</td></tr>`;
+          : (state.contactCategoryFilter && state.contactCategoryFilter !== 'ALL'
+              ? `No contacts in category "${state.contactCategoryFilter}".`
+              : 'No contacts found. Click Import or Add Contact to get started.');
+        return `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem;">${msg}</td></tr>`;
       }
+
+      const availableCategories = getAllAvailableCategories();
 
       return list.map(c => {
         const isExcluded = c.is_excluded === 1;
@@ -7374,6 +7442,8 @@
         const btnColor = isExcluded ? 'var(--error-color)' : 'var(--accent-color)';
         const isChecked = state.selectedContactIds.includes(c.id);
         const createdDate = c.created_at ? new Date(c.created_at).toLocaleDateString() : '-';
+        const cat = c.category || 'General';
+        const meta = getCategoryMeta(cat);
 
         return `
           <tr>
@@ -7381,6 +7451,18 @@
             <td><strong>${c.name || 'Unnamed'}</strong></td>
             <td><span style="font-family:monospace;color:#93c5fd;">${c.mobile}</span></td>
             <td>${c.shop_name || '-'}</td>
+            <td>
+              <div style="display:inline-flex; align-items:center; gap:0.4rem; flex-wrap:nowrap;">
+                <span style="display:inline-flex; align-items:center; gap:0.3rem; padding:0.2rem 0.55rem; border-radius:9999px; font-size:0.75rem; font-weight:700; background:${meta.bg}; color:${meta.color}; border:1px solid ${meta.border}; white-space:nowrap;">
+                  <span>${meta.icon}</span> ${cat}
+                </span>
+                <select onchange="handleRowCategorySwitch(${c.id}, this.value)" title="Switch contact to another category" style="padding:0.2rem 0.35rem; font-size:0.72rem; background:rgba(30,41,59,0.95); color:#cbd5e1; border:1px solid rgba(255,255,255,0.18); border-radius:6px; cursor:pointer;">
+                  <option value="" disabled selected>Switch ▾</option>
+                  ${availableCategories.map(catOpt => `<option value="${catOpt}" ${catOpt.toLowerCase() === cat.toLowerCase() ? 'disabled' : ''}>${catOpt}${catOpt.toLowerCase() === cat.toLowerCase() ? ' (Current)' : ''}</option>`).join('')}
+                  <option value="__NEW__">➕ New Category...</option>
+                </select>
+              </div>
+            </td>
             <td style="font-size:0.8rem;color:var(--text-muted);">${createdDate}</td>
             <td>
               <button onclick="toggleExcludeContact(${c.id}, ${!isExcluded})" style="background:${btnColor};padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;min-width:120px;">
@@ -7389,7 +7471,8 @@
             </td>
             <td>
               <div style="display:flex; gap:0.3rem;">
-                <button onclick="openBroadcastTemplateModal(${c.id})" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;background:#6366f1;">✉️ Send Msg</button>
+                <button onclick="openBroadcastTemplateModal(${c.id})" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;background:#6366f1;" title="Send Message">✉️ Send</button>
+                <button onclick="openEditContactModal(${c.id})" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;background:rgba(255,255,255,0.08);border:1px solid var(--glass-border);" title="Edit Contact">✏️ Edit</button>
                 <button onclick="deleteContactEntry(${c.id})" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.75rem;margin:0;" title="Delete Contact">🗑️</button>
               </div>
             </td>
@@ -7851,7 +7934,39 @@
     }
 
     // ─── CRM Contacts handlers ───────────────────────────────────────────────
+    function populateCategoryDropdown(selectId, selectedVal) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      const categories = getAllAvailableCategories();
+      const current = selectedVal || 'General';
+      let html = '';
+      categories.forEach(cat => {
+        html += `<option value="${cat}" ${cat.toLowerCase() === current.toLowerCase() ? 'selected' : ''}>${cat}</option>`;
+      });
+      html += `<option value="__NEW__">➕ Add Custom Category...</option>`;
+      select.innerHTML = html;
+    }
+
+    function handleContactCategorySelectChange(selectId, customInputId) {
+      const select = document.getElementById(selectId);
+      const customInput = document.getElementById(customInputId);
+      if (!select || !customInput) return;
+      if (select.value === '__NEW__') {
+        customInput.style.display = 'block';
+        customInput.focus();
+      } else {
+        customInput.style.display = 'none';
+        customInput.value = '';
+      }
+    }
+
     function showAddContactModal() {
+      populateCategoryDropdown('modalContactCategory', 'General');
+      const customInput = document.getElementById('modalContactCategoryCustom');
+      if (customInput) {
+        customInput.style.display = 'none';
+        customInput.value = '';
+      }
       document.getElementById('addContactModal').style.display = 'flex';
     }
     function hideAddContactModal() {
@@ -7863,6 +7978,12 @@
       const name = document.getElementById('modalContactName').value.trim();
       const mobile = document.getElementById('modalContactPhone').value.trim();
       const shop_name = document.getElementById('modalContactShop').value.trim();
+      const catSelect = document.getElementById('modalContactCategory');
+      const catCustom = document.getElementById('modalContactCategoryCustom');
+      let category = (catSelect ? catSelect.value : 'General');
+      if (category === '__NEW__') {
+        category = (catCustom ? catCustom.value.trim() : '') || 'General';
+      }
 
       try {
         const res = await fetch('/api/crm/contacts', {
@@ -7871,7 +7992,7 @@
             'Authorization': `Bearer ${state.token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ name, mobile, shop_name })
+          body: JSON.stringify({ name, mobile, shop_name, category })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
@@ -7879,6 +8000,148 @@
         alert(data.message || 'Contact added successfully');
         hideAddContactModal();
         fetchContacts();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function openEditContactModal(contactId) {
+      const contact = (state.contacts || []).find(c => c.id === contactId);
+      if (!contact) return alert('Contact not found');
+
+      document.getElementById('editModalContactId').value = contact.id;
+      document.getElementById('editModalContactName').value = contact.name || '';
+      document.getElementById('editModalContactPhone').value = contact.mobile || '';
+      document.getElementById('editModalContactShop').value = contact.shop_name || '';
+
+      const currentCat = contact.category || 'General';
+      populateCategoryDropdown('editModalContactCategory', currentCat);
+      const customInput = document.getElementById('editModalContactCategoryCustom');
+      if (customInput) {
+        customInput.style.display = 'none';
+        customInput.value = '';
+      }
+
+      document.getElementById('editContactModal').style.display = 'flex';
+    }
+
+    function hideEditContactModal() {
+      const modal = document.getElementById('editContactModal');
+      if (modal) modal.style.display = 'none';
+      const form = document.getElementById('editContactModalForm');
+      if (form) form.reset();
+    }
+
+    async function handleEditContactModalSubmit(e) {
+      e.preventDefault();
+      const contactId = document.getElementById('editModalContactId').value;
+      const name = document.getElementById('editModalContactName').value.trim();
+      const mobile = document.getElementById('editModalContactPhone').value.trim();
+      const shop_name = document.getElementById('editModalContactShop').value.trim();
+      const catSelect = document.getElementById('editModalContactCategory');
+      const catCustom = document.getElementById('editModalContactCategoryCustom');
+      let category = (catSelect ? catSelect.value : 'General');
+      if (category === '__NEW__') {
+        category = (catCustom ? catCustom.value.trim() : '') || 'General';
+      }
+
+      try {
+        const res = await fetch(`/api/crm/contacts/${contactId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, mobile, shop_name, category })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        const idx = (state.contacts || []).findIndex(c => c.id === parseInt(contactId));
+        if (idx !== -1 && data.contact) {
+          state.contacts[idx] = data.contact;
+        }
+
+        hideEditContactModal();
+        refreshContactsTable();
+        alert('Contact updated successfully');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function switchContactCategory(contactId, newCategory) {
+      if (!newCategory || !newCategory.trim()) return;
+      const cat = newCategory.trim();
+      try {
+        const res = await fetch('/api/crm/contacts/switch-category', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ contactId, category: cat })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        const contact = (state.contacts || []).find(c => c.id === contactId);
+        if (contact) {
+          contact.category = cat;
+        }
+        refreshContactsTable();
+      } catch (err) {
+        alert('Failed to switch category: ' + err.message);
+      }
+    }
+
+    function handleRowCategorySwitch(contactId, selectedValue) {
+      if (selectedValue === '__NEW__') {
+        const customCat = prompt('Enter new category name:');
+        if (customCat && customCat.trim()) {
+          switchContactCategory(contactId, customCat.trim());
+        } else {
+          refreshContactsTable();
+        }
+      } else if (selectedValue) {
+        switchContactCategory(contactId, selectedValue);
+      }
+    }
+
+    async function applyBatchCategorySwitch() {
+      const selectedIds = state.selectedContactIds || [];
+      if (selectedIds.length === 0) {
+        return alert('Please select at least one contact first.');
+      }
+      const selectEl = document.getElementById('batchCategorySelect');
+      const targetCategory = selectEl ? selectEl.value : '';
+      if (!targetCategory) {
+        return alert('Please select a category to switch to.');
+      }
+
+      try {
+        const res = await fetch('/api/crm/contacts/switch-category', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ contactIds: selectedIds, category: targetCategory })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        const idSet = new Set(selectedIds);
+        (state.contacts || []).forEach(c => {
+          if (idSet.has(c.id)) {
+            c.category = targetCategory;
+          }
+        });
+
+        state.selectedContactIds = [];
+        updateContactCheckCount();
+        refreshContactsTable();
+        alert(data.message || `Switched ${selectedIds.length} contact(s) to "${targetCategory}"`);
       } catch (err) {
         alert(err.message);
       }
@@ -8247,6 +8510,16 @@
       if (pagin) {
         pagin.innerHTML = renderContactsPaginationBar();
       }
+      const filterSelect = document.getElementById('contactCategoryFilterSelect');
+      if (filterSelect) {
+        const curVal = state.contactCategoryFilter || 'ALL';
+        filterSelect.innerHTML = renderCategoryFilterOptions();
+        filterSelect.value = curVal;
+      }
+      const batchSelect = document.getElementById('batchCategorySelect');
+      if (batchSelect) {
+        batchSelect.innerHTML = getAllAvailableCategories().map(cat => `<option value="${cat}">${cat}</option>`).join('');
+      }
       updateSelectAllContactsCheckbox();
     }
 
@@ -8297,9 +8570,14 @@
     }
 
     function updateContactCheckCount() {
+      const count = (state.selectedContactIds || []).length;
       const countEl = document.getElementById('contactCheckCount');
       if (countEl) {
-        countEl.innerText = (state.selectedContactIds || []).length;
+        countEl.innerText = count;
+      }
+      const batchBox = document.getElementById('batchCategoryActionBox');
+      if (batchBox) {
+        batchBox.style.display = count > 0 ? 'flex' : 'none';
       }
     }
 
@@ -8665,56 +8943,40 @@
       }
     }
 
-    // ─── Contacts selection & broadcast handlers ─────────────────────────────
-    function toggleContactCheck(contactId, checked) {
-      const id = parseInt(contactId);
-      if (checked) {
-        if (!state.selectedContactIds.includes(id)) state.selectedContactIds.push(id);
-      } else {
-        state.selectedContactIds = state.selectedContactIds.filter(x => x !== id);
-      }
-      updateContactCheckUI();
-    }
-
-    function toggleSelectAllContacts(checked) {
-      const visibleRows = document.querySelectorAll('#contactsTableBody tr');
-      const ids = [];
-      visibleRows.forEach(row => {
-        const check = row.querySelector('input[type="checkbox"]');
-        if (check && check.value) {
-          check.checked = checked;
-          ids.push(parseInt(check.value));
-        }
-      });
-
-      if (checked) {
-        const set = new Set([...state.selectedContactIds, ...ids]);
-        state.selectedContactIds = Array.from(set);
-      } else {
-        const removeSet = new Set(ids);
-        state.selectedContactIds = state.selectedContactIds.filter(x => !removeSet.has(x));
-      }
-      updateContactCheckUI();
-    }
-
-    function updateContactCheckUI() {
-      const el = document.getElementById('contactCheckCount');
-      if (el) el.innerText = state.selectedContactIds.length;
-    }
-
     function openBroadcastTemplateModal(singleContactId = null, preselectTemplateId = null) {
       const modal = document.getElementById('broadcastTemplateModal');
       if (!modal) return;
 
       if (singleContactId) {
         state.selectedContactIds = [parseInt(singleContactId)];
-        updateContactCheckUI();
+        updateContactCheckCount();
       }
 
       // Populate template dropdown
       const select = document.getElementById('broadcastTemplateSelect');
-      select.innerHTML = '<option value="">-- Choose Saved Template (Optional) --</option>' +
-        (state.templates || []).map(t => `<option value="${t.id}" ${preselectTemplateId === t.id ? 'selected' : ''}>${t.title} (${t.category})</option>`).join('');
+      if (select) {
+        select.innerHTML = '<option value="">-- Choose Saved Template (Optional) --</option>' +
+          (state.templates || []).map(t => `<option value="${t.id}" ${preselectTemplateId === t.id ? 'selected' : ''}>${t.title} (${t.category})</option>`).join('');
+      }
+
+      // Populate categories dropdown for category-wise targeting
+      const catSelect = document.getElementById('broadcastCategorySelect');
+      if (catSelect) {
+        const categories = getAllAvailableCategories();
+        const activeContacts = (state.contacts || []).filter(c => c.is_excluded !== 1);
+        catSelect.innerHTML = categories.map(cat => {
+          const count = activeContacts.filter(c => (c.category || 'General').toLowerCase() === cat.toLowerCase()).length;
+          return `<option value="${cat}">${cat} (${count})</option>`;
+        }).join('');
+      }
+
+      // Initialize Target Audience Mode
+      const targetModeSelect = document.getElementById('broadcastTargetMode');
+      const initialMode = (state.selectedContactIds.length > 0) ? 'selected' : 'all';
+      if (targetModeSelect) {
+        targetModeSelect.value = initialMode;
+      }
+      handleBroadcastTargetModeChange(initialMode);
 
       if (preselectTemplateId) {
         const t = (state.templates || []).find(x => x.id === parseInt(preselectTemplateId));
@@ -8723,16 +8985,34 @@
         document.getElementById('broadcastMsgContent').value = '';
       }
 
-      // Recipient count label
-      const countLabel = document.getElementById('broadcastRecipientCountLabel');
-      const activeCount = (state.contacts || []).filter(c => c.is_excluded !== 1).length;
-      if (state.selectedContactIds.length > 0) {
-        countLabel.innerText = `${state.selectedContactIds.length} Selected Contact(s)`;
-      } else {
-        countLabel.innerText = `All Active Contacts (${activeCount})`;
-      }
-
       modal.style.display = 'flex';
+    }
+
+    function handleBroadcastTargetModeChange(mode) {
+      const catSelect = document.getElementById('broadcastCategorySelect');
+      const countLabel = document.getElementById('broadcastRecipientCountLabel');
+      const activeContacts = (state.contacts || []).filter(c => c.is_excluded !== 1);
+
+      if (mode === 'category') {
+        if (catSelect) catSelect.style.display = 'block';
+        const selectedCat = catSelect ? catSelect.value : 'General';
+        const catCount = activeContacts.filter(c => (c.category || 'General').toLowerCase() === selectedCat.toLowerCase()).length;
+        if (countLabel) countLabel.innerText = `${selectedCat} Category (${catCount} Contact${catCount !== 1 ? 's' : ''})`;
+      } else if (mode === 'selected') {
+        if (catSelect) catSelect.style.display = 'none';
+        const count = (state.selectedContactIds || []).length;
+        if (countLabel) countLabel.innerText = `${count} Selected Contact${count !== 1 ? 's' : ''}`;
+      } else {
+        if (catSelect) catSelect.style.display = 'none';
+        if (countLabel) countLabel.innerText = `All Active Contacts (${activeContacts.length})`;
+      }
+    }
+
+    function handleBroadcastCategorySelectChange(cat) {
+      const countLabel = document.getElementById('broadcastRecipientCountLabel');
+      const activeContacts = (state.contacts || []).filter(c => c.is_excluded !== 1);
+      const catCount = activeContacts.filter(c => (c.category || 'General').toLowerCase() === cat.toLowerCase()).length;
+      if (countLabel) countLabel.innerText = `${cat} Category (${catCount} Contact${catCount !== 1 ? 's' : ''})`;
     }
 
     function hideBroadcastTemplateModal() {
@@ -8749,6 +9029,7 @@
       e.preventDefault();
       const content = document.getElementById('broadcastMsgContent').value.trim();
       const delayMs = parseInt(document.getElementById('broadcastDelay').value || 1500);
+      const targetMode = document.getElementById('broadcastTargetMode')?.value || 'all';
 
       if (!content) {
         alert('Please enter or select message content');
@@ -8761,10 +9042,22 @@
 
       try {
         const body = {
-          contactIds: state.selectedContactIds.length > 0 ? state.selectedContactIds : null,
           content,
           delayMs
         };
+
+        if (targetMode === 'category') {
+          body.category = document.getElementById('broadcastCategorySelect')?.value || 'ALL';
+          body.contactIds = null;
+        } else if (targetMode === 'selected') {
+          if (!state.selectedContactIds || state.selectedContactIds.length === 0) {
+            throw new Error('No contacts are currently selected. Please select contacts first or choose another target.');
+          }
+          body.contactIds = state.selectedContactIds;
+        } else {
+          body.contactIds = null;
+          body.category = 'ALL';
+        }
 
         const res = await fetch('/api/crm/templates/send-bulk', {
           method: 'POST',
@@ -8876,10 +9169,6 @@
       }
     }
 
-    function clearConsole(consoleId) {
-      const el = document.getElementById(consoleId);
-      if (el) el.innerHTML = '<div class="console-line system">[System] Console logs cleared.</div>';
-    }
 
     window.addEventListener('popstate', () => {
       if (!state.token) {
@@ -8976,8 +9265,9 @@
             <div style="font-size:1.1rem;font-weight:600;display:flex;align-items:center;gap:0.5rem;">${c.name} ${statusBadge}</div>
             <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">Scheduled: ${scheduledDate}</div>
           </div>
-          <div style="display:flex;gap:0.5rem;align-items:center;">
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
             ${actionBtn}
+            <button onclick="reuseCampaignModal(${c.id})" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:0.25rem 0.65rem;font-size:0.75rem;width:auto;border-radius:6px;display:inline-flex;align-items:center;gap:0.3rem;" title="Reuse or re-send this campaign with same message or new recipients">🔁 Reuse Campaign</button>
             <button onclick="openCampaignRecipientsModal(${c.id})" style="background:rgba(255,255,255,0.1);padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;">View Status</button>
             <button onclick="deleteCampaignItem(${c.id})" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:0.25rem 0.75rem;font-size:0.75rem;width:auto;cursor:pointer;" title="Delete Campaign">🗑️ Delete</button>
           </div>
@@ -9000,6 +9290,9 @@
 
     function openCreateCampaignModal() {
       document.getElementById('createCampaignModal').style.display = 'flex';
+      const notice = document.getElementById('reuseCampaignNotice');
+      if (notice) notice.style.display = 'none';
+
       renderCampaignContactsSelector();
 
       // Populate templates dropdown in campaign modal
@@ -9012,7 +9305,87 @@
 
     function hideCreateCampaignModal() {
       document.getElementById('createCampaignModal').style.display = 'none';
+      const notice = document.getElementById('reuseCampaignNotice');
+      if (notice) notice.style.display = 'none';
       document.getElementById('createCampaignForm').reset();
+    }
+
+    async function reuseCampaignModal(campaignId) {
+      const campaign = (state.campaigns || []).find(c => c.id === campaignId);
+      if (!campaign) return alert('Campaign not found');
+
+      openCreateCampaignModal();
+
+      document.getElementById('campaignName').value = `${campaign.name} (Resent)`;
+      document.getElementById('campaignMsgContent').value = campaign.message_text || '';
+
+      const notice = document.getElementById('reuseCampaignNotice');
+      if (notice) {
+        notice.style.display = 'block';
+        notice.innerHTML = `
+          <div style="background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.35); padding:0.75rem 1rem; border-radius:10px; font-size:0.82rem; color:#c7d2fe; display:flex; flex-direction:column; gap:0.5rem; margin-bottom:0.75rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+              <div>🔁 <strong>Reusing Sent Campaign:</strong> "${campaign.name}"</div>
+              <button type="button" onclick="document.getElementById('reuseCampaignNotice').style.display='none'" style="background:none;border:none;color:#94a3b8;font-size:1rem;cursor:pointer;padding:0;width:auto;">✕</button>
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">Quick-select recipients for this re-send:</div>
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+              <button type="button" onclick="selectPreviousCampaignRecipients(${campaign.id})" style="background:rgba(99,102,241,0.3); border:1px solid rgba(99,102,241,0.5); color:#e0e7ff; font-size:0.75rem; padding:0.25rem 0.65rem; border-radius:6px; cursor:pointer; width:auto;">👥 Same Recipients</button>
+              <button type="button" onclick="selectPreviousCampaignFailedOnly(${campaign.id})" style="background:rgba(239,68,68,0.25); border:1px solid rgba(239,68,68,0.5); color:#fca5a5; font-size:0.75rem; padding:0.25rem 0.65rem; border-radius:6px; cursor:pointer; width:auto;">❌ Only Failed Recipients</button>
+              <button type="button" onclick="selectAllCampaignContacts(true)" style="background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); color:#6ee7b7; font-size:0.75rem; padding:0.25rem 0.65rem; border-radius:6px; cursor:pointer; width:auto;">🌐 All Active Contacts</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    async function selectPreviousCampaignRecipients(campaignId) {
+      try {
+        const res = await fetch(`/api/crm/campaigns/${campaignId}/recipients`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        const prevPhones = new Set((data.recipients || []).map(r => String(r.mobile).replace(/\D/g, '')));
+        const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
+        checkboxes.forEach(cb => {
+          const contact = (state.contacts || []).find(c => c.id == cb.value);
+          const phone = contact ? String(contact.mobile).replace(/\D/g, '') : '';
+          cb.checked = prevPhones.has(phone);
+        });
+        updateCampaignSelectedCount();
+        alert(`Selected ${data.recipients?.length || 0} previous recipient(s)`);
+      } catch (err) {
+        alert('Failed to load previous recipients: ' + err.message);
+      }
+    }
+
+    async function selectPreviousCampaignFailedOnly(campaignId) {
+      try {
+        const res = await fetch(`/api/crm/campaigns/${campaignId}/recipients`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        const failedList = (data.recipients || []).filter(r => r.status === 'failed');
+        if (failedList.length === 0) {
+          return alert('Great news! No failed recipients in this campaign. All messages were delivered successfully.');
+        }
+
+        const failedPhones = new Set(failedList.map(r => String(r.mobile).replace(/\D/g, '')));
+        const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
+        checkboxes.forEach(cb => {
+          const contact = (state.contacts || []).find(c => c.id == cb.value);
+          const phone = contact ? String(contact.mobile).replace(/\D/g, '') : '';
+          cb.checked = failedPhones.has(phone);
+        });
+        updateCampaignSelectedCount();
+        alert(`Selected ${failedList.length} failed recipient(s) for retry`);
+      } catch (err) {
+        alert('Failed to load failed recipients: ' + err.message);
+      }
     }
 
     function handleCampaignTemplateSelect(templateId) {
@@ -9029,26 +9402,9 @@
       
       const countEl = document.getElementById('campaignSelectedCount');
       const totalEl = document.getElementById('campaignTotalCount');
-      const selectAllCb = document.getElementById('campaignSelectAllCheckbox');
       
       if (countEl) countEl.innerText = checkedCbs.length;
       if (totalEl) totalEl.innerText = allCbs.length;
-      
-      if (selectAllCb) {
-        if (allCbs.length === 0) {
-          selectAllCb.checked = false;
-          selectAllCb.indeterminate = false;
-        } else if (checkedCbs.length === allCbs.length) {
-          selectAllCb.checked = true;
-          selectAllCb.indeterminate = false;
-        } else if (checkedCbs.length > 0) {
-          selectAllCb.checked = false;
-          selectAllCb.indeterminate = true;
-        } else {
-          selectAllCb.checked = false;
-          selectAllCb.indeterminate = false;
-        }
-      }
     }
 
     function renderCampaignContactsSelector() {
@@ -9056,34 +9412,80 @@
       const searchInput = document.getElementById('campaignContactSearchInput');
       if (searchInput) searchInput.value = '';
 
+      // Populate campaignCategorySelect
+      const catSelect = document.getElementById('campaignCategorySelect');
+      if (catSelect) {
+        const categories = getAllAvailableCategories();
+        let catOptions = `<option value="ALL">All Categories (${(state.contacts || []).length})</option>`;
+        categories.forEach(cat => {
+          const count = (state.contacts || []).filter(c => (c.category || 'General').toLowerCase() === cat.toLowerCase()).length;
+          catOptions += `<option value="${cat}">${cat} (${count})</option>`;
+        });
+        catSelect.innerHTML = catOptions;
+        catSelect.value = 'ALL';
+      }
+
       if (!state.contacts || state.contacts.length === 0) {
         container.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;">No contacts available. Please add or import contacts first.</div>`;
         updateCampaignSelectedCount();
         return;
       }
 
-      container.innerHTML = state.contacts.map(c => `
-        <label class="campaign-contact-item" data-search="${(c.name || '').toLowerCase()} ${(c.mobile || '').toLowerCase()} ${(c.shop_name || '').toLowerCase()}" style="display:flex;align-items:center;gap:0.5rem;background:rgba(255,255,255,0.03);padding:0.5rem;border-radius:6px;cursor:pointer;">
-          <input type="checkbox" name="campaignContact" value="${c.id}" checked style="width:auto;" onchange="updateCampaignSelectedCount()">
-          <div style="font-size:0.85rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;">
-            <div style="color:#fff;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name || 'Unnamed'}</div>
-            <div style="color:var(--text-muted);font-size:0.75rem;font-family:monospace;">${c.mobile}</div>
-          </div>
-        </label>
-      `).join('');
+      container.innerHTML = state.contacts.map(c => {
+        const cat = c.category || 'General';
+        const meta = getCategoryMeta(cat);
+        const searchData = `${(c.name || '').toLowerCase()} ${(c.mobile || '').toLowerCase()} ${(c.shop_name || '').toLowerCase()} ${cat.toLowerCase()}`;
+
+        return `
+          <label class="campaign-contact-item" data-category="${cat.toLowerCase()}" data-search="${searchData}" style="display:flex;align-items:center;gap:0.5rem;background:rgba(255,255,255,0.03);padding:0.5rem;border-radius:6px;cursor:pointer;border:1px solid rgba(255,255,255,0.05);">
+            <input type="checkbox" name="campaignContact" value="${c.id}" checked style="width:auto;" onchange="updateCampaignSelectedCount()">
+            <div style="font-size:0.82rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;flex:1;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.3rem;">
+                <span style="color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name || 'Unnamed'}</span>
+                <span style="font-size:0.68rem;padding:0.08rem 0.35rem;border-radius:4px;font-weight:700;background:${meta.bg};color:${meta.color};border:1px solid ${meta.border};white-space:nowrap;">${meta.icon} ${cat}</span>
+              </div>
+              <div style="color:var(--text-muted);font-size:0.75rem;font-family:monospace;margin-top:0.15rem;">${c.mobile}</div>
+            </div>
+          </label>
+        `;
+      }).join('');
 
       updateCampaignSelectedCount();
     }
 
-    function toggleCampaignContactsSelectAll(checkbox) {
-      const isChecked = checkbox.checked;
-      const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
-      checkboxes.forEach(cb => {
-        const item = cb.closest('.campaign-contact-item');
-        if (!item || item.style.display !== 'none') {
-          cb.checked = isChecked;
+    function handleCampaignCategoryFilterChange(category) {
+      const cat = (category || 'ALL').toLowerCase();
+      const items = document.querySelectorAll('.campaign-contact-item');
+      items.forEach(item => {
+        const itemCat = (item.getAttribute('data-category') || 'general').toLowerCase();
+        if (cat === 'all' || itemCat === cat) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
         }
       });
+    }
+
+    function selectCampaignOnlyCategory() {
+      const select = document.getElementById('campaignCategorySelect');
+      const chosenCat = (select ? select.value : 'ALL').toLowerCase();
+      const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
+
+      checkboxes.forEach(cb => {
+        const item = cb.closest('.campaign-contact-item');
+        const itemCat = (item?.getAttribute('data-category') || 'general').toLowerCase();
+        if (chosenCat === 'all' || itemCat === chosenCat) {
+          cb.checked = true;
+        } else {
+          cb.checked = false;
+        }
+      });
+      updateCampaignSelectedCount();
+    }
+
+    function selectAllCampaignContacts(checked = true) {
+      const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
+      checkboxes.forEach(cb => cb.checked = checked);
       updateCampaignSelectedCount();
     }
 
@@ -9095,10 +9497,17 @@
 
     function filterCampaignContactsSelector(query) {
       const q = (query || '').trim().toLowerCase();
+      const catSelect = document.getElementById('campaignCategorySelect');
+      const chosenCat = (catSelect ? catSelect.value : 'ALL').toLowerCase();
       const items = document.querySelectorAll('.campaign-contact-item');
+
       items.forEach(item => {
         const text = item.getAttribute('data-search') || '';
-        if (!q || text.includes(q)) {
+        const itemCat = (item.getAttribute('data-category') || 'general').toLowerCase();
+        const matchesCategory = (chosenCat === 'all' || itemCat === chosenCat);
+        const matchesQuery = (!q || text.includes(q));
+
+        if (matchesCategory && matchesQuery) {
           item.style.display = 'flex';
         } else {
           item.style.display = 'none';
@@ -9402,27 +9811,6 @@
       </table>
     </div>
   `;
-    }
-
-    function exportContactsExcel() {
-      if (!state.contacts || state.contacts.length === 0) {
-        return alert('No contacts to export.');
-      }
-      // Build CSV
-      const headers = ['Name', 'Mobile', 'Shop Name', 'Email', 'Notes', 'Excluded'];
-      const rows = state.contacts.map(c => [
-        c.name || '', c.mobile || '', c.shop_name || '', c.email || '', c.notes || '', c.is_excluded ? 'Yes' : 'No'
-      ]);
-      const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `contacts_${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     }
 
     // ─── Automation Handlers (Birthday, Payment Reminder, Order Notify, Followup) ───
