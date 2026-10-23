@@ -16,10 +16,12 @@ import {
   getSessionFiles,
   deleteSessionFiles,
   getAllSessionUserIdsFromDb,
-  excludeContactByMobile,
   execute,
   invalidateCache,
-  saveInboxMessage
+  saveInboxMessage,
+  saveLidPhoneMap,
+  getPhoneByLid,
+  queryOne
 } from './db.js';
 
 
@@ -441,10 +443,47 @@ async function _doInitSession(userId) {
         }
         console.log(`[Message Received] from: ${msg.key.remoteJid}, isFromMe: ${msg.key.fromMe}`);
 
-        // Persist message into Live Two-Way Inbox
+        // Persist message into Live Two-Way Inbox with true mobile number resolution
         const remoteJid = msg.key?.remoteJid;
         if (remoteJid && !remoteJid.endsWith('@g.us') && remoteJid !== 'status@broadcast') {
-          const fromPhone = remoteJid.split('@')[0].replace(/[^0-9]/g, '');
+          // Check if real phone is in senderPn or participantPn
+          const pnJid = msg.key?.senderPn || msg.key?.participantPn || (msg.key?.participant && !msg.key.participant.endsWith('@lid') ? msg.key.participant : null);
+          let realPhone = pnJid ? pnJid.split('@')[0].replace(/\D/g, '') : null;
+          const rawDigits = remoteJid.split('@')[0].replace(/\D/g, '');
+
+          // If remoteJid was already a standard phone number
+          if (!remoteJid.endsWith('@lid') && rawDigits.length <= 12) {
+            realPhone = rawDigits;
+          }
+
+          // If remoteJid is a LID and we found realPhone, record the mapping
+          if (remoteJid.endsWith('@lid') && realPhone) {
+            saveLidPhoneMap(userId, rawDigits, realPhone, msg.pushName || null).catch(() => {});
+          }
+
+          // If still no realPhone, check if we have a saved mapping for this LID
+          if (!realPhone && remoteJid.endsWith('@lid')) {
+            realPhone = await getPhoneByLid(userId, rawDigits);
+          }
+
+          // If still no realPhone, check if msg.pushName matches a CRM contact
+          if (!realPhone && msg.pushName && msg.pushName.trim().length >= 3) {
+            try {
+              const matched = await queryOne('SELECT mobile, name FROM contacts WHERE user_id = ? AND LOWER(name) = LOWER(?) LIMIT 1', [userId, msg.pushName.trim()]);
+              if (matched && matched.mobile) {
+                const clean = matched.mobile.replace(/\D/g, '');
+                if (clean && clean.length <= 12) {
+                  realPhone = clean;
+                  if (remoteJid.endsWith('@lid')) {
+                    saveLidPhoneMap(userId, rawDigits, realPhone, matched.name).catch(() => {});
+                  }
+                }
+              }
+            } catch (matchErr) {}
+          }
+
+          const fromPhone = realPhone || rawDigits;
+
           const textBody = (
             msg.message?.conversation ||
             msg.message?.extendedTextMessage?.text ||
@@ -470,6 +509,49 @@ async function _doInitSession(userId) {
         await handleIncomingAutoResponse(userId, sock, msg);
       } catch (err) {
         console.error(`[AutoResponse Error] Failed for user ${userId}:`, err);
+      }
+    }
+  });
+
+  // Track shared phone numbers & contact updates to resolve WhatsApp LIDs
+  sock.ev.on('chats.phoneNumberShare', async ({ lid, jid }) => {
+    if (lid && jid) {
+      const cleanLid = String(lid).replace(/\D/g, '');
+      const cleanJid = String(jid).replace(/\D/g, '');
+      if (cleanLid && cleanJid) {
+        await saveLidPhoneMap(userId, cleanLid, cleanJid);
+      }
+    }
+  });
+
+  sock.ev.on('contacts.upsert', async (contacts) => {
+    if (!Array.isArray(contacts)) return;
+    for (const c of contacts) {
+      if (c.lid && (c.id || c.jid)) {
+        const cleanLid = String(c.lid).replace(/\D/g, '');
+        const target = c.jid || c.id;
+        if (target && !target.endsWith('@lid')) {
+          const cleanPhone = String(target).replace(/\D/g, '');
+          if (cleanLid && cleanPhone && cleanPhone.length <= 12) {
+            await saveLidPhoneMap(userId, cleanLid, cleanPhone, c.name || c.notify || null);
+          }
+        }
+      }
+    }
+  });
+
+  sock.ev.on('contacts.update', async (updates) => {
+    if (!Array.isArray(updates)) return;
+    for (const c of updates) {
+      if (c.lid && (c.id || c.jid)) {
+        const cleanLid = String(c.lid).replace(/\D/g, '');
+        const target = c.jid || c.id;
+        if (target && !target.endsWith('@lid')) {
+          const cleanPhone = String(target).replace(/\D/g, '');
+          if (cleanLid && cleanPhone && cleanPhone.length <= 12) {
+            await saveLidPhoneMap(userId, cleanLid, cleanPhone, c.name || c.notify || null);
+          }
+        }
       }
     }
   });
@@ -841,6 +923,14 @@ export async function sendMessageToJid(userId, to, message) {
     console.log(`[SendMessage] ✅ Delivered to WhatsApp | jid=${jid} | msgId=${result.key.id}`);
     storeRecentMessage(jid, result.key.id, result.message);
     const cleanPhone = String(to).replace(/[^0-9]/g, '');
+    
+    // If WhatsApp returned a LID remoteJid for a known phone number, record the mapping
+    const resRemoteJid = result.key?.remoteJid;
+    if (resRemoteJid && resRemoteJid.endsWith('@lid') && cleanPhone && cleanPhone.length <= 12) {
+      const resLid = resRemoteJid.split('@')[0].replace(/\D/g, '');
+      saveLidPhoneMap(userId, resLid, cleanPhone).catch(() => {});
+    }
+
     saveInboxMessage(userId, {
       contact_phone: cleanPhone,
       message_text: message,

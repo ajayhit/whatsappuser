@@ -605,6 +605,16 @@ export async function initDb() {
           created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
         );
 
+        CREATE TABLE IF NOT EXISTS whatsapp_lid_mapping (
+          user_id TEXT NOT NULL,
+          lid TEXT NOT NULL,
+          phone TEXT NOT NULL,
+          name TEXT,
+          updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (user_id, lid)
+        );
+        CREATE INDEX IF NOT EXISTS idx_lid_mapping ON whatsapp_lid_mapping(user_id, lid);
+
         CREATE INDEX IF NOT EXISTS idx_inbox_user_phone ON inbox_messages(user_id, contact_phone);
         CREATE INDEX IF NOT EXISTS idx_inbox_user_read ON inbox_messages(user_id, is_read);
         CREATE INDEX IF NOT EXISTS idx_inbox_created ON inbox_messages(user_id, created_at);
@@ -1122,6 +1132,16 @@ export async function initDb() {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS whatsapp_lid_mapping (
+      user_id TEXT NOT NULL,
+      lid TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      name TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, lid)
+    );
+    CREATE INDEX IF NOT EXISTS idx_lid_mapping ON whatsapp_lid_mapping(user_id, lid);
 
     CREATE INDEX IF NOT EXISTS idx_inbox_user_phone ON inbox_messages(user_id, contact_phone);
     CREATE INDEX IF NOT EXISTS idx_inbox_user_read ON inbox_messages(user_id, is_read);
@@ -2877,9 +2897,24 @@ export async function saveInboxMessage(userId, { contact_phone, contact_name = n
   if (!contact_phone || !message_text) return null;
   const cleanPhone = String(contact_phone).replace(/[^0-9]/g, '');
 
+  let numericUserId = parseInt(userId, 10);
+  if (isNaN(numericUserId)) {
+    const adminUser = await queryOne("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+    if (adminUser) numericUserId = adminUser.id;
+    else return null;
+  }
+
   let finalName = contact_name;
   if (!finalName) {
-    const contact = await queryOne('SELECT name, shop_name FROM contacts WHERE user_id = ? AND mobile = ?', [userId, cleanPhone]);
+    const contact = await queryOne(`
+      SELECT name, shop_name FROM contacts 
+      WHERE user_id = ? AND (
+        mobile = ? 
+        OR (LENGTH(mobile) >= 8 AND ? LIKE '%' || mobile)
+        OR (LENGTH(?) >= 8 AND mobile LIKE '%' || ?)
+      )
+      LIMIT 1
+    `, [numericUserId, cleanPhone, cleanPhone, cleanPhone, cleanPhone]);
     if (contact) {
       finalName = contact.name || contact.shop_name || null;
     }
@@ -2888,11 +2923,11 @@ export async function saveInboxMessage(userId, { contact_phone, contact_name = n
   const res = await execute(`
     INSERT INTO inbox_messages (user_id, contact_phone, contact_name, message_text, direction, media_type, media_url, is_read)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `, [userId, cleanPhone, finalName, message_text, direction, media_type, media_url, direction === 'outbound' ? 1 : 0]);
+  `, [numericUserId, cleanPhone, finalName, message_text, direction, media_type, media_url, direction === 'outbound' ? 1 : 0]);
 
   return {
     id: res.lastInsertRowid,
-    user_id: userId,
+    user_id: numericUserId,
     contact_phone: cleanPhone,
     contact_name: finalName,
     message_text,
@@ -2901,6 +2936,57 @@ export async function saveInboxMessage(userId, { contact_phone, contact_name = n
     media_url,
     is_read: direction === 'outbound' ? 1 : 0
   };
+}
+
+export async function saveLidPhoneMap(userId, lid, phone, name = null) {
+  if (!lid || !phone) return;
+  const cleanLid = String(lid).replace(/\D/g, '');
+  const cleanPhone = String(phone).replace(/\D/g, '');
+  if (!cleanLid || !cleanPhone || cleanLid === cleanPhone) return;
+  if (cleanLid.length <= 12) return;
+
+  try {
+    if (isPg()) {
+      await execute(`
+        INSERT INTO whatsapp_lid_mapping (user_id, lid, phone, name, updated_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT (user_id, lid) DO UPDATE 
+        SET phone = EXCLUDED.phone, 
+            name = COALESCE(EXCLUDED.name, whatsapp_lid_mapping.name), 
+            updated_at = CURRENT_TIMESTAMP
+      `, [String(userId), cleanLid, cleanPhone, name]);
+    } else {
+      await execute(`
+        INSERT INTO whatsapp_lid_mapping (user_id, lid, phone, name, updated_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+        ON CONFLICT (user_id, lid) DO UPDATE 
+        SET phone = excluded.phone, 
+            name = COALESCE(excluded.name, whatsapp_lid_mapping.name), 
+            updated_at = datetime('now')
+      `, [String(userId), cleanLid, cleanPhone, name]);
+    }
+
+    // Automatically update any past records in inbox_messages that stored this raw LID
+    await execute(`
+      UPDATE inbox_messages
+      SET contact_phone = ?
+      WHERE user_id = ? AND contact_phone = ?
+    `, [cleanPhone, userId, cleanLid]);
+  } catch (err) {
+    console.error('[saveLidPhoneMap Error]', err.message);
+  }
+}
+
+export async function getPhoneByLid(userId, lid) {
+  if (!lid) return null;
+  const cleanLid = String(lid).replace(/\D/g, '');
+  if (!cleanLid || cleanLid.length <= 12) return cleanLid;
+  try {
+    const row = await queryOne('SELECT phone FROM whatsapp_lid_mapping WHERE user_id = ? AND lid = ?', [String(userId), cleanLid]);
+    return row?.phone || null;
+  } catch (err) {
+    return null;
+  }
 }
 
 export async function getInboxConversations(userId) {
@@ -2923,13 +3009,21 @@ export async function getInboxConversations(userId) {
       m.created_at AS last_message_at,
       c.name AS crm_contact_name,
       c.shop_name AS crm_shop_name,
-      c.category AS crm_category
+      c.category AS crm_category,
+      COALESCE(NULLIF(c.mobile, ''), map.phone, NULL) AS resolved_phone
     FROM latest_msgs lm
     JOIN inbox_messages m ON m.id = lm.last_msg_id
-    LEFT JOIN contacts c ON c.user_id = ? AND c.mobile = lm.contact_phone
+    LEFT JOIN whatsapp_lid_mapping map ON map.user_id = CAST(? AS TEXT) AND map.lid = lm.contact_phone
+    LEFT JOIN contacts c ON c.user_id = ? AND (
+      c.mobile = lm.contact_phone
+      OR (LENGTH(c.mobile) >= 8 AND lm.contact_phone LIKE '%' || c.mobile)
+      OR (LENGTH(lm.contact_phone) >= 8 AND c.mobile LIKE '%' || lm.contact_phone)
+      OR (m.contact_name IS NOT NULL AND LENGTH(m.contact_name) >= 3 AND LOWER(c.name) = LOWER(m.contact_name))
+    )
+    GROUP BY lm.contact_phone
     ORDER BY m.id DESC
   `;
-  return await queryAll(sql, [userId, userId]);
+  return await queryAll(sql, [userId, String(userId), userId]);
 }
 
 export async function getInboxMessagesByPhone(userId, contactPhone, limit = 100) {

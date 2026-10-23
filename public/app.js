@@ -2119,84 +2119,7 @@
 
             <!-- TAB: Live Two-Way Team Inbox -->
             <div id="inboxTab" class="tab-content ${state.currentTab === 'inboxTab' ? 'active' : ''}">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
-                <div>
-                  <div class="card-title" style="margin-bottom:0.25rem;">💬 Live Two-Way Team Inbox</div>
-                  <div style="font-size:0.82rem; color:#94a3b8;">Chat directly with customers in real-time, view conversation history, and send instant replies.</div>
-                </div>
-                <div style="display:flex; gap:0.5rem; align-items:center;">
-                  <button type="button" onclick="openCannedRepliesModal()" style="padding:0.45rem 0.85rem; font-size:0.8rem; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#c7d2fe; border-radius:8px; cursor:pointer; width:auto;">
-                    ⚡ Quick Snippets (/canned)
-                  </button>
-                  <button type="button" onclick="loadInboxConversations(true)" style="padding:0.45rem 0.85rem; font-size:0.8rem; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); color:#6ee7b7; border-radius:8px; cursor:pointer; width:auto;">
-                    🔄 Refresh Chats
-                  </button>
-                </div>
-              </div>
-
-              <!-- Main Split Layout -->
-              <div style="display:grid; grid-template-columns:330px 1fr; min-height:640px; height:calc(100vh - 280px); max-height:800px; background:rgba(15,23,42,0.85); border:1px solid rgba(99,102,241,0.25); border-radius:16px; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,0.45);">
-                
-                <!-- Left: Conversations List -->
-                <div style="display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,0.08); background:rgba(15,23,42,0.95);">
-                  <div style="padding:0.85rem; border-bottom:1px solid rgba(255,255,255,0.08);">
-                    <input type="text" id="inboxSearchInput" oninput="filterInboxConversations(this.value)" placeholder="🔍 Search chat or number..." style="width:100%; padding:0.5rem 0.75rem; font-size:0.82rem; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff;">
-                  </div>
-
-                  <div id="inboxConversationsList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column;">
-                    <div style="text-align:center; padding:2rem; color:#94a3b8; font-size:0.85rem;">Loading conversations...</div>
-                  </div>
-                </div>
-
-                <!-- Right: Active Chat Window -->
-                <div id="inboxChatPane" style="display:flex; flex-direction:column; background:linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(30,41,59,0.95) 100%); position:relative;">
-                  
-                  <div id="inboxEmptyState" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2rem; text-align:center; color:#94a3b8;">
-                    <div style="font-size:3.5rem; margin-bottom:1rem; opacity:0.8;">💬</div>
-                    <div style="font-size:1.1rem; font-weight:700; color:#e2e8f0; margin-bottom:0.5rem;">WhatsApp Live Team Inbox</div>
-                    <div style="font-size:0.85rem; max-width:360px; line-height:1.5;">Select any customer on the left to view message history and send instant live replies directly through WhatsApp.</div>
-                  </div>
-
-                  <div id="inboxActiveChat" style="display:none; flex-direction:column; height:100%;">
-                    
-                    <div style="padding:0.75rem 1.25rem; border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.3); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
-                      <div style="display:flex; align-items:center; gap:0.75rem;">
-                        <div id="inboxHeaderAvatar" style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#6366f1,#8b5cf6); display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; font-size:0.95rem;">
-                          ?
-                        </div>
-                        <div>
-                          <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <span id="inboxHeaderName" style="font-weight:700; color:#f8fafc; font-size:0.95rem;">Contact Name</span>
-                            <span id="inboxHeaderCategory" style="font-size:0.7rem; padding:0.1rem 0.5rem; border-radius:10px; background:rgba(99,102,241,0.25); color:#c7d2fe; border:1px solid rgba(99,102,241,0.4);">General</span>
-                          </div>
-                          <div id="inboxHeaderPhone" style="font-size:0.75rem; color:#94a3b8; font-family:monospace;">+91 0000000000</div>
-                        </div>
-                      </div>
-
-                      <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <span style="font-size:0.75rem; color:#6ee7b7; background:rgba(16,185,129,0.15); padding:0.25rem 0.6rem; border-radius:12px; border:1px solid rgba(16,185,129,0.3);">
-                          ● Live Connected
-                        </span>
-                      </div>
-                    </div>
-
-                    <div id="inboxMessagesStream" style="flex:1; overflow-y:auto; padding:1.25rem; display:flex; flex-direction:column; gap:0.75rem;">
-                    </div>
-
-                    <div id="inboxCannedBar" style="padding:0.4rem 1rem; background:rgba(0,0,0,0.2); border-top:1px solid rgba(255,255,255,0.05); display:flex; gap:0.4rem; overflow-x:auto; flex-shrink:0;">
-                    </div>
-
-                    <form id="inboxReplyForm" onsubmit="handleSendInboxReply(event)" style="padding:0.75rem 1rem; border-top:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.4); display:flex; gap:0.6rem; align-items:center; flex-shrink:0;">
-                      <input type="text" id="inboxReplyInput" placeholder="Type a WhatsApp reply... (Press Enter to send)" autocomplete="off" required style="flex:1; padding:0.7rem 1rem; border-radius:10px; background:rgba(15,23,42,0.9); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:0.88rem;">
-                      <button type="submit" id="inboxSendBtn" style="padding:0.7rem 1.25rem; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; font-weight:700; border-radius:10px; cursor:pointer; width:auto; font-size:0.88rem; display:flex; align-items:center; gap:0.35rem;">
-                        🚀 Send
-                      </button>
-                    </form>
-
-                  </div>
-                </div>
-
-              </div>
+              ${renderLiveInboxTabHtml()}
             </div>
 
             <!-- TAB: Personalized Message Templates -->
@@ -9486,14 +9409,19 @@
     }
 
     function updateCampaignSelectedCount() {
-      const allCbs = document.querySelectorAll('input[name="campaignContact"]');
-      const checkedCbs = document.querySelectorAll('input[name="campaignContact"]:checked');
-      
+      const allItems = document.querySelectorAll('.campaign-contact-item');
+      const totalRecipients = (state.contacts || []).length || allItems.length;
+      let totalChecked = 0;
+      allItems.forEach(item => {
+        const cb = item.querySelector('input[name="campaignContact"]');
+        if (cb && cb.checked) totalChecked++;
+      });
+
       const countEl = document.getElementById('campaignSelectedCount');
       const totalEl = document.getElementById('campaignTotalCount');
-      
-      if (countEl) countEl.innerText = checkedCbs.length;
-      if (totalEl) totalEl.innerText = allCbs.length;
+
+      if (countEl) countEl.innerText = totalChecked;
+      if (totalEl) totalEl.innerText = totalRecipients;
     }
 
     function renderCampaignContactsSelector() {
@@ -9545,36 +9473,60 @@
     function handleCampaignCategoryFilterChange(category) {
       const cat = (category || 'ALL').toLowerCase();
       const items = document.querySelectorAll('.campaign-contact-item');
-      items.forEach(item => {
-        const itemCat = (item.getAttribute('data-category') || 'general').toLowerCase();
-        if (cat === 'all' || itemCat === cat) {
+
+      if (cat === 'all') {
+        // Show all contacts and select all
+        items.forEach(item => {
           item.style.display = 'flex';
-        } else {
+          const cb = item.querySelector('input[name="campaignContact"]');
+          if (cb) cb.checked = true;
+        });
+      } else {
+        // First uncheck & hide ALL contacts
+        items.forEach(item => {
           item.style.display = 'none';
-        }
-      });
+          const cb = item.querySelector('input[name="campaignContact"]');
+          if (cb) cb.checked = false;
+        });
+        // Then show & check only the selected category contacts
+        items.forEach(item => {
+          const itemCat = (item.getAttribute('data-category') || 'general').toLowerCase();
+          if (itemCat === cat) {
+            item.style.display = 'flex';
+            const cb = item.querySelector('input[name="campaignContact"]');
+            if (cb) cb.checked = true;
+          }
+        });
+      }
+
+      // Also reset the search input when category changes
+      const searchInput = document.getElementById('campaignContactSearchInput');
+      if (searchInput) searchInput.value = '';
+
+      updateCampaignSelectedCount();
     }
 
     function selectCampaignOnlyCategory() {
       const select = document.getElementById('campaignCategorySelect');
-      const chosenCat = (select ? select.value : 'ALL').toLowerCase();
-      const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
-
-      checkboxes.forEach(cb => {
-        const item = cb.closest('.campaign-contact-item');
-        const itemCat = (item?.getAttribute('data-category') || 'general').toLowerCase();
-        if (chosenCat === 'all' || itemCat === chosenCat) {
-          cb.checked = true;
-        } else {
-          cb.checked = false;
-        }
-      });
-      updateCampaignSelectedCount();
+      if (select) {
+        // Trigger the same logic as changing the dropdown
+        handleCampaignCategoryFilterChange(select.value);
+      }
     }
 
     function selectAllCampaignContacts(checked = true) {
-      const checkboxes = document.querySelectorAll('input[name="campaignContact"]');
-      checkboxes.forEach(cb => cb.checked = checked);
+      // Reset category filter to ALL and show all contacts
+      const catSelect = document.getElementById('campaignCategorySelect');
+      if (catSelect) catSelect.value = 'ALL';
+      const searchInput = document.getElementById('campaignContactSearchInput');
+      if (searchInput) searchInput.value = '';
+
+      const items = document.querySelectorAll('.campaign-contact-item');
+      items.forEach(item => {
+        item.style.display = 'flex';
+        const cb = item.querySelector('input[name="campaignContact"]');
+        if (cb) cb.checked = checked;
+      });
       updateCampaignSelectedCount();
     }
 
@@ -10359,11 +10311,13 @@
       }
     }
 
-    // ─── Live Two-Way Team Inbox Controller ──────────────────────────────────
+    // --- Live Two-Way Team Inbox Controller (Redesigned) ---
     let inboxPollTimer = null;
     let currentInboxActivePhone = null;
+    let currentInboxActiveContact = null;
     let allInboxConversations = [];
     let allCannedReplies = [];
+    let currentInboxFilter = 'all';
 
     function stopInboxPolling() {
       if (inboxPollTimer) {
@@ -10379,6 +10333,10 @@
         loadCannedReplies()
       ]);
 
+      if (currentInboxActivePhone) {
+        loadInboxThread(currentInboxActivePhone, true);
+      }
+
       inboxPollTimer = setInterval(async () => {
         if (state.currentTab !== 'inboxTab') {
           stopInboxPolling();
@@ -10391,9 +10349,347 @@
       }, 3500);
     }
 
+    // Helper: format raw phone digits with country code (+91 / +1 / +...)
+    function formatInboxPhoneNumber(rawPhone) {
+      if (!rawPhone) return '';
+      const digits = String(rawPhone).replace(/\D/g, '');
+      if (!digits) return '';
+      // If it's a 13+ digit LID number, it's not a real phone number
+      if (digits.length > 12) {
+        return '';
+      }
+      // 10 digits -> Indian number without country code
+      if (digits.length === 10) {
+        return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+      }
+      // 12 digits starting with 91 (India)
+      if (digits.length === 12 && digits.startsWith('91')) {
+        return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+      }
+      // 11 digits starting with 1 (USA / Canada)
+      if (digits.length === 11 && digits.startsWith('1')) {
+        return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+      }
+      // General international number (up to 12 digits)
+      return `+${digits}`;
+    }
+
+    function renderInboxConversationsHtml(conversations) {
+      if (!conversations || conversations.length === 0) {
+        return `
+          <div style="padding:2.5rem 1.5rem; text-align:center; color:#94a3b8; font-size:0.82rem; line-height:1.6;">
+            <div style="font-size:2.2rem; margin-bottom:0.6rem; opacity:0.7;">📭</div>
+            <strong style="color:#f1f5f9; font-size:0.9rem;">No conversations yet</strong><br>
+            <span style="color:#94a3b8; font-size:0.78rem;">Incoming customer WhatsApp messages and outgoing replies will appear here in real-time.</span>
+            <div style="margin-top:1.2rem;">
+              <button type="button" onclick="openNewChatModal()" style="padding:0.5rem 1rem; font-size:0.8rem; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; font-weight:700; border-radius:8px; cursor:pointer; width:auto; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
+                ➕ Start First Chat
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      const query = (document.getElementById('inboxSearchInput')?.value || '').toLowerCase().trim();
+      let filtered = conversations;
+
+      if (query) {
+        filtered = filtered.filter(c => {
+          const name = (c.crm_contact_name || c.contact_name || '').toLowerCase();
+          const phone = (c.resolved_phone || c.contact_phone || '').toLowerCase();
+          return name.includes(query) || phone.includes(query);
+        });
+      }
+
+      if (currentInboxFilter === 'unread') {
+        filtered = filtered.filter(c => (parseInt(c.unread_count, 10) || 0) > 0);
+      } else if (currentInboxFilter === 'contacts') {
+        filtered = filtered.filter(c => Boolean(c.crm_contact_name || c.resolved_phone));
+      }
+
+      if (filtered.length === 0) {
+        return '<div style="padding:2rem 1.25rem; text-align:center; color:#94a3b8; font-size:0.82rem;">No matching conversations found.</div>';
+      }
+
+      return filtered.map(c => {
+        const phoneCandidate = c.resolved_phone || c.crm_mobile || c.contact_phone;
+        const formattedPhone = formatInboxPhoneNumber(phoneCandidate);
+        const rawName = (c.crm_contact_name || c.contact_name || '').trim();
+        const isNameNumeric = !rawName || /^\+?[0-9\s-]+$/.test(rawName);
+        let displayName = rawName;
+        if (isNameNumeric || !rawName) {
+          displayName = formattedPhone || 'WhatsApp Customer';
+        }
+        const initials = (!isNameNumeric && rawName)
+          ? rawName.slice(0, 2).toUpperCase()
+          : (formattedPhone ? formattedPhone.slice(-2) : 'WA');
+        const isActive = currentInboxActivePhone === c.contact_phone;
+        const unreadCount = parseInt(c.unread_count, 10) || 0;
+        const categoryTag = c.crm_category || 'General';
+        let timeStr = '';
+        if (c.last_message_at) {
+          const date = new Date(c.last_message_at);
+          timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        const rawSnippet = (c.last_message || '').slice(0, 42) + ((c.last_message || '').length > 42 ? '...' : '');
+        const isOutbound = c.last_direction === 'outbound';
+
+        const phoneSubtitle = formattedPhone 
+          ? `<div style="font-size:0.74rem; color:#34d399; font-weight:600; font-family:monospace; margin-bottom:0.15rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:0.25rem;"><span>📱</span><span>${escapeHtml(formattedPhone)}</span></div>`
+          : `<div style="font-size:0.72rem; color:#94a3b8; margin-bottom:0.15rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">💬 WhatsApp Direct Contact</div>`;
+
+        return `
+          <div class="inbox-convo-item ${isActive ? 'active' : ''}"
+            data-phone="${escapeHtml(c.contact_phone || '')}"
+            data-name="${encodeURIComponent(displayName)}"
+            data-category="${encodeURIComponent(categoryTag)}"
+            data-candidate="${encodeURIComponent(phoneCandidate || '')}"
+            onclick="handleInboxConvoClick(this)">
+            <div class="inbox-avatar">
+              ${escapeHtml(initials)}
+            </div>
+            <div style="flex:1; min-width:0;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.15rem;">
+                <span style="font-weight:600; color:#f8fafc; font-size:0.86rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(displayName)}</span>
+                <span style="font-size:0.7rem; color:#94a3b8; flex-shrink:0;">${timeStr}</span>
+              </div>
+              ${phoneSubtitle}
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:0.35rem;">
+                <span style="font-size:0.75rem; color:${unreadCount > 0 ? '#f1f5f9' : '#94a3b8'}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${unreadCount > 0 ? 'font-weight:600;' : ''}">
+                  ${isOutbound ? '<span style="color:#38bdf8; font-weight:700;">✓ </span>' : ''}${escapeHtml(rawSnippet)}
+                </span>
+                ${unreadCount > 0 ? `<span style="background:#ef4444; color:#fff; font-size:0.65rem; font-weight:700; padding:0.1rem 0.45rem; border-radius:10px; flex-shrink:0; box-shadow:0 2px 6px rgba(239,68,68,0.4);">${unreadCount}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderLiveInboxTabHtml() {
+      const hasActive = Boolean(currentInboxActivePhone && currentInboxActiveContact);
+      const activeContact = currentInboxActiveContact || {};
+      const activePhoneFormatted = formatInboxPhoneNumber(activeContact.displayCandidate || currentInboxActivePhone || '');
+      const hasRealName = activeContact.name && !(/^\+?[0-9\s-]+$/.test(String(activeContact.name).trim()));
+      const activeDisplayName = hasRealName ? activeContact.name : (activePhoneFormatted || 'WhatsApp Contact');
+      const activeInitials = hasRealName
+        ? (activeContact.name || '').slice(0, 2).toUpperCase()
+        : (activePhoneFormatted ? activePhoneFormatted.slice(-2) : 'WA');
+      const activeCategory = activeContact.category || 'General';
+
+      const initialListHtml = renderInboxConversationsHtml(allInboxConversations);
+
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+          <div>
+            <div class="card-title" style="margin-bottom:0.2rem; display:flex; align-items:center; gap:0.5rem;">
+              <span>💬 Live Two-Way Team Inbox</span>
+              <span style="font-size:0.72rem; font-weight:700; color:#34d399; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); padding:0.15rem 0.55rem; border-radius:12px;">● LIVE REALTIME</span>
+            </div>
+            <div style="font-size:0.8rem; color:#94a3b8;">Two-way customer WhatsApp conversation center. View chats, incoming messages, and reply instantly.</div>
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <button type="button" onclick="openNewChatModal()" style="padding:0.48rem 0.95rem; font-size:0.82rem; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; font-weight:700; border-radius:10px; cursor:pointer; width:auto; display:flex; align-items:center; gap:0.35rem; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
+              ➕ New Chat
+            </button>
+            <button type="button" onclick="openCannedRepliesModal()" style="padding:0.48rem 0.9rem; font-size:0.82rem; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#c7d2fe; border-radius:10px; cursor:pointer; width:auto; display:flex; align-items:center; gap:0.35rem;">
+              ⚡ Quick Snippets (/canned)
+            </button>
+            <button type="button" onclick="loadInboxConversations(false)" style="padding:0.48rem 0.85rem; font-size:0.82rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; border-radius:10px; cursor:pointer; width:auto; display:flex; align-items:center; gap:0.35rem;" title="Refresh conversations now">
+              🔄 Refresh
+            </button>
+          </div>
+        </div>
+
+        <!-- Main Responsive Split Layout -->
+        <div id="inboxCardWrapper" class="inbox-card-wrapper ${hasActive ? 'show-chat' : ''}">
+          
+          <!-- Left: Conversations Sidebar -->
+          <div class="inbox-sidebar">
+            <div class="inbox-sidebar-header">
+              <div style="position:relative;">
+                <input type="text" id="inboxSearchInput" oninput="filterInboxConversations(this.value)" placeholder="🔍 Search chat, name, or phone..."
+                  style="width:100%; padding:0.6rem 0.85rem; font-size:0.82rem; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff; outline:none; transition:border-color 0.2s;">
+              </div>
+              <div class="inbox-filter-chips">
+                <button type="button" class="inbox-filter-chip ${currentInboxFilter === 'all' ? 'active' : ''}" id="inboxFilterAll" onclick="setInboxFilter('all')">All Chats</button>
+                <button type="button" class="inbox-filter-chip ${currentInboxFilter === 'unread' ? 'active' : ''}" id="inboxFilterUnread" onclick="setInboxFilter('unread')">🔔 Unread</button>
+                <button type="button" class="inbox-filter-chip ${currentInboxFilter === 'contacts' ? 'active' : ''}" id="inboxFilterContacts" onclick="setInboxFilter('contacts')">👤 Contacts</button>
+              </div>
+            </div>
+
+            <div id="inboxConversationsList" class="inbox-convos-list">
+              ${initialListHtml}
+            </div>
+          </div>
+
+          <!-- Right: Active Chat & Send Window -->
+          <div id="inboxChatPane" class="inbox-chat-pane">
+            
+            <!-- Empty State -->
+            <div id="inboxEmptyState" style="flex:1; display:${hasActive ? 'none' : 'flex'}; flex-direction:column; align-items:center; justify-content:center; padding:2.5rem 1.5rem; text-align:center; color:#94a3b8;">
+              <div style="width:72px; height:72px; border-radius:50%; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); display:flex; align-items:center; justify-content:center; font-size:2.2rem; margin-bottom:1.25rem;">
+                💬
+              </div>
+              <div style="font-size:1.2rem; font-weight:700; color:#f1f5f9; margin-bottom:0.5rem;">WhatsApp Live Team Inbox</div>
+              <div style="font-size:0.85rem; max-width:380px; line-height:1.6; color:#94a3b8; margin-bottom:1.5rem;">
+                Select any conversation on the left to read messages and reply in real-time, or start a new chat with any customer.
+              </div>
+              <button type="button" onclick="openNewChatModal()" style="padding:0.6rem 1.25rem; font-size:0.85rem; font-weight:700; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; border-radius:10px; cursor:pointer; width:auto; display:flex; align-items:center; gap:0.4rem; box-shadow:0 4px 14px rgba(16,185,129,0.3);">
+                ➕ Start New WhatsApp Chat
+              </button>
+            </div>
+
+            <!-- Active Chat Interface -->
+            <div id="inboxActiveChat" style="display:${hasActive ? 'flex' : 'none'}; flex-direction:column; height:100%; min-height:0; overflow:hidden;">
+              
+              <!-- Chat Header -->
+              <div class="inbox-chat-header">
+                <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
+                  <button type="button" class="inbox-mobile-back-btn" onclick="closeInboxChatMobile()" style="display:none; padding:0.35rem 0.6rem; font-size:0.8rem; background:rgba(255,255,255,0.08); border:none; color:#cbd5e1; border-radius:8px; cursor:pointer; width:auto;">
+                    ← Back
+                  </button>
+
+                  <div id="inboxHeaderAvatar" class="inbox-avatar" style="width:40px; height:40px; font-size:0.85rem;">
+                    ${escapeHtml(activeInitials)}
+                  </div>
+                  <div style="min-width:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                      <span id="inboxHeaderName" style="font-weight:700; color:#f8fafc; font-size:0.95rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${escapeHtml(activeDisplayName)}
+                      </span>
+                      <span id="inboxHeaderCategory" style="font-size:0.68rem; padding:0.1rem 0.45rem; border-radius:8px; background:rgba(99,102,241,0.2); color:#c7d2fe; border:1px solid rgba(99,102,241,0.35);">
+                        ${escapeHtml(activeCategory)}
+                      </span>
+                    </div>
+                    <div id="inboxHeaderPhone" style="font-size:0.75rem; color:#94a3b8; font-family:monospace; margin-top:0.1rem;">
+                      ${activePhoneFormatted ? `<span style="color:#10b981;">📱</span> <strong style="color:#6ee7b7;">${escapeHtml(activePhoneFormatted)}</strong>` : '💬 WhatsApp Direct Chat'}
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:0.5rem; flex-shrink:0;">
+                  <span style="font-size:0.72rem; color:#6ee7b7; background:rgba(16,185,129,0.12); padding:0.25rem 0.6rem; border-radius:12px; border:1px solid rgba(16,185,129,0.25); display:flex; align-items:center; gap:0.3rem;">
+                    <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981;"></span>
+                    Live Connected
+                  </span>
+                </div>
+              </div>
+
+              <!-- Messages Stream (Flex 1, with min-height: 0 so it never pushes the send box out) -->
+              <div id="inboxMessagesStream" class="inbox-messages-stream">
+                <div style="color:#94a3b8; text-align:center; padding:2rem; font-size:0.85rem;">Loading messages...</div>
+              </div>
+
+              <!-- Quick Canned Snippets Bar -->
+              <div id="inboxCannedBar" class="inbox-canned-bar">
+              </div>
+
+              <!-- Send Form: STICKY AT BOTTOM, NEVER HIDES -->
+              <form id="inboxReplyForm" onsubmit="handleSendInboxReply(event)" class="inbox-send-form">
+                <input type="text" id="inboxReplyInput" placeholder="Type a WhatsApp reply... (Press Enter to send)" autocomplete="off" required class="inbox-send-input">
+                <button type="submit" id="inboxSendBtn" class="inbox-send-btn">
+                  <span>🚀 Send</span>
+                </button>
+              </form>
+
+            </div>
+          </div>
+
+        </div>
+      `;
+    }
+
+    function setInboxFilter(filterType) {
+      currentInboxFilter = filterType;
+      document.querySelectorAll('.inbox-filter-chip').forEach(c => c.classList.remove('active'));
+      const activeBtn = document.getElementById('inboxFilter' + filterType.charAt(0).toUpperCase() + filterType.slice(1));
+      if (activeBtn) activeBtn.classList.add('active');
+      renderInboxConversations(allInboxConversations);
+    }
+
+    function handleInboxConvoClick(el) {
+      if (!el) return;
+      const phone = el.dataset.phone;
+      const name = decodeURIComponent(el.dataset.name || '');
+      const category = decodeURIComponent(el.dataset.category || '');
+      const displayCandidate = decodeURIComponent(el.dataset.candidate || '');
+      selectInboxChat(phone, name, category, displayCandidate);
+    }
+
+    function closeInboxChatMobile() {
+      const wrapper = document.getElementById('inboxCardWrapper');
+      if (wrapper) wrapper.classList.remove('show-chat');
+    }
+
+    function openNewChatModal() {
+      const m = document.getElementById('newChatModal');
+      if (m) m.style.display = 'flex';
+      setTimeout(() => {
+        document.getElementById('newChatPhoneInput')?.focus();
+      }, 100);
+    }
+
+    function closeNewChatModal() {
+      const m = document.getElementById('newChatModal');
+      if (m) m.style.display = 'none';
+    }
+
+    async function handleStartNewChat(e) {
+      e.preventDefault();
+      const phoneInput = document.getElementById('newChatPhoneInput');
+      const nameInput = document.getElementById('newChatNameInput');
+      const msgInput = document.getElementById('newChatMessageInput');
+      const btn = document.getElementById('startNewChatSubmitBtn');
+      if (!phoneInput || !msgInput) return;
+
+      const rawPhone = phoneInput.value.trim().replace(/\D/g, '');
+      const name = nameInput ? nameInput.value.trim() : '';
+      const message = msgInput.value.trim();
+
+      if (!rawPhone || rawPhone.length < 10) {
+        alert('Please enter a valid phone number (at least 10 digits with country code, e.g. 919876543210)');
+        return;
+      }
+      if (!message) return;
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = 'Sending...';
+      }
+
+      try {
+        const res = await fetch('/api/crm/inbox/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ phone: rawPhone, message })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to send message');
+
+        closeNewChatModal();
+        document.getElementById('startNewChatForm')?.reset();
+
+        // Select this phone as active chat
+        await selectInboxChat(rawPhone, name || rawPhone, 'General', rawPhone);
+        await loadInboxConversations(false);
+      } catch (err) {
+        alert('Error starting chat: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '🚀 Send & Open Chat';
+        }
+      }
+    }
+
     async function loadInboxConversations(silent = false) {
       const listContainer = document.getElementById('inboxConversationsList');
       if (!listContainer) return;
+
       if (!silent && (!allInboxConversations || allInboxConversations.length === 0)) {
         listContainer.innerHTML = '<div style="text-align:center; padding:2rem; color:#94a3b8; font-size:0.85rem;">Loading conversations...</div>';
       }
@@ -10402,9 +10698,15 @@
         const res = await fetch('/api/crm/inbox/conversations', {
           headers: { 'Authorization': `Bearer ${state.token}` }
         });
+        if (!res.ok) {
+          console.warn('Failed to fetch inbox conversations:', res.status);
+          return;
+        }
         const data = await res.json();
-        allInboxConversations = data.conversations || [];
-        renderInboxConversations(allInboxConversations);
+        if (Array.isArray(data.conversations)) {
+          allInboxConversations = data.conversations;
+          renderInboxConversations(allInboxConversations);
+        }
       } catch (err) {
         console.error('Failed to load inbox conversations:', err);
       }
@@ -10413,82 +10715,20 @@
     function renderInboxConversations(conversations) {
       const container = document.getElementById('inboxConversationsList');
       if (!container) return;
-
-      if (!conversations || conversations.length === 0) {
-        container.innerHTML = `
-          <div style="padding:2.5rem 1.5rem; text-align:center; color:#94a3b8; font-size:0.82rem; line-height:1.5;">
-            <div style="font-size:2rem; margin-bottom:0.5rem; opacity:0.6;">📭</div>
-            <strong>No conversations yet</strong><br>
-            Incoming WhatsApp messages from customers and outgoing campaign replies will appear here in real-time.
-          </div>
-        `;
-        return;
-      }
-
-      const query = (document.getElementById('inboxSearchInput')?.value || '').toLowerCase().trim();
-
-      const filtered = query ? conversations.filter(c => {
-        const name = (c.crm_contact_name || c.contact_name || '').toLowerCase();
-        const phone = (c.contact_phone || '').toLowerCase();
-        return name.includes(query) || phone.includes(query);
-      }) : conversations;
-
-      if (filtered.length === 0) {
-        container.innerHTML = '<div style="padding:1.5rem; text-align:center; color:#94a3b8; font-size:0.8rem;">No matching conversations.</div>';
-        return;
-      }
-
-      container.innerHTML = filtered.map(c => {
-        const displayName = c.crm_contact_name || c.contact_name || `+${c.contact_phone}`;
-        const initials = displayName.slice(0, 2).toUpperCase();
-        const isActive = currentInboxActivePhone === c.contact_phone;
-        const unreadCount = parseInt(c.unread_count, 10) || 0;
-        const categoryTag = c.crm_category || 'General';
-
-        let timeStr = '';
-        if (c.last_message_at) {
-          const date = new Date(c.last_message_at);
-          timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-
-        const snippet = (c.last_message || '').slice(0, 40) + ((c.last_message || '').length > 40 ? '...' : '');
-        const isOutbound = c.last_direction === 'outbound';
-
-        return `
-          <div onclick="selectInboxChat('${c.contact_phone}', '${displayName.replace(/'/g, "\\'")}', '${categoryTag}')"
-            style="padding:0.75rem 1rem; border-bottom:1px solid rgba(255,255,255,0.06); cursor:pointer; display:flex; align-items:center; gap:0.75rem; transition:all 0.15s ease; ${isActive ? 'background:rgba(99,102,241,0.2); border-left:3px solid #6366f1;' : 'background:transparent;'}">
-            
-            <div style="width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,#3b82f6,#8b5cf6); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:0.85rem; flex-shrink:0;">
-              ${initials}
-            </div>
-
-            <div style="flex:1; min-width:0;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.2rem;">
-                <span style="font-weight:600; color:#f8fafc; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                  ${displayName}
-                </span>
-                <span style="font-size:0.7rem; color:#94a3b8; flex-shrink:0;">${timeStr}</span>
-              </div>
-
-              <div style="display:flex; justify-content:space-between; align-items:center; gap:0.3rem;">
-                <span style="font-size:0.75rem; color:${unreadCount > 0 ? '#e2e8f0' : '#94a3b8'}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; ${unreadCount > 0 ? 'font-weight:600;' : ''}">
-                  ${isOutbound ? '<span style="color:#38bdf8;">✓ </span>' : ''}${snippet}
-                </span>
-                ${unreadCount > 0 ? `<span style="background:#ef4444; color:#fff; font-size:0.65rem; font-weight:700; padding:0.1rem 0.45rem; border-radius:10px; flex-shrink:0;">${unreadCount}</span>` : ''}
-              </div>
-            </div>
-
-          </div>
-        `;
-      }).join('');
+      container.innerHTML = renderInboxConversationsHtml(conversations);
     }
 
     function filterInboxConversations(query) {
       renderInboxConversations(allInboxConversations);
     }
 
-    async function selectInboxChat(phone, name, category) {
+    async function selectInboxChat(phone, name, category, displayCandidate) {
       currentInboxActivePhone = phone;
+      currentInboxActiveContact = { phone, name, category, displayCandidate };
+
+      const wrapper = document.getElementById('inboxCardWrapper');
+      if (wrapper) wrapper.classList.add('show-chat');
+
       renderInboxConversations(allInboxConversations);
 
       const emptyState = document.getElementById('inboxEmptyState');
@@ -10501,10 +10741,24 @@
       const catEl = document.getElementById('inboxHeaderCategory');
       const avatarEl = document.getElementById('inboxHeaderAvatar');
 
-      if (nameEl) nameEl.innerText = name || `+${phone}`;
-      if (phoneEl) phoneEl.innerText = `+${phone}`;
+      const formattedPhone = formatInboxPhoneNumber(displayCandidate || phone);
+      const isNameNumeric = !name || /^\+?[0-9\s-]+$/.test(String(name).trim());
+      const hasRealName = name && !isNameNumeric;
+
+      if (nameEl) nameEl.innerText = hasRealName ? name : (formattedPhone || 'WhatsApp Contact');
+      if (phoneEl) {
+        if (formattedPhone) {
+          phoneEl.innerHTML = `<span style="color:#10b981; font-size:0.85rem;">📱</span> <strong style="color:#6ee7b7; font-family:monospace; letter-spacing:0.5px;">${formattedPhone}</strong>`;
+          phoneEl.style.display = 'block';
+        } else {
+          phoneEl.innerHTML = `<span style="color:#10b981; font-size:0.85rem;">💬</span> <span style="color:#94a3b8;">WhatsApp Direct Chat</span>`;
+          phoneEl.style.display = 'block';
+        }
+      }
       if (catEl) catEl.innerText = category || 'General';
-      if (avatarEl) avatarEl.innerText = (name || phone).slice(0, 2).toUpperCase();
+      if (avatarEl) avatarEl.innerText = hasRealName
+        ? (name || '').slice(0, 2).toUpperCase()
+        : (formattedPhone ? formattedPhone.slice(-2) : 'WA');
 
       renderCannedBar();
       await loadInboxThread(phone, false);
@@ -10527,11 +10781,12 @@
         const res = await fetch(`/api/crm/inbox/messages/${phone}`, {
           headers: { 'Authorization': `Bearer ${state.token}` }
         });
+        if (!res.ok) return;
         const data = await res.json();
         const messages = data.messages || [];
 
         if (messages.length === 0) {
-          stream.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:2rem; font-size:0.82rem;">No messages in this conversation yet. Send a message below!</div>';
+          stream.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:2.5rem 1rem; font-size:0.85rem;">💬 No messages in this conversation yet. Send a message below!</div>';
           return;
         }
 
@@ -10540,14 +10795,15 @@
         stream.innerHTML = messages.map(m => {
           const isOut = m.direction === 'outbound';
           const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const safeText = escapeHtml(m.message_text);
 
           return `
             <div style="display:flex; justify-content:${isOut ? 'flex-end' : 'flex-start'};">
-              <div style="max-width:70%; padding:0.65rem 0.95rem; border-radius:${isOut ? '14px 14px 4px 14px' : '14px 14px 14px 4px'}; background:${isOut ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(30, 41, 59, 0.95)'}; border:${isOut ? 'none' : '1px solid rgba(255,255,255,0.08)'}; color:#fff; box-shadow:0 4px 12px rgba(0,0,0,0.25);">
-                <div style="font-size:0.85rem; line-height:1.45; white-space:pre-wrap; word-break:break-word; font-family:sans-serif;">${m.message_text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-                <div style="display:flex; justify-content:flex-end; align-items:center; gap:0.25rem; font-size:0.65rem; color:${isOut ? '#d1fae5' : '#94a3b8'}; margin-top:0.3rem;">
+              <div style="max-width:72%; padding:0.7rem 1rem; border-radius:${isOut ? '16px 16px 4px 16px' : '16px 16px 16px 4px'}; background:${isOut ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(30, 41, 59, 0.95)'}; border:${isOut ? 'none' : '1px solid rgba(255,255,255,0.08)'}; color:#fff; box-shadow:0 4px 14px rgba(0,0,0,0.25);">
+                <div style="font-size:0.88rem; line-height:1.5; white-space:pre-wrap; word-break:break-word; font-family:sans-serif;">${safeText}</div>
+                <div style="display:flex; justify-content:flex-end; align-items:center; gap:0.3rem; font-size:0.68rem; color:${isOut ? '#d1fae5' : '#94a3b8'}; margin-top:0.35rem;">
                   <span>${time}</span>
-                  ${isOut ? '<span>✓✓</span>' : ''}
+                  ${isOut ? '<span style="font-weight:700;">✓✓</span>' : ''}
                 </div>
               </div>
             </div>
@@ -10563,7 +10819,7 @@
     }
 
     async function handleSendInboxReply(e) {
-      e.preventDefault();
+      if (e) e.preventDefault();
       const input = document.getElementById('inboxReplyInput');
       const btn = document.getElementById('inboxSendBtn');
       if (!input || !currentInboxActivePhone) return;
@@ -10572,17 +10828,21 @@
       if (!message) return;
 
       input.value = '';
-      if (btn) btn.disabled = true;
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳ Sending...</span>';
+      }
 
+      // Optimistically add bubble to UI
       const stream = document.getElementById('inboxMessagesStream');
       if (stream) {
         const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const bubble = document.createElement('div');
         bubble.style.cssText = 'display:flex; justify-content:flex-end;';
         bubble.innerHTML = `
-          <div style="max-width:70%; padding:0.65rem 0.95rem; border-radius:14px 14px 4px 14px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; box-shadow:0 4px 12px rgba(0,0,0,0.25);">
-            <div style="font-size:0.85rem; line-height:1.45; white-space:pre-wrap; word-break:break-word;">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-            <div style="display:flex; justify-content:flex-end; align-items:center; gap:0.25rem; font-size:0.65rem; color:#d1fae5; margin-top:0.3rem;">
+          <div style="max-width:72%; padding:0.7rem 1rem; border-radius:16px 16px 4px 16px; background:linear-gradient(135deg, #10b981, #059669); color:#fff; box-shadow:0 4px 14px rgba(0,0,0,0.25);">
+            <div style="font-size:0.88rem; line-height:1.5; white-space:pre-wrap; word-break:break-word;">${escapeHtml(message)}</div>
+            <div style="display:flex; justify-content:flex-end; align-items:center; gap:0.3rem; font-size:0.68rem; color:#d1fae5; margin-top:0.35rem;">
               <span>${time}</span>
               <span>✓</span>
             </div>
@@ -10609,13 +10869,18 @@
         if (!res.ok) {
           alert(data.error || 'Failed to send WhatsApp message');
         } else {
-          loadInboxThread(currentInboxActivePhone, true);
-          loadInboxConversations(true);
+          setTimeout(() => {
+            loadInboxThread(currentInboxActivePhone, true);
+            loadInboxConversations(true);
+          }, 400);
         }
       } catch (err) {
         alert('Error sending message: ' + err.message);
       } finally {
-        if (btn) btn.disabled = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🚀 Send</span>';
+        }
         input.focus();
       }
     }
@@ -10639,15 +10904,15 @@
       if (!bar) return;
 
       if (!allCannedReplies || allCannedReplies.length === 0) {
-        bar.innerHTML = '<span style="font-size:0.7rem; color:#64748b;">Tip: Use Quick Snippets (/canned) above to add 1-click answers.</span>';
+        bar.innerHTML = '<span style="font-size:0.72rem; color:#64748b;">Tip: Use Quick Snippets (/canned) to add 1-click answers.</span>';
         return;
       }
 
       bar.innerHTML = allCannedReplies.map(c => `
-        <button type="button" onclick="insertCannedReply('${c.message.replace(/'/g, "\\'")}')"
-          title="${c.message.replace(/"/g, '&quot;')}"
-          style="padding:0.2rem 0.55rem; font-size:0.72rem; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.35); color:#c7d2fe; border-radius:6px; cursor:pointer; width:auto; white-space:nowrap; flex-shrink:0;">
-          ⚡ ${c.shortcut}
+        <button type="button" onclick="insertCannedReply('${escapeHtml(c.message.replace(/'/g, "\\'"))}')"
+          title="${escapeHtml(c.message)}"
+          style="padding:0.25rem 0.65rem; font-size:0.73rem; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.35); color:#c7d2fe; border-radius:14px; cursor:pointer; width:auto; white-space:nowrap; flex-shrink:0; transition:all 0.15s ease;">
+          ⚡ ${escapeHtml(c.shortcut)}
         </button>
       `).join('');
     }
@@ -10682,8 +10947,8 @@
       list.innerHTML = allCannedReplies.map(c => `
         <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0.6rem 0.85rem; display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
           <div style="flex:1;">
-            <div style="font-size:0.8rem; font-weight:700; color:#38bdf8;">${c.shortcut}</div>
-            <div style="font-size:0.78rem; color:#cbd5e1; margin-top:0.2rem; white-space:pre-wrap;">${c.message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+            <div style="font-size:0.8rem; font-weight:700; color:#38bdf8;">${escapeHtml(c.shortcut)}</div>
+            <div style="font-size:0.78rem; color:#cbd5e1; margin-top:0.2rem; white-space:pre-wrap;">${escapeHtml(c.message)}</div>
           </div>
           <button type="button" onclick="deleteCannedReplyItem(${c.id})" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; font-size:0.75rem; cursor:pointer; padding:0.2rem 0.5rem; border-radius:6px; width:auto;">✕</button>
         </div>
@@ -10741,6 +11006,12 @@
     window.insertCannedReply = insertCannedReply;
     window.stopInboxPolling = stopInboxPolling;
     window.initLiveInbox = initLiveInbox;
+    window.setInboxFilter = setInboxFilter;
+    window.handleInboxConvoClick = handleInboxConvoClick;
+    window.closeInboxChatMobile = closeInboxChatMobile;
+    window.openNewChatModal = openNewChatModal;
+    window.closeNewChatModal = closeNewChatModal;
+    window.handleStartNewChat = handleStartNewChat;
 
 
   

@@ -631,6 +631,50 @@
     </div>
   </div>
 
+  <!-- New WhatsApp Conversation Modal -->
+  <div id="newChatModal"
+    style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem;">
+    <div
+      style="background:linear-gradient(135deg,#0f172a,#1e293b); border:1px solid rgba(16,185,129,0.4); border-radius:16px; padding:2rem; max-width:480px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.6); display:flex; flex-direction:column;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+        <div>
+          <div style="font-size:1.15rem; font-weight:700; color:#e2e8f0;">💬 Start New WhatsApp Chat</div>
+          <div style="font-size:0.78rem; color:#94a3b8; margin-top:0.2rem;">Send a live message to any customer number</div>
+        </div>
+        <button onclick="closeNewChatModal()"
+          style="background:rgba(255,255,255,0.08); border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer; padding:0.3rem 0.6rem; border-radius:6px;">✕</button>
+      </div>
+
+      <form id="startNewChatForm" onsubmit="handleStartNewChat(event)" style="display:flex; flex-direction:column; gap:1rem;">
+        <div>
+          <label style="font-size:0.8rem; font-weight:600; color:#cbd5e1; display:block; margin-bottom:0.4rem;">Customer Phone Number (with Country Code):</label>
+          <input type="text" id="newChatPhoneInput" placeholder="e.g. 919876543210 or +91 98765 43210" required
+            style="width:100%; padding:0.7rem 0.9rem; font-size:0.9rem; background:#0f172a; border:1px solid rgba(255,255,255,0.18); border-radius:8px; color:#fff; font-family:monospace;">
+          <div style="font-size:0.72rem; color:#94a3b8; margin-top:0.25rem;">For India, use 91XXXXXXXXXX (12 digits) or 10-digit mobile.</div>
+        </div>
+
+        <div>
+          <label style="font-size:0.8rem; font-weight:600; color:#cbd5e1; display:block; margin-bottom:0.4rem;">Contact Name (Optional):</label>
+          <input type="text" id="newChatNameInput" placeholder="e.g. John Sharma"
+            style="width:100%; padding:0.65rem 0.9rem; font-size:0.85rem; background:#0f172a; border:1px solid rgba(255,255,255,0.18); border-radius:8px; color:#fff;">
+        </div>
+
+        <div>
+          <label style="font-size:0.8rem; font-weight:600; color:#cbd5e1; display:block; margin-bottom:0.4rem;">First Message:</label>
+          <textarea id="newChatMessageInput" rows="3" placeholder="Type your greeting or message..." required
+            style="width:100%; padding:0.65rem 0.9rem; font-size:0.85rem; background:#0f172a; border:1px solid rgba(255,255,255,0.18); border-radius:8px; color:#fff;"></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.6rem; margin-top:0.5rem;">
+          <button type="button" onclick="closeNewChatModal()"
+            style="padding:0.65rem 1.1rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; border-radius:8px; cursor:pointer; font-size:0.85rem; width:auto;">Cancel</button>
+          <button type="submit" id="startNewChatSubmitBtn"
+            style="padding:0.65rem 1.3rem; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.85rem; width:auto;">🚀 Send & Open Chat</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </body>
 
 </html>

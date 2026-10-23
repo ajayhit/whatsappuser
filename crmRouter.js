@@ -24,7 +24,8 @@ import {
   getFollowupAutomationsByUser, createFollowupAutomation, updateFollowupAutomation, deleteFollowupAutomation,
   getFollowupLogsByUser, deleteFollowupLog,
   getInboxConversations, getInboxMessagesByPhone, markInboxThreadAsRead, saveInboxMessage,
-  getCannedRepliesByUser, createCannedReply, deleteCannedReply
+  getCannedRepliesByUser, createCannedReply, deleteCannedReply,
+  getPhoneByLid
 } from './db.js';
 
 
@@ -1331,8 +1332,31 @@ router.post('/inbox/send', async (req, res) => {
       return res.status(400).json({ error: 'Phone number and message text are required' });
     }
     const cleanPhone = String(phone).replace(/[^0-9]/g, '');
-    // Send via WhatsApp
-    await sendMessageToJid(String(req.user.id), cleanPhone, message.trim());
+    const trimmedMsg = message.trim();
+
+    // Resolve LID to real phone number before sending.
+    // Inbox conversations may store a WhatsApp LID (13+ digit internal ID) instead of a real
+    // phone number. Sending to a LID@s.whatsapp.net fails silently — the message is never delivered.
+    let sendPhone = cleanPhone;
+    if (cleanPhone.length > 12) {
+      const resolved = await getPhoneByLid(req.user.id, cleanPhone);
+      if (resolved) {
+        console.log(`[Inbox Send] Resolved LID ${cleanPhone} → real phone ${resolved}`);
+        sendPhone = resolved;
+      } else {
+        console.warn(`[Inbox Send] Phone ${cleanPhone} looks like a LID but no mapping found — sending as-is`);
+      }
+    }
+
+    // Send via WhatsApp using the resolved real phone number
+    await sendMessageToJid(String(req.user.id), sendPhone, trimmedMsg);
+    // Explicitly save outbound message to inbox DB so it appears immediately on reload
+    // Use the ORIGINAL cleanPhone (not sendPhone) so the message stays in the same conversation thread
+    await saveInboxMessage(req.user.id, {
+      contact_phone: cleanPhone,
+      message_text: trimmedMsg,
+      direction: 'outbound'
+    }).catch(err => console.error('[Inbox Outbound Save Error]', err.message));
     return res.json({ success: true, message: 'Message sent successfully' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
